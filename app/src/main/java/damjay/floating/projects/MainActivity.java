@@ -15,6 +15,9 @@ import damjay.floating.projects.autoclicker.activity.ModeSelectorActivity;
 import damjay.floating.projects.bible.BibleService;
 import damjay.floating.projects.calculate.CalculatorService;
 import damjay.floating.projects.timer.TimerService;
+import damjay.floating.projects.music.PlayerService;
+import damjay.floating.projects.notes.NoteService;
+import damjay.floating.projects.captions.FloatingCaptionsActivity;
 
 public class MainActivity extends AppCompatActivity {
     public static final int FLOAT_PERMISSION_REQUEST = 100;
@@ -32,9 +35,13 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.floating_bible).setOnClickListener(getServiceClickListener(BibleService.class));
         findViewById(R.id.floating_timer).setOnClickListener(getServiceClickListener(TimerService.class));
         findViewById(R.id.floating_clicker).setOnClickListener(getActivityClickListener(ModeSelectorActivity.class));
-        findViewById(R.id.floating_music).setOnClickListener(v -> Toast.makeText(this, R.string.floating_music_coming, Toast.LENGTH_LONG).show());
-        findViewById(R.id.floating_copyTextField).setOnClickListener(v -> Toast.makeText(this, R.string.floating_copy_text_coming, Toast.LENGTH_LONG).show());
-        findViewById(R.id.floating_browser).setOnClickListener(v -> Toast.makeText(this, R.string.floating_browser_coming, Toast.LENGTH_LONG).show());
+        findViewById(R.id.floating_music).setOnClickListener(getServiceClickListener(PlayerService.class));
+        findViewById(R.id.floating_copyTextField).setOnClickListener(getServiceClickListener(NoteService.class));
+        findViewById(R.id.floating_browser)
+                .setOnClickListener(
+                        v -> Toast.makeText(this, R.string.floating_browser_coming, Toast.LENGTH_LONG).show());
+        findViewById(R.id.floating_captions)
+                .setOnClickListener(getActivityClickListener(FloatingCaptionsActivity.class));
 
         // Request for optional optimization
         checkBatteryOptimization();
