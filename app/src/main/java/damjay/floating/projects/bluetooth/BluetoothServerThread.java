@@ -3,63 +3,72 @@ package damjay.floating.projects.bluetooth;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothServerSocket;
 import android.bluetooth.BluetoothSocket;
-import damjay.floating.projects.autoclicker.activity.HostActivity;
+import java.io.IOException;
 import java.util.UUID;
 
 public class BluetoothServerThread extends Thread {
+    private final BluetoothCallback callback;
     private BluetoothServerSocket serverSocket;
-    private BluetoothCallback callback;
-    
+
     public BluetoothServerThread(BluetoothCallback callback, BluetoothAdapter adapter, String name, UUID uuid) {
         this.callback = callback;
         try {
-            serverSocket = adapter.listenUsingRfcommWithServiceRecord(name, uuid);
+            BluetoothServerSocket bluetoothServerSocketListenUsingRfcommWithServiceRecord = adapter.listenUsingRfcommWithServiceRecord(name, uuid);
+            this.serverSocket = bluetoothServerSocketListenUsingRfcommWithServiceRecord;
+            if (bluetoothServerSocketListenUsingRfcommWithServiceRecord == null) {
+                callback.onResult(0, null);
+            }
         } catch (Throwable t) {
             t.printStackTrace();
-            callback.onResult(BluetoothCallback.ERROR, t);
-            return;
-        }
-        if (serverSocket == null) {
-            callback.onResult(BluetoothCallback.ERROR, null);
+            callback.onResult(0, t);
         }
     }
-    
+
     @Override
-    public void run() {
-        if (serverSocket == null) return;
-        BluetoothSocket socket = null;
-        try {
-            while (serverSocket != null && socket == null) {
-                socket = serverSocket.accept();
-            }
-        } catch (Throwable t) {
-            t.printStackTrace();
-            callback.onResult(BluetoothCallback.ERROR, t);
-            try {
-                serverSocket.close();
-            } catch (Throwable closeError) {
-                closeError.printStackTrace();
-            }
+    public void run() throws IOException {
+        if (this.serverSocket == null) {
             return;
+        }
+        BluetoothSocket socket = null;
+        while (true) {
+            try {
+                BluetoothServerSocket bluetoothServerSocket = this.serverSocket;
+                if (bluetoothServerSocket == null || socket != null) {
+                    break;
+                } else {
+                    socket = bluetoothServerSocket.accept();
+                }
+            } catch (Throwable t) {
+                t.printStackTrace();
+                this.callback.onResult(0, t);
+                try {
+                    this.serverSocket.close();
+                    return;
+                } catch (Throwable closeError) {
+                    closeError.printStackTrace();
+                    return;
+                }
+            }
         }
         if (socket != null) {
-            callback.onResult(BluetoothCallback.SUCCESS, socket);
+            this.callback.onResult(1, socket);
         }
         try {
-            if (serverSocket != null)
-                serverSocket.close();
-        } catch (Throwable closeError) {
-            closeError.printStackTrace();
+            BluetoothServerSocket bluetoothServerSocket2 = this.serverSocket;
+            if (bluetoothServerSocket2 != null) {
+                bluetoothServerSocket2.close();
+            }
+        } catch (Throwable closeError2) {
+            closeError2.printStackTrace();
         }
     }
-    
+
     public void cancel() {
         try {
-            serverSocket.close();
-            serverSocket = null;
+            this.serverSocket.close();
+            this.serverSocket = null;
         } catch (Throwable t) {
             t.printStackTrace();
         }
     }
-    
 }

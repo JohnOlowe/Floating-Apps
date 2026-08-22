@@ -69,7 +69,6 @@ public class FileListAdapter extends BaseAdapter {
     public void updatePath(File folder) {
         String rootValue = this.internalDrive.getParentFile().getParent();
         if (folder.getPath().equals(rootValue)) {
-            File file = this.folder;
             if (file == null || file.getPath().equals(this.internalDrive.getParent())) {
                 return;
             }
@@ -108,7 +107,6 @@ public class FileListAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        ArrayList<FileItem> arrayList = this.fileItems;
         if (arrayList == null) {
             return 0;
         }

@@ -1,26 +1,27 @@
 package damjay.floating.projects.utils;
 
 public class TouchState {
+    private static TouchState instance;
     public static int moveTolerance = 5;
-
-    private float initialX;
     private float finalX;
-    private float initialY;
     private float finalY;
+    private float initialX;
+    private float initialY;
+    private int maxDistanceMoved;
     private int originalX;
     private int originalY;
 
-    private static TouchState instance;
-
-    private TouchState() {}
+    private TouchState() {
+    }
 
     public static TouchState newInstance() {
         return new TouchState();
     }
 
     public static TouchState getInstance() {
-        if (instance == null)
+        if (instance == null) {
             instance = new TouchState();
+        }
         return instance;
     }
 
@@ -33,33 +34,37 @@ public class TouchState {
     public void setFinalPosition(float finalX, float finalY) {
         this.finalX = finalX;
         this.finalY = finalY;
+        this.maxDistanceMoved = (int) Math.max(this.maxDistanceMoved, Math.max(Math.abs(getMoveX()), Math.abs(getMoveY())));
     }
 
     public void setOriginalPosition(int x, int y) {
-        originalX = x;
-        originalY = y;
+        this.originalX = x;
+        this.originalY = y;
     }
 
     public int updatedPositionX() {
-        int updatedX = originalX + (int) getMoveX();
-        return updatedX < 0 ? 0 : updatedX;
+        int updatedX = this.originalX + ((int) getMoveX());
+        return Math.max(updatedX, 0);
     }
 
     public int updatedPositionY() {
-        int updatedY = originalY + (int) getMoveY();
-        return updatedY < 0 ? 0 : updatedY;
+        int updatedY = this.originalY + ((int) getMoveY());
+        return Math.max(updatedY, 0);
     }
 
     public float getMoveX() {
-        return finalX - initialX;
+        return this.finalX - this.initialX;
     }
 
     public float getMoveY() {
-        return finalY - initialY;
+        return this.finalY - this.initialY;
     }
 
     public boolean hasMoved() {
-        return Math.abs(getMoveX()) > moveTolerance || Math.abs(getMoveY()) > moveTolerance;
+        if (this.maxDistanceMoved <= moveTolerance) {
+            return Math.abs(getMoveX()) > ((float) moveTolerance) || Math.abs(getMoveY()) > ((float) moveTolerance);
+        }
+        this.maxDistanceMoved = 0;
+        return true;
     }
-    
 }

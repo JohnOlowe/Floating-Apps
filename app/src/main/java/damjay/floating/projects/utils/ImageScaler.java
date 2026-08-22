@@ -4,25 +4,25 @@ import android.graphics.Bitmap;
 
 public class ImageScaler {
     private static final float SCALE_CHANGE = 0.1f;
-
-    private float defaultMinScale = SCALE_CHANGE;
-    private float scale = 1;
+    private float defaultMinScale = 0.1f;
+    private float scale = 1.0f;
 
     public void setScale(float scale) {
         this.scale = scale;
     }
 
     public float getScale() {
-        return scale;
+        return this.scale;
     }
 
     public void increaseScale() {
-        scale += SCALE_CHANGE;
+        this.scale += 0.1f;
     }
 
     public void decreaseScale() {
-        if (scale - SCALE_CHANGE >= defaultMinScale)
-            scale -= SCALE_CHANGE;
+        if (f - 0.1f >= this.defaultMinScale) {
+            this.scale = f - 0.1f;
+        }
     }
 
     public void setDefaultMinScale(float defaultMinScale) {
@@ -30,16 +30,20 @@ public class ImageScaler {
     }
 
     public float getDefaultMinScale() {
-        return defaultMinScale;
+        return this.defaultMinScale;
     }
-    
+
     public Bitmap getFastScaled(Bitmap bitmap) {
-        if (scale < defaultMinScale) scale = defaultMinScale;
-        return Bitmap.createScaledBitmap(bitmap, (int) ((float) bitmap.getWidth() * scale), (int) ((float) bitmap.getHeight() * scale), false);
+        if (f < f2) {
+            this.scale = f2;
+        }
+        return Bitmap.createScaledBitmap(bitmap, (int) (bitmap.getWidth() * this.scale), (int) (bitmap.getHeight() * this.scale), false);
     }
 
     public Bitmap getScaled(Bitmap bitmap) {
-        if (scale < defaultMinScale) scale = defaultMinScale;
-        return Bitmap.createScaledBitmap(bitmap, (int) ((float) bitmap.getWidth() * scale), (int) ((float) bitmap.getHeight() * scale), true);
+        if (f < f2) {
+            this.scale = f2;
+        }
+        return Bitmap.createScaledBitmap(bitmap, (int) (bitmap.getWidth() * this.scale), (int) (bitmap.getHeight() * this.scale), true);
     }
 }
