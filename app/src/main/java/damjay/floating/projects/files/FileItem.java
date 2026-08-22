@@ -1,35 +1,36 @@
 package damjay.floating.projects.files;
 
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import java.io.File;
-import android.widget.ImageView;
 
 public class FileItem {
+    private String directoryName;
     private File file;
-
     private String fileName;
     private long fileSize;
-    private boolean isDirectory;
-
     private String formattedSize;
-
+    private String fullPath;
+    private boolean isDirectory;
     private ViewLayout layout;
 
-    private FileItem(String fileName, long fileSize, boolean isDirectory) {
+    private FileItem(String fileName, String directoryName, String fullPath, long fileSize, boolean isDirectory) {
         this.fileName = fileName;
+        this.directoryName = directoryName;
         this.fileSize = fileSize;
+        this.fullPath = fullPath;
         this.isDirectory = isDirectory;
     }
 
     public FileItem(File file) {
-        this(file.getName(), file.length(), file.isDirectory());
+        this(file.getName(), file.getParent(), file.getPath(), file.length(), file.isDirectory());
         this.file = file;
     }
-    
+
     public FileItem(File file, String name) {
         this(file);
-        fileName = name;
+        this.fileName = name;
     }
 
     public void setFile(File file) {
@@ -37,11 +38,11 @@ public class FileItem {
     }
 
     public File getFile() {
-        return file;
+        return this.file;
     }
 
     public long getLastModified() {
-        return file.lastModified();
+        return this.file.lastModified();
     }
 
     public void setFileName(String fileName) {
@@ -49,7 +50,23 @@ public class FileItem {
     }
 
     public String getFileName() {
-        return fileName;
+        return this.fileName;
+    }
+
+    public String getDirectoryName() {
+        return this.directoryName;
+    }
+
+    public void setDirectoryName(String directoryName) {
+        this.directoryName = directoryName;
+    }
+
+    public String getFullPath() {
+        return this.fullPath;
+    }
+
+    public void setFullPath(String fullPath) {
+        this.fullPath = fullPath;
     }
 
     public void setFileSize(long fileSize) {
@@ -57,7 +74,7 @@ public class FileItem {
     }
 
     public long getFileSize() {
-        return fileSize;
+        return this.fileSize;
     }
 
     public void setFormattedSize(String formattedSize) {
@@ -65,7 +82,7 @@ public class FileItem {
     }
 
     public String getFormattedSize() {
-        return formattedSize;
+        return this.formattedSize;
     }
 
     public void setIsDirectory(boolean isDirectory) {
@@ -73,7 +90,7 @@ public class FileItem {
     }
 
     public boolean isDirectory() {
-        return isDirectory;
+        return this.isDirectory;
     }
 
     public void setLayout(ViewLayout layout) {
@@ -81,42 +98,43 @@ public class FileItem {
     }
 
     public ViewLayout getLayout() {
-        if (layout == null) return new ViewLayout();
-        return layout;
+        ViewLayout viewLayout = this.layout;
+        return viewLayout == null ? new ViewLayout() : viewLayout;
     }
 
     public static class ViewLayout {
-        private TextView name;
-        private TextView info;
         private ImageView icon;
+        private TextView info;
+        private TextView name;
 
         public ImageView setIcon(View icon) {
-            this.icon = (ImageView) icon;
-            return this.icon;
+            ImageView imageView = (ImageView) icon;
+            this.icon = imageView;
+            return imageView;
         }
 
         public ImageView getIcon() {
-            return icon;
+            return this.icon;
         }
 
         public TextView setName(View name) {
-            this.name = (TextView) name;
-            return this.name;
+            TextView textView = (TextView) name;
+            this.name = textView;
+            return textView;
         }
 
         public TextView getName() {
-            return name;
+            return this.name;
         }
 
         public TextView setInfo(View info) {
-            this.info = (TextView) info;
-            return this.info;
+            TextView textView = (TextView) info;
+            this.info = textView;
+            return textView;
         }
 
         public TextView getInfo() {
-            return info;
+            return this.info;
         }
-
     }
-
 }

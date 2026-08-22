@@ -1,37 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout
-	xmlns:android="http://schemas.android.com/apk/res/android"
-	xmlns:tools="http://schemas.android.com/tools"
-	android:padding="15dp"
-	android:layout_height="match_parent"
-	android:layout_width="match_parent">
-    
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:padding="15dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
     <EditText
+        android:id="@+id/file_path"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/file_path"
-        android:inputType="text"
-        android:hint="@string/path_hint"/>
+        android:hint="@string/path_hint"
+        android:inputType="text"/>
+    <LinearLayout
+        android:orientation="horizontal"
+        android:id="@+id/select_files_options"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/file_path">
+        <Button
+            android:id="@+id/browseFile"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:text="@string/browse_files"
+            android:layout_weight="1"/>
+        <Button
+            android:id="@+id/searchFile"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:text="@string/search_files"
+            android:layout_weight="1"/>
+    </LinearLayout>
     <Button
+        android:id="@+id/selectFile"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="5dp"
+        android:text="@string/select_file"
+        android:layout_below="@+id/select_files_options"
+        android:layout_centerHorizontal="true"/>
+    <ListView
+        android:id="@+id/fileHistory"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/browse_files"
-		android:layout_below="@+id/file_path"
-        android:id="@+id/browseFile"
-        android:layout_marginBottom="10dp"/>
-    <Button
-		android:layout_width="match_parent"
-		android:layout_height="wrap_content"
-		android:id="@+id/selectFile"
-        android:text="@string/select_file"
-		android:layout_centerHorizontal="true"
-        android:layout_below="@+id/browseFile"
-		android:layout_marginBottom="5dp"/>
-    <ListView
-		android:layout_width="wrap_content"
-		android:layout_height="wrap_content"
-		android:id="@+id/fileHistory"
-		android:layout_below="@+id/selectFile"/>
-
+        android:layout_below="@+id/selectFile"/>
 </RelativeLayout>
-

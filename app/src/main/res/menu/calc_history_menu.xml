@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/replace_content"
+        android:title="@string/show_in_calculator"/>
+    <item
+        android:id="@+id/insert_content"
+        android:title="@string/insert_at_cursor_position"/>
+    <item
+        android:id="@+id/delete_history"
+        android:title="@string/remove_from_history"/>
+    <item
+        android:id="@+id/clear_history"
+        android:title="@string/clear_history"/>
+</menu>

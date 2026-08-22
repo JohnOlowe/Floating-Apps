@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="horizontal"
+    android:background="@drawable/rounded_side"
+    android:padding="3dp"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content">
+    <ImageView
+        android:id="@+id/quick_launch_pdf"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_margin="3dp"
+        android:src="@drawable/pdf_logo"/>
+    <ImageView
+        android:id="@+id/quick_launch_calc"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_margin="3dp"
+        android:src="@drawable/simple_calc"/>
+    <ImageView
+        android:id="@+id/quick_launch_bible"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_margin="3dp"
+        android:src="@drawable/bible_logo"/>
+    <ImageView
+        android:id="@+id/quick_launch_notes"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_margin="3dp"
+        android:src="@drawable/copy_logo"/>
+    <ImageView
+        android:id="@+id/quick_launch_music"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_margin="3dp"
+        android:src="@drawable/music_logo"/>
+</LinearLayout>

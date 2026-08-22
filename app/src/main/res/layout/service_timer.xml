@@ -2,213 +2,196 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
-
     <ImageView
         android:id="@+id/collapsedTimer"
+        android:background="@android:color/white"
         android:layout_width="40sp"
         android:layout_height="40sp"
-        android:background="@android:color/white"
-        android:contentDescription="@string/maximize_timer"
-        android:src="@drawable/floating_timer" />
-
+        android:src="@drawable/floating_timer"
+        android:contentDescription="@string/maximize_timer"/>
     <RelativeLayout
         android:id="@+id/expandedTimer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
-
         <LinearLayout
             android:id="@+id/timerTopNav"
+            android:background="@color/buttonColor"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentEnd="true"
-            android:background="@color/buttonColor">
-
+            android:layout_alignParentEnd="true">
             <ImageView
+                android:layout_gravity="center_vertical"
                 android:id="@+id/launch_app"
                 android:layout_width="20sp"
                 android:layout_height="match_parent"
-                android:layout_gravity="center_vertical"
-                android:layout_marginStart="10dp"
-                android:layout_marginEnd="10dp"
+                android:src="@drawable/launch_app"
                 android:contentDescription="@string/launch_app"
-                android:src="@drawable/launch_app" />
-
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"/>
             <ImageView
+                android:layout_gravity="center_vertical"
                 android:id="@+id/minimizeTimer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center_vertical"
-                android:layout_marginStart="10dp"
-                android:layout_marginEnd="10dp"
+                android:src="@drawable/minimize_icon"
                 android:contentDescription="@string/minimize_timer"
-                android:src="@drawable/minimize_icon" />
-
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"/>
             <ImageView
                 android:id="@+id/closeTimer"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:layout_marginEnd="10dp"
+                android:src="@android:drawable/ic_delete"
                 android:contentDescription="@string/close_timer"
-                android:src="@android:drawable/ic_delete" />
+                android:layout_marginStart="10dp"
+                android:layout_marginEnd="10dp"/>
         </LinearLayout>
-
         <RelativeLayout
+            android:background="@color/timerBackground"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/timerBackground"
             android:layout_below="@+id/timerTopNav">
-
             <LinearLayout
+                android:orientation="vertical"
+                android:id="@+id/select_timer_mode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:id="@+id/select_timer_mode"
-                android:layout_centerHorizontal="true"
-                android:orientation="vertical">
-
+                android:layout_centerHorizontal="true">
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:textSize="30sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/scheduleTimerColor"
                     android:layout_gravity="center_horizontal"
-                    android:baselineAligned="false"
                     android:paddingTop="10dp"
                     android:paddingBottom="10dp"
-                    android:text="@string/schedule_timer"
-                    android:textColor="@color/scheduleTimerColor"
-                    android:textSize="30sp"
-                    android:textStyle="bold" />
-
-                <LinearLayout
-                    style="?android:attr/buttonBarStyle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal">
-
+                    android:baselineAligned="false"
+                    android:text="@string/schedule_timer"/>
+                <LinearLayout
+                    android:layout_gravity="center_horizontal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    style="?android:attr/buttonBarStyle">
                     <Button
-                        style="?android:attr/buttonBarButtonStyle"
                         android:id="@+id/new_timer"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/new_timer"
-                        android:textAllCaps="false" />
-
+                        android:textAllCaps="false"
+                        style="?android:attr/buttonBarButtonStyle"/>
                     <Button
-                        style="?android:attr/buttonBarButtonStyle"
                         android:id="@+id/schedule_timer"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="@string/schedule_repeating_timer"
-                        android:textAllCaps="false" />
+                        android:textAllCaps="false"
+                        style="?android:attr/buttonBarButtonStyle"/>
                 </LinearLayout>
-
             </LinearLayout>
-
             <LinearLayout
+                android:orientation="vertical"
+                android:id="@+id/new_timer_expanded"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/new_timer_expanded"
-                android:layout_below="@+id/select_timer_mode"
-                android:orientation="vertical">
+                android:layout_below="@+id/select_timer_mode">
                 <LinearLayout
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content">
-
-                </LinearLayout>
+                    android:layout_height="wrap_content"/>
                 <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="00:00:00"
-                    android:layout_gravity="center_horizontal"
+                    android:textSize="30sp"
                     android:textStyle="bold"
                     android:textColor="@color/scheduleTimerColor"
-                    android:textSize="30sp"/>
-                <LinearLayout
+                    android:layout_gravity="center_horizontal"
+                    android:id="@+id/stop_watch_time"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:text="00:00:00,000"/>
+                <LinearLayout
                     android:layout_gravity="center_horizontal"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content">
                     <Button
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_margin="10sp"
-                        android:text="@string/ok"
                         android:textColor="@color/timerButtonTextColor"
-                        android:background="@drawable/round_button"/>
-                    <Button
+                        android:id="@+id/start_stop_watch"
+                        android:background="@drawable/round_button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_margin="10sp"
+                        android:text="@string/start"/>
+                    <Button
+                        android:textColor="@color/timerButtonTextColor"
                         android:id="@+id/back_to_timer_mode"
-                        android:text="@string/cancel"
-                        android:textColor="@color/timerButtonTextColor"
-                        android:background="@drawable/round_button"/>
+                        android:background="@drawable/round_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="10sp"
+                        android:text="@string/cancel"/>
                 </LinearLayout>
             </LinearLayout>
-
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:orientation="vertical"
                 android:id="@+id/repeating_timer_expanded"
-                android:layout_below="@+id/new_timer_expanded"
-                android:orientation="vertical">
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_horizontal"
-                    android:orientation="horizontal">
-                    <Button
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_margin="10sp"
-                        android:text="@string/ok"
-                        android:textColor="@color/timerButtonTextColor"
-                        android:background="@drawable/round_button"/>
-                    <Button
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_margin="10sp"
-                        android:id="@+id/cancel_repeating_timer"
-                        android:text="@string/cancel"
-                        android:textColor="@color/timerButtonTextColor"
-                        android:background="@drawable/round_button"/>
-                </LinearLayout>
-            </LinearLayout>
-
-            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_below="@+id/repeating_timer_expanded"
-                android:id="@+id/counting_timer_view"
-                android:orientation="vertical">
+                android:layout_below="@+id/new_timer_expanded">
                 <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
                     android:layout_gravity="center_horizontal"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content">
                     <Button
+                        android:textColor="@color/timerButtonTextColor"
+                        android:background="@drawable/round_button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_margin="5sp"
-                        android:text="@string/pause"
-                        android:textColor="@color/timerButtonTextColor"
-                        android:background="@drawable/round_button"/>
+                        android:layout_margin="10sp"
+                        android:text="@string/ok"/>
                     <Button
+                        android:textColor="@color/timerButtonTextColor"
+                        android:id="@+id/cancel_repeating_timer"
+                        android:background="@drawable/round_button"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_margin="5sp"
-                        android:text="@string/stop"
-                        android:textColor="@color/timerButtonTextColor"
-                        android:background="@drawable/round_button"/>
-                    <Button
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_margin="5sp"
-                        android:text="@string/back"
-                        android:textColor="@color/timerButtonTextColor"
-                        android:background="@drawable/round_button"/>
+                        android:layout_margin="10sp"
+                        android:text="@string/cancel"/>
                 </LinearLayout>
             </LinearLayout>
-
+            <LinearLayout
+                android:orientation="vertical"
+                android:id="@+id/counting_timer_view"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/repeating_timer_expanded">
+                <LinearLayout
+                    android:layout_gravity="center_horizontal"
+                    android:orientation="horizontal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content">
+                    <Button
+                        android:textColor="@color/timerButtonTextColor"
+                        android:background="@drawable/round_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="5sp"
+                        android:text="@string/pause"/>
+                    <Button
+                        android:textColor="@color/timerButtonTextColor"
+                        android:background="@drawable/round_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="5sp"
+                        android:text="@string/stop"/>
+                    <Button
+                        android:textColor="@color/timerButtonTextColor"
+                        android:background="@drawable/round_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_margin="5sp"
+                        android:text="@string/back"/>
+                </LinearLayout>
+            </LinearLayout>
         </RelativeLayout>
     </RelativeLayout>
 </RelativeLayout>
