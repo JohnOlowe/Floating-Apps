@@ -88,7 +88,6 @@ public class PlayerService extends Service {
             windowManager.updateViewLayout(playerLayout, layoutParams);
         });
         toggleFocus.setOnClickListener((v) -> {
-            WindowManager.LayoutParams layoutParams = layoutParams;
             layoutParams.flags = layoutParams.flags == WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                     ? WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                     : WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
