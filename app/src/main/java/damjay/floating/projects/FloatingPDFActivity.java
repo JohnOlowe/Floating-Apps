@@ -37,6 +37,7 @@ import java.util.HashMap;
 public class FloatingPDFActivity extends AppCompatActivity {
     public static final String HISTORY_EXTENSION = ".hst";
     public static final String HISTORY_FILE = "history" + HISTORY_EXTENSION;
+    public static final String PDF_EXTENSION = "pdf";
 
     private static final int FLOAT_PERMISSION_REQUEST = 100;
     public static final int FILE_REQUEST_PERMISSION = 101;
