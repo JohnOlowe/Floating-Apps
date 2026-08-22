@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -159,7 +160,7 @@ public class ModeSelectorActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 105) {
-            if (grantResults[0] == 0) {
+            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 checkBluetooth();
             } else {
                 if (permissionsGranted()) {

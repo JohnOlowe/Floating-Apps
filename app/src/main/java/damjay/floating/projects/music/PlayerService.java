@@ -42,7 +42,7 @@ public class PlayerService extends Service {
         if (!searchDirectoriesAvailable()) {
             Intent intent = new Intent();
             intent.setClass(this, FolderChooserActivity.class);
-            intent.setFlags(872415232);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             stopSelf();
             return;

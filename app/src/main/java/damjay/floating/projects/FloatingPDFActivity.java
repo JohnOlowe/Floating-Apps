@@ -3,6 +3,7 @@ package damjay.floating.projects;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -219,7 +220,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
         try {
             FileInputStream inputStream = new FileInputStream(file);
             FileOutputStream outputStream = new FileOutputStream(createdFile);
-            byte[] buffer = new byte[51200];
+            byte[] buffer = new byte[50 * 1024];
             while (true) {
                 int read = inputStream.read(buffer);
                 if (read > 0) {
@@ -356,7 +357,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
         if (requestCode != 101) {
             return;
         }
-        if (grantResults[0] == 0) {
+        if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             closeAlertDialog();
             viewIntent();
         } else {

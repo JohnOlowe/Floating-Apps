@@ -139,7 +139,7 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
     }
 
     public void showHistory(View view) {
-        if (parentLayout.findViewById(R.id.calcHistory).getVisibility() == 0) {
+        if (parentLayout.findViewById(R.id.calcHistory).getVisibility() == View.VISIBLE) {
             hideHistory();
             return;
         }

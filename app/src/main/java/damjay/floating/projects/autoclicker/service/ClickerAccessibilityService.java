@@ -12,7 +12,9 @@ import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.TextView;
 import damjay.floating.projects.R;
+import damjay.floating.projects.autoclicker.activity.ClickerActivity;
 import damjay.floating.projects.bluetooth.BluetoothOperations;
+import damjay.floating.projects.bluetooth.BluetoothOperations.BluetoothOperationsConstants;
 import damjay.floating.projects.utils.ViewsUtils;
 import java.util.ArrayList;
 
@@ -30,7 +32,7 @@ public class ClickerAccessibilityService
     @Override
     public void onCreate() {
         super.onCreate();
-        clickerLayout = LayoutInflater.from(this).inflate(R.layout.service_clicker, (ViewGroup) null);
+        clickerLayout = LayoutInflater.from(this).inflate(R.layout.service_clicker, null);
         if (bluetoothSocket == null) {
             System.out.println("Socket is null. Destroying...");
             stopSelf();
@@ -38,73 +40,66 @@ public class ClickerAccessibilityService
         }
         System.out.println("Socket is not null. Continuing...");
         btOperation = new BluetoothOperations(bluetoothSocket);
-        windowManager = (WindowManager) getSystemService("window");
-        WindowManager.LayoutParams floatingLayoutParams = ViewsUtils.getFloatingLayoutParams();
-        clickerParams = floatingLayoutParams;
-        windowManager.addView(clickerLayout, floatingLayoutParams);
+        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        clickerParams = ViewsUtils.getFloatingLayoutParams();
+        windowManager.addView(clickerLayout, clickerParams);
         addClickListeners();
         btOperation.startReading(this);
     }
 
     private void addClickListeners() {
-        clickerLayout.findViewById(R.id.addClicker).setOnClickListener(v -> sendToDevice((byte) -1, this));
-        clickerLayout.findViewById(R.id.removeClicker).setOnClickListener(v -> sendToDevice((byte) -2, this));
-        clickerLayout.findViewById(R.id.closeClicker).setOnClickListener(v -> notifyAndStop());
-        View view = clickerLayout;
-        ViewsUtils.addTouchListener(view,
-                ViewsUtils.getViewTouchListener(this, view, windowManager, clickerParams), true, true, null);
+        clickerLayout.findViewById(R.id.addClicker)
+                .setOnClickListener(v -> sendToDevice(ClickerActivity.CLICKER_ADD_POINT, this));
+        clickerLayout.findViewById(R.id.removeClicker)
+                .setOnClickListener(v -> sendToDevice(ClickerActivity.CLICKER_DELETE_POINT, this));
+        clickerLayout.findViewById(R.id.closeClicker)
+                .setOnClickListener(v -> notifyAndStop());
+        ViewsUtils.addTouchListener(clickerLayout,
+                ViewsUtils.getViewTouchListener(this, clickerLayout, windowManager, clickerParams),
+                true, true, null);
     }
 
-    public void sendToDevice(byte value, BluetoothOperations.BluetoothOperationsCallback callback) {
-        BluetoothOperations bluetoothOperations = btOperation;
-        if (bluetoothOperations != null) {
-            bluetoothOperations.write(value, callback);
-            pendingAddButton = value == -1 || pendingAddButton;
-            pendingRemoveButton = value == -2 || pendingRemoveButton;
-            return;
+    public void sendToDevice(byte value, BluetoothOperationsCallback callback) {
+        if (btOperation != null) {
+            btOperation.write(value, callback);
+            pendingAddButton = (value == ClickerActivity.CLICKER_ADD_POINT) || pendingAddButton;
+            pendingRemoveButton = (value == ClickerActivity.CLICKER_DELETE_POINT) || pendingRemoveButton;
+        } else {
+            stopSelf();
         }
-        stopSelf();
     }
 
     private void addNewButton() {
-        WindowManager.LayoutParams pointParams;
         pendingAddButton = false;
-        View clickPoint = LayoutInflater.from(this).inflate(R.layout.clicker_point, (ViewGroup) null);
-        ((TextView) clickPoint.findViewById(R.id.clickId)).setText(Integer.toString(clickPoints.size() + 1));
-        DisplayMetrics deviceMetrics = getResources().getDisplayMetrics();
+        View clickPoint = LayoutInflater.from(this).inflate(R.layout.clicker_point, null);
+        ((TextView) clickPoint.findViewById(R.id.clickId))
+                .setText(String.valueOf(clickPoints.size() + 1));
+
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
+        WindowManager.LayoutParams pointParams;
+
         if (clickPoints.isEmpty()) {
-            int x = deviceMetrics.widthPixels / 4;
-            int y = deviceMetrics.heightPixels / 4;
-            pointParams = ViewsUtils.getFloatingLayoutParams(x, y);
+            pointParams = ViewsUtils.getFloatingLayoutParams(metrics.widthPixels / 4, metrics.heightPixels / 4);
         } else {
-            ArrayList<View> arrayList = clickPoints;
-            if (arrayList.get(arrayList.size() - 1).getTag() == null) {
-                int x2 = deviceMetrics.widthPixels / 4;
-                int y2 = deviceMetrics.heightPixels / 4;
-                pointParams = ViewsUtils.getFloatingLayoutParams(x2, y2);
-            } else {
-                ArrayList<View> arrayList2 = clickPoints;
-                WindowManager.LayoutParams firstPointParams =
-                        (WindowManager.LayoutParams) arrayList2.get(arrayList2.size() - 1).getTag();
-                if (firstPointParams.x > (deviceMetrics.widthPixels * 3) / 4) {
-                    if (firstPointParams.y > (deviceMetrics.heightPixels * 3) / 4) {
-                        pointParams = ViewsUtils.getFloatingLayoutParams(
-                                deviceMetrics.widthPixels / 8, deviceMetrics.heightPixels / 8);
-                    } else {
-                        int i = deviceMetrics.widthPixels / 4;
-                        int i2 = firstPointParams.y;
-                        ArrayList<View> arrayList3 = clickPoints;
-                        pointParams = ViewsUtils.getFloatingLayoutParams(
-                                i, i2 + arrayList3.get(arrayList3.size() - 1).getMeasuredHeight());
-                    }
-                } else {
-                    int i3 = firstPointParams.x;
-                    ArrayList<View> arrayList4 = clickPoints;
+            View lastPoint = clickPoints.get(clickPoints.size() - 1);
+            WindowManager.LayoutParams lastParams = (WindowManager.LayoutParams) lastPoint.getTag();
+
+            if (lastParams == null) {
+                pointParams = ViewsUtils.getFloatingLayoutParams(metrics.widthPixels / 4, metrics.heightPixels / 4);
+            } else if (lastParams.x > (metrics.widthPixels * 3) / 4) {
+                if (lastParams.y > (metrics.heightPixels * 3) / 4) {
                     pointParams = ViewsUtils.getFloatingLayoutParams(
-                            i3 + arrayList4.get(arrayList4.size() - 1).getMeasuredWidth(), firstPointParams.y);
+                            metrics.widthPixels / 8, metrics.heightPixels / 8);
+                } else {
+                    pointParams = ViewsUtils.getFloatingLayoutParams(
+                            metrics.widthPixels / 4, lastParams.y + lastPoint.getMeasuredHeight());
                 }
+            } else {
+                pointParams = ViewsUtils.getFloatingLayoutParams(
+                        lastParams.x + lastPoint.getMeasuredWidth(), lastParams.y);
             }
         }
+
         clickPoint.setTag(pointParams);
         clickPoint.setOnTouchListener(
                 ViewsUtils.getViewTouchListener(this, clickPoint, windowManager, pointParams));
@@ -115,11 +110,9 @@ public class ClickerAccessibilityService
     private void removeLastButton() {
         pendingRemoveButton = false;
         if (!clickPoints.isEmpty()) {
-            WindowManager windowManager = windowManager;
-            ArrayList<View> arrayList = clickPoints;
-            windowManager.removeView(arrayList.get(arrayList.size() - 1));
-            ArrayList<View> arrayList2 = clickPoints;
-            arrayList2.remove(arrayList2.size() - 1);
+            View lastPoint = clickPoints.get(clickPoints.size() - 1);
+            windowManager.removeView(lastPoint);
+            clickPoints.remove(clickPoints.size() - 1);
         }
     }
 
@@ -134,11 +127,11 @@ public class ClickerAccessibilityService
     @Override
     public void onSuccess(byte type, Object value) {
         switch (type) {
-            case 1:
-                byte byteValue = ((Byte) value).byteValue();
-                if (byteValue == -1) {
+            case BluetoothOperationsConstants.TYPE_BYTE:
+                byte byteValue = (Byte) value;
+                if (byteValue == ClickerActivity.CLICKER_ADD_POINT) {
                     addNewButton();
-                } else if (byteValue == -2) {
+                } else if (byteValue == ClickerActivity.CLICKER_DELETE_POINT) {
                     removeLastButton();
                 } else if (clickPoints.size() > byteValue) {
                     WindowManager.LayoutParams params =
@@ -146,7 +139,7 @@ public class ClickerAccessibilityService
                     clickPoint(params.x, params.y);
                 }
                 break;
-            case 9:
+            case BluetoothOperationsConstants.TYPE_SUCCESS:
                 if (pendingAddButton) {
                     addNewButton();
                 }
@@ -175,9 +168,8 @@ public class ClickerAccessibilityService
             windowManager.removeView(clickPoint);
         }
         clickPoints.clear();
-        BluetoothOperations bluetoothOperations = btOperation;
-        if (bluetoothOperations != null) {
-            bluetoothOperations.close();
+        if (btOperation != null) {
+            btOperation.close();
         }
     }
 

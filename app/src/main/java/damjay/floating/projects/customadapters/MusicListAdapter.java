@@ -43,7 +43,7 @@ public class MusicListAdapter extends BaseAdapter {
         for (File file : childFiles) {
             if (!file.isDirectory()) {
                 String fileName = file.getName();
-                String fileExtension = fileName.substring(fileName.lastIndexOf(46, fileName.length() - 1) + 1).toLowerCase();
+                String fileExtension = fileName.substring(fileName.lastIndexOf('.', fileName.length() - 1) + 1).toLowerCase();
                 for (String audioExtension : AUDIO_FILE_EXTENSIONS) {
                     if (audioExtension.equals(fileExtension)) {
                         musicList.add(new MusicFile(file));
@@ -102,19 +102,15 @@ public class MusicListAdapter extends BaseAdapter {
             this(file.getPath());
         }
 
-        MusicFile(String fullPath) {
-            String strSubstring;
-            this.fullPath = fullPath;
-            fileName = fullPath.substring(fullPath.lastIndexOf(47) + 1);
-            String strSubstring2 = fullPath.substring(0, fullPath.lastIndexOf(47));
-            fullPath = strSubstring2;
-            if (strSubstring2.equals("/storage/emulated/0")) {
-                strSubstring = "Internal Storage Root";
+        MusicFile(String path) {
+            fileName = path.substring(path.lastIndexOf('/') + 1);
+            String parentPath = path.substring(0, path.lastIndexOf('/'));
+            fullPath = parentPath;
+            if (parentPath.equals("/storage/emulated/0")) {
+                directoryName = "Internal Storage Root";
             } else {
-                String str = fullPath;
-                strSubstring = str.substring(str.lastIndexOf(47) + 1);
+                directoryName = parentPath.substring(parentPath.lastIndexOf('/') + 1);
             }
-            directoryName = strSubstring;
         }
 
         public String getFullPath() {

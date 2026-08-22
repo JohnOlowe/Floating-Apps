@@ -9,7 +9,7 @@ public class CaptionsReader implements Runnable {
     private long captionTime;
     private final CaptionsCallback captionsCallback;
     private long startTime;
-    private int playMode = 0;
+    private int playMode = PAUSED;
     private boolean isDisplaying = false;
     private int currentCaptionIndex = 0;
     public final Handler handler = new Handler();
@@ -28,41 +28,43 @@ public class CaptionsReader implements Runnable {
     public void fastForward() {}
 
     public void gotoPreviousCaption() {
-        int i;
-        if (!isDisplaying || (i = currentCaptionIndex) == 0) {
+        if (!isDisplaying || currentCaptionIndex == 0) {
             return;
         }
-        CaptionElement prevCaptionElement = CaptionElement.getCaptionAtIndex(Math.max(1, i - 1));
-        startTime =
-                prevCaptionElement != null ? System.currentTimeMillis() - prevCaptionElement.startTime : startTime;
+        CaptionElement prevCaptionElement = CaptionElement.getCaptionAtIndex(Math.max(1, currentCaptionIndex - 1));
+        if (prevCaptionElement != null) {
+            startTime = System.currentTimeMillis() - prevCaptionElement.startTime;
+        }
         if (!isPlaying()) {
             play();
         }
     }
 
     public void gotoNextCaption() {
-        if (isDisplaying) {
-            CaptionElement nextCaptionElement = CaptionElement.getCaptionAtIndex(currentCaptionIndex + 1);
-            startTime = nextCaptionElement != null ? System.currentTimeMillis() - nextCaptionElement.startTime
-                                                        : startTime;
-            if (!isPlaying()) {
-                play();
-            }
+        if (!isDisplaying) {
+            return;
+        }
+        CaptionElement nextCaptionElement = CaptionElement.getCaptionAtIndex(currentCaptionIndex + 1);
+        if (nextCaptionElement != null) {
+            startTime = System.currentTimeMillis() - nextCaptionElement.startTime;
+        }
+        if (!isPlaying()) {
+            play();
         }
     }
 
     public void play() {
         startTime = System.currentTimeMillis() - captionTime;
-        setPlayMode(1);
+        setPlayMode(PLAYING);
     }
 
     public void pause() {
-        setPlayMode(0);
+        setPlayMode(PAUSED);
         captionTime = System.currentTimeMillis() - startTime;
     }
 
     public boolean isPlaying() {
-        return playMode == 1;
+        return playMode == PLAYING;
     }
 
     private void setPlayMode(int playMode) {
@@ -107,9 +109,9 @@ public class CaptionsReader implements Runnable {
     }
 
     static class CaptionElement {
-        public static final int IDLE_MODE = 2;
         public static final int READING_CAPTIONS_TEXT = 0;
         public static final int READING_TIME_RANGE = 1;
+        public static final int IDLE_MODE = 2;
         public static ArrayList<CaptionElement> captionElements;
         private String captionText;
         private long endTime;
@@ -140,36 +142,48 @@ public class CaptionsReader implements Runnable {
         public static void initializeCaptionElements(String captionText) {
             captionElements = new ArrayList<>();
             String[] captionLines = captionText.split("\n");
-            int counter = 1;
-            int readMode = 2;
-            CaptionElement captionElement = null;
+            int captionNumber = 1;
+            int readMode = IDLE_MODE;
+            CaptionElement currentElement = null;
             StringBuilder captionDisplayText = new StringBuilder();
-            for (String str : captionLines) {
-                String captionLine = stripExtra(str);
-                if (captionLine.length() == 2 && counter == 1
-                        && ("" + captionLine.charAt(1)).equals(String.valueOf(counter))) {
+
+            for (String line : captionLines) {
+                String captionLine = stripExtra(line);
+
+                // Handle BOM-prefixed first caption number
+                if (captionLine.length() == 2 && captionNumber == 1
+                        && captionLine.charAt(1) == Character.forDigit(captionNumber, 10)) {
                     captionLine = captionLine.substring(1);
                 }
-                if (readMode == 2 && captionLine.equals(String.valueOf(counter))) {
-                    captionElement = new CaptionElement(counter);
-                    readMode = 1;
-                } else if (readMode == 1) {
-                    if (captionLine.contains("-->")) {
-                        long startTime = parseForStartTime(captionLine);
-                        long endTime = parseForEndTime(captionLine);
-                        captionElement.setTimeRange(startTime, endTime);
-                        readMode = 0;
-                    }
-                } else if (readMode == 0) {
-                    if (!captionLine.isEmpty()) {
-                        captionDisplayText.append(captionLine).append("\n");
-                    } else {
-                        readMode = 2;
-                        captionElement.setCaptionText(stripExtra(captionDisplayText.toString()));
-                        captionElements.add(captionElement);
-                        captionDisplayText = new StringBuilder();
-                        counter++;
-                    }
+
+                switch (readMode) {
+                    case IDLE_MODE:
+                        if (captionLine.equals(String.valueOf(captionNumber))) {
+                            currentElement = new CaptionElement(captionNumber);
+                            readMode = READING_TIME_RANGE;
+                        }
+                        break;
+
+                    case READING_TIME_RANGE:
+                        if (captionLine.contains("-->")) {
+                            long start = parseTimestamp(captionLine, true);
+                            long end = parseTimestamp(captionLine, false);
+                            currentElement.setTimeRange(start, end);
+                            readMode = READING_CAPTIONS_TEXT;
+                        }
+                        break;
+
+                    case READING_CAPTIONS_TEXT:
+                        if (!captionLine.isEmpty()) {
+                            captionDisplayText.append(captionLine).append("\n");
+                        } else {
+                            currentElement.setCaptionText(stripExtra(captionDisplayText.toString()));
+                            captionElements.add(currentElement);
+                            captionDisplayText = new StringBuilder();
+                            captionNumber++;
+                            readMode = IDLE_MODE;
+                        }
+                        break;
                 }
             }
         }
@@ -181,11 +195,13 @@ public class CaptionsReader implements Runnable {
         private static int getCorrespondingCaptionIndex(long time) {
             int beginIndex = 0;
             int endIndex = captionElements.size() - 1;
+
+            // Binary search to narrow down the range
             while (endIndex - beginIndex > 5) {
                 int middleIndex = (beginIndex + endIndex) / 2;
-                CaptionElement middleCaptionElement = captionElements.get(middleIndex);
-                if (middleCaptionElement.startTime <= time) {
-                    if (middleCaptionElement.endTime >= time) {
+                CaptionElement middle = captionElements.get(middleIndex);
+                if (middle.startTime <= time) {
+                    if (middle.endTime >= time) {
                         return middleIndex + 1;
                     }
                     beginIndex = middleIndex;
@@ -193,49 +209,49 @@ public class CaptionsReader implements Runnable {
                     endIndex = middleIndex;
                 }
             }
-            for (int index = beginIndex; index <= endIndex; index++) {
-                CaptionElement captionElement = captionElements.get(index);
-                if (captionElement.startTime <= time && captionElement.endTime >= time) {
-                    return index + 1;
+
+            // Linear scan the narrowed range
+            for (int i = beginIndex; i <= endIndex; i++) {
+                CaptionElement element = captionElements.get(i);
+                if (element.startTime <= time && element.endTime >= time) {
+                    return i + 1;
                 }
             }
             return 0;
         }
 
         public static CaptionElement getCaptionAtIndex(int index) {
-            if (index > captionElements.size() || index == 0) {
+            if (index == 0 || index > captionElements.size()) {
                 return null;
             }
             return captionElements.get(index - 1);
         }
 
-        private static long parseForStartTime(String rangeLine) {
-            String startTime = stripExtra(rangeLine.substring(0, rangeLine.indexOf("-->")));
-            return captionStringToLong(startTime);
+        private static long parseTimestamp(String rangeLine, boolean isStart) {
+            int arrowIndex = rangeLine.indexOf("-->");
+            String raw = isStart ? rangeLine.substring(0, arrowIndex)
+                                 : rangeLine.substring(arrowIndex + 3);
+            return timestampToMillis(stripExtra(raw));
         }
 
-        private static long parseForEndTime(String rangeLine) {
-            String endTime = stripExtra(rangeLine.substring(rangeLine.indexOf("-->") + 3));
-            return captionStringToLong(endTime);
-        }
+        private static long timestampToMillis(String timestamp) {
+            String[] parts = timestamp.split(":");
+            long totalSeconds = 0;
 
-        private static long captionStringToLong(String startTime) {
-            String[] startTimeComponents = startTime.split(":");
-            long parsedStartTime = 0;
-            for (int i = 0; i < startTimeComponents.length; i++) {
-                String component = startTimeComponents[i];
-                int commaIndex = component.indexOf(44);
+            for (int i = 0; i < parts.length; i++) {
+                String part = parts[i];
+                int commaIndex = part.indexOf(',');
                 if (commaIndex > 0) {
-                    component = component.substring(0, commaIndex);
+                    part = part.substring(0, commaIndex);
                 }
-                double d = Integer.parseInt(component);
-                double dPow = Math.pow(60.0d, (startTimeComponents.length - i) - 1);
-                parsedStartTime += (long) (d * dPow);
+                long value = Integer.parseInt(part);
+                int exponent = (parts.length - i) - 1;
+                totalSeconds += value * (long) Math.pow(60, exponent);
             }
-            int i2 = startTimeComponents.length;
-            String lastPart = startTimeComponents[i2 - 1];
-            String msPart = lastPart.substring(lastPart.indexOf(44) + 1);
-            return (1000 * parsedStartTime) + ((long) Integer.parseInt(msPart));
+
+            String lastPart = parts[parts.length - 1];
+            String millisPart = lastPart.substring(lastPart.indexOf(',') + 1);
+            return (totalSeconds * 1000) + Integer.parseInt(millisPart);
         }
 
         private static String stripExtra(String inputString) {
@@ -246,9 +262,11 @@ public class CaptionsReader implements Runnable {
             return inputString.substring(start, end);
         }
 
-        private static boolean isExtraCharacter(char character) {
-            return character == '\n' || character == '\r' || character == ' ' || character == 187 || character == 191
-                    || character == 239;
+        private static boolean isExtraCharacter(char ch) {
+            return ch == '\n' || ch == '\r' || ch == ' '
+                    || ch == '\u00BB'  // »
+                    || ch == '\u00BF'  // ¿
+                    || ch == '\uFEFF'; // BOM
         }
     }
 }

@@ -37,7 +37,7 @@ public class IOUtils {
         }
         if (result == null) {
             String result2 = uri.getPath();
-            int cut = result2.lastIndexOf(47);
+            int cut = result2.lastIndexOf('/');
             if (cut != -1) {
                 return result2.substring(cut + 1);
             }
@@ -63,7 +63,7 @@ public class IOUtils {
     }
 
     public static void copy(InputStream src, OutputStream dest) throws IOException {
-        byte[] buffer = new byte[102400];
+        byte[] buffer = new byte[100 * 1024];
         while (true) {
             int read = src.read(buffer);
             if (read > 0) {

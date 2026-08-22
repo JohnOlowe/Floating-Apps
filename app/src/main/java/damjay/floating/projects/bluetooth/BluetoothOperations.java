@@ -24,17 +24,17 @@ public class BluetoothOperations implements Runnable {
     }
 
     public interface BluetoothOperationsConstants {
+        public static final byte TYPE_TEXT = 0;
         public static final byte TYPE_BYTE = 1;
+        public static final byte TYPE_SHORT = 2;
         public static final byte TYPE_CHAR = 3;
-        public static final byte TYPE_DOUBLE = 7;
-        public static final byte TYPE_EXIT = 10;
-        public static final byte TYPE_FLOAT = 6;
         public static final byte TYPE_INT = 4;
         public static final byte TYPE_LONG = 5;
-        public static final byte TYPE_RAW_C0NTENT = 8;
-        public static final byte TYPE_SHORT = 2;
+        public static final byte TYPE_FLOAT = 6;
+        public static final byte TYPE_DOUBLE = 7;
+        public static final byte TYPE_RAW_CONTENT = 8;
         public static final byte TYPE_SUCCESS = 9;
-        public static final byte TYPE_TEXT = 0;
+        public static final byte TYPE_EXIT = 10;
     }
 
     public BluetoothOperations(BluetoothSocket socket) {
@@ -55,9 +55,8 @@ public class BluetoothOperations implements Runnable {
     public void startReading(BluetoothOperationsCallback bluetoothOperationsCallback) {
         checkNull(bluetoothOperationsCallback);
         bluetoothCallback = bluetoothOperationsCallback;
-        Throwable th = openError;
-        if (th != null) {
-            handle(th, bluetoothOperationsCallback);
+        if (openError != null) {
+            handle(openError, bluetoothOperationsCallback);
         } else {
             new Thread(this).start();
         }
@@ -65,54 +64,53 @@ public class BluetoothOperations implements Runnable {
 
     @Override
     public void run() {
-        Throwable th = openError;
-        if (th != null) {
-            onError(bluetoothCallback, th);
+        if (openError != null) {
+            onError(bluetoothCallback, openError);
             return;
         }
         while (!closed) {
             try {
                 int type = inputStream.read();
-                if (type != -1) {
-                    switch (type) {
-                        case 0:
-                            onSuccess(bluetoothCallback, (byte) 0, inputStream.readUTF());
-                            break;
-                        case 1:
-                            onSuccess(bluetoothCallback, (byte) 0, Byte.valueOf(inputStream.readByte()));
-                            break;
-                        case 2:
-                            onSuccess(bluetoothCallback, (byte) 0, Short.valueOf(inputStream.readShort()));
-                            break;
-                        case 3:
-                            onSuccess(bluetoothCallback, (byte) 0, Character.valueOf(inputStream.readChar()));
-                            break;
-                        case 4:
-                            onSuccess(bluetoothCallback, (byte) 0, Integer.valueOf(inputStream.readInt()));
-                            break;
-                        case 5:
-                            onSuccess(bluetoothCallback, (byte) 0, Long.valueOf(inputStream.readLong()));
-                            break;
-                        case 6:
-                            onSuccess(bluetoothCallback, (byte) 0, Float.valueOf(inputStream.readFloat()));
-                            break;
-                        case 7:
-                            onSuccess(bluetoothCallback, (byte) 0, Double.valueOf(inputStream.readDouble()));
-                            break;
-                        case 8:
-                            byte[] bytes = new byte[inputStream.readUnsignedShort()];
-                            inputStream.readFully(bytes);
-                            onSuccess(bluetoothCallback, (byte) 8, bytes);
-                            break;
-                        case 9:
-                        default:
-                            throw new IllegalArgumentException("Unknown type " + type);
-                        case 10:
-                            onSuccess(bluetoothCallback, (byte) 10, null);
-                            break;
-                    }
+                if (type == -1) {
                     return;
                 }
+                switch (type) {
+                    case BluetoothOperationsConstants.TYPE_TEXT:
+                        onSuccess(bluetoothCallback, BluetoothOperationsConstants.TYPE_TEXT, inputStream.readUTF());
+                        break;
+                    case BluetoothOperationsConstants.TYPE_BYTE:
+                        onSuccess(bluetoothCallback, BluetoothOperationsConstants.TYPE_TEXT, inputStream.readByte());
+                        break;
+                    case BluetoothOperationsConstants.TYPE_SHORT:
+                        onSuccess(bluetoothCallback, BluetoothOperationsConstants.TYPE_TEXT, inputStream.readShort());
+                        break;
+                    case BluetoothOperationsConstants.TYPE_CHAR:
+                        onSuccess(bluetoothCallback, BluetoothOperationsConstants.TYPE_TEXT, inputStream.readChar());
+                        break;
+                    case BluetoothOperationsConstants.TYPE_INT:
+                        onSuccess(bluetoothCallback, BluetoothOperationsConstants.TYPE_TEXT, inputStream.readInt());
+                        break;
+                    case BluetoothOperationsConstants.TYPE_LONG:
+                        onSuccess(bluetoothCallback, BluetoothOperationsConstants.TYPE_TEXT, inputStream.readLong());
+                        break;
+                    case BluetoothOperationsConstants.TYPE_FLOAT:
+                        onSuccess(bluetoothCallback, BluetoothOperationsConstants.TYPE_TEXT, inputStream.readFloat());
+                        break;
+                    case BluetoothOperationsConstants.TYPE_DOUBLE:
+                        onSuccess(bluetoothCallback, BluetoothOperationsConstants.TYPE_TEXT, inputStream.readDouble());
+                        break;
+                    case BluetoothOperationsConstants.TYPE_RAW_CONTENT:
+                        byte[] bytes = new byte[inputStream.readUnsignedShort()];
+                        inputStream.readFully(bytes);
+                        onSuccess(bluetoothCallback, BluetoothOperationsConstants.TYPE_RAW_CONTENT, bytes);
+                        break;
+                    case BluetoothOperationsConstants.TYPE_EXIT:
+                        onSuccess(bluetoothCallback, BluetoothOperationsConstants.TYPE_EXIT, null);
+                        break;
+                    default:
+                        throw new IllegalArgumentException("Unknown type " + type);
+                }
+                return;
             } catch (Throwable t) {
                 t.printStackTrace();
                 if (closed) {
@@ -124,111 +122,111 @@ public class BluetoothOperations implements Runnable {
         }
     }
 
-    public void write(String content, BluetoothOperationsCallback bluetoothOperationsCallback) {
-        checkNull(bluetoothOperationsCallback);
+    public void write(String content, BluetoothOperationsCallback callback) {
+        checkNull(callback);
         try {
-            outputStream.write(0);
+            outputStream.write(BluetoothOperationsConstants.TYPE_TEXT);
             outputStream.writeUTF(content);
-            onSuccess(bluetoothOperationsCallback, (byte) 9, null);
+            onSuccess(callback, BluetoothOperationsConstants.TYPE_SUCCESS, null);
         } catch (Throwable t) {
-            handle(t, bluetoothOperationsCallback);
+            handle(t, callback);
         }
     }
 
-    public void write(byte content, BluetoothOperationsCallback bluetoothOperationsCallback) {
-        checkNull(bluetoothOperationsCallback);
+    public void write(byte content, BluetoothOperationsCallback callback) {
+        checkNull(callback);
         try {
-            outputStream.write(1);
+            outputStream.write(BluetoothOperationsConstants.TYPE_BYTE);
             outputStream.writeByte(content);
-            onSuccess(bluetoothOperationsCallback, (byte) 9, null);
+            onSuccess(callback, BluetoothOperationsConstants.TYPE_SUCCESS, null);
         } catch (Throwable t) {
-            handle(t, bluetoothOperationsCallback);
+            handle(t, callback);
         }
     }
 
-    public void write(short content, BluetoothOperationsCallback bluetoothOperationsCallback) {
-        checkNull(bluetoothOperationsCallback);
+    public void write(short content, BluetoothOperationsCallback callback) {
+        checkNull(callback);
         try {
-            outputStream.write(2);
+            outputStream.write(BluetoothOperationsConstants.TYPE_SHORT);
             outputStream.writeShort(content);
-            onSuccess(bluetoothOperationsCallback, (byte) 9, null);
+            onSuccess(callback, BluetoothOperationsConstants.TYPE_SUCCESS, null);
         } catch (Throwable t) {
-            handle(t, bluetoothOperationsCallback);
+            handle(t, callback);
         }
     }
 
-    public void write(char content, BluetoothOperationsCallback bluetoothOperationsCallback) {
-        checkNull(bluetoothOperationsCallback);
+    public void write(char content, BluetoothOperationsCallback callback) {
+        checkNull(callback);
         try {
-            outputStream.write(3);
+            outputStream.write(BluetoothOperationsConstants.TYPE_CHAR);
             outputStream.writeChar(content);
-            onSuccess(bluetoothOperationsCallback, (byte) 9, null);
+            onSuccess(callback, BluetoothOperationsConstants.TYPE_SUCCESS, null);
         } catch (Throwable t) {
-            handle(t, bluetoothOperationsCallback);
+            handle(t, callback);
         }
     }
 
-    public void write(int content, BluetoothOperationsCallback bluetoothOperationsCallback) {
-        checkNull(bluetoothOperationsCallback);
+    public void write(int content, BluetoothOperationsCallback callback) {
+        checkNull(callback);
         try {
-            outputStream.write(4);
+            outputStream.write(BluetoothOperationsConstants.TYPE_INT);
             outputStream.writeInt(content);
-            onSuccess(bluetoothOperationsCallback, (byte) 9, null);
+            onSuccess(callback, BluetoothOperationsConstants.TYPE_SUCCESS, null);
         } catch (Throwable t) {
-            handle(t, bluetoothOperationsCallback);
+            handle(t, callback);
         }
     }
 
-    public void write(long content, BluetoothOperationsCallback bluetoothOperationsCallback) {
-        checkNull(bluetoothOperationsCallback);
+    public void write(long content, BluetoothOperationsCallback callback) {
+        checkNull(callback);
         try {
-            outputStream.write(5);
+            outputStream.write(BluetoothOperationsConstants.TYPE_LONG);
             outputStream.writeLong(content);
-            onSuccess(bluetoothOperationsCallback, (byte) 9, null);
+            onSuccess(callback, BluetoothOperationsConstants.TYPE_SUCCESS, null);
         } catch (Throwable t) {
-            handle(t, bluetoothOperationsCallback);
+            handle(t, callback);
         }
     }
 
-    public void write(float content, BluetoothOperationsCallback bluetoothOperationsCallback) {
-        checkNull(bluetoothOperationsCallback);
+    public void write(float content, BluetoothOperationsCallback callback) {
+        checkNull(callback);
         try {
-            outputStream.write(6);
+            outputStream.write(BluetoothOperationsConstants.TYPE_FLOAT);
             outputStream.writeFloat(content);
-            onSuccess(bluetoothOperationsCallback, (byte) 9, null);
+            onSuccess(callback, BluetoothOperationsConstants.TYPE_SUCCESS, null);
         } catch (Throwable t) {
-            handle(t, bluetoothOperationsCallback);
+            handle(t, callback);
         }
     }
 
-    public void write(double content, BluetoothOperationsCallback bluetoothOperationsCallback) {
-        checkNull(bluetoothOperationsCallback);
+    public void write(double content, BluetoothOperationsCallback callback) {
+        checkNull(callback);
         try {
-            outputStream.write(7);
+            outputStream.write(BluetoothOperationsConstants.TYPE_DOUBLE);
             outputStream.writeDouble(content);
-            onSuccess(bluetoothOperationsCallback, (byte) 9, null);
+            onSuccess(callback, BluetoothOperationsConstants.TYPE_SUCCESS, null);
         } catch (Throwable t) {
-            handle(t, bluetoothOperationsCallback);
+            handle(t, callback);
         }
     }
 
-    public void write(byte[] content, BluetoothOperationsCallback bluetoothOperationsCallback) {
-        checkNull(bluetoothOperationsCallback);
+    public void write(byte[] content, BluetoothOperationsCallback callback) {
+        checkNull(callback);
         try {
-            outputStream.write(8);
+            outputStream.write(BluetoothOperationsConstants.TYPE_RAW_CONTENT);
             outputStream.write(content);
-            onSuccess(bluetoothOperationsCallback, (byte) 9, null);
+            onSuccess(callback, BluetoothOperationsConstants.TYPE_SUCCESS, null);
         } catch (Throwable t) {
-            handle(t, bluetoothOperationsCallback);
+            handle(t, callback);
         }
     }
 
-    public void writeExit(BluetoothOperationsCallback bluetoothOperationsCallback) {
+    public void writeExit(BluetoothOperationsCallback callback) {
         try {
-            outputStream.write(10);
-            onSuccess(bluetoothOperationsCallback, (byte) 9, null);
+            outputStream.write(BluetoothOperationsConstants.TYPE_EXIT);
+            onSuccess(callback, BluetoothOperationsConstants.TYPE_SUCCESS, null);
         } catch (Throwable t) {
-            handle(t, bluetoothOperationsCallback);
+            handle(t, callback);
         }
     }
 
@@ -243,15 +241,15 @@ public class BluetoothOperations implements Runnable {
         }
     }
 
-    private void checkNull(BluetoothOperationsCallback bluetoothOperationsCallback) {
-        if (bluetoothOperationsCallback == null) {
+    private void checkNull(BluetoothOperationsCallback callback) {
+        if (callback == null) {
             throw new NullPointerException("bluetoothOperationsCallback = null");
         }
     }
 
-    private void handle(Throwable t, BluetoothOperationsCallback bluetoothOperationsCallback) {
+    private void handle(Throwable t, BluetoothOperationsCallback callback) {
         t.printStackTrace();
-        onError(bluetoothOperationsCallback, t);
+        onError(callback, t);
     }
 
     private void onSuccess(BluetoothOperationsCallback callback, byte type, Object returnValue) {

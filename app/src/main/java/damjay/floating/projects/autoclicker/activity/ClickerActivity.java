@@ -11,6 +11,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import damjay.floating.projects.R;
 import damjay.floating.projects.bluetooth.BluetoothOperations;
+import damjay.floating.projects.bluetooth.BluetoothOperations.BluetoothOperationsConstants;
 
 public class ClickerActivity
         extends AppCompatActivity implements BluetoothOperations.BluetoothOperationsCallback, View.OnClickListener {
@@ -32,33 +33,31 @@ public class ClickerActivity
         clickerContainer = (LinearLayout) findViewById(R.id.clickerContainer);
         addButton = (Button) findViewById(R.id.addButton);
         removeButton = (Button) findViewById(R.id.removeButton);
-        BluetoothSocket bluetoothSocket2 = bluetoothSocket;
-        if (bluetoothSocket2 != null) {
-            BluetoothOperations bluetoothOperations = new BluetoothOperations(bluetoothSocket2);
-            btOperation = bluetoothOperations;
-            bluetoothOperations.startReading(this);
-            addButton.setOnClickListener(v -> sendToDevice((byte) -1, this));
-            removeButton.setOnClickListener(v -> sendToDevice((byte) -2, this));
+
+        if (bluetoothSocket != null) {
+            btOperation = new BluetoothOperations(bluetoothSocket);
+            btOperation.startReading(this);
+            addButton.setOnClickListener(v -> sendToDevice(CLICKER_ADD_POINT, this));
+            removeButton.setOnClickListener(v -> sendToDevice(CLICKER_DELETE_POINT, this));
             removeButton.setEnabled(false);
-            return;
+        } else {
+            new AlertDialog.Builder(this)
+                    .setMessage(R.string.bluetooth_error_occurred)
+                    .setNegativeButton(R.string.finish, (dialog, id) -> finish())
+                    .setCancelable(false)
+                    .create()
+                    .show();
         }
-        new AlertDialog.Builder(this)
-                .setMessage(R.string.bluetooth_error_occurred)
-                .setNegativeButton(R.string.finish, (dialog, id) -> finish())
-                .setCancelable(false)
-                .create()
-                .show();
     }
 
-    public void sendToDevice(byte value, BluetoothOperations.BluetoothOperationsCallback callback) {
-        BluetoothOperations bluetoothOperations = btOperation;
-        if (bluetoothOperations != null) {
-            bluetoothOperations.write(value, callback);
-            pendingAddButton = value == -1 || pendingAddButton;
-            pendingRemoveButton = value == -2 || pendingRemoveButton;
-            return;
+    public void sendToDevice(byte value, BluetoothOperationsCallback callback) {
+        if (btOperation != null) {
+            btOperation.write(value, callback);
+            pendingAddButton = (value == CLICKER_ADD_POINT) || pendingAddButton;
+            pendingRemoveButton = (value == CLICKER_DELETE_POINT) || pendingRemoveButton;
+        } else {
+            Toast.makeText(this, R.string.null_socket, Toast.LENGTH_SHORT).show();
         }
-        Toast.makeText(this, R.string.null_socket, Toast.LENGTH_SHORT).show();
     }
 
     private void addNewButton() {
@@ -70,9 +69,8 @@ public class ClickerActivity
 
     private void removeLastButton() {
         pendingRemoveButton = false;
-        int i = curNumOfButtons - 1;
-        curNumOfButtons = i;
-        if (i <= 0) {
+        curNumOfButtons--;
+        if (curNumOfButtons <= 0) {
             curNumOfButtons = 0;
             removeButton.setEnabled(false);
         }
@@ -81,65 +79,60 @@ public class ClickerActivity
 
     private void showButtons() {
         int buttonsOnLine = 0;
-        int i = 1;
-        while (true) {
-            int i2 = curNumOfButtons;
-            if (i > i2 || i > 4) {
-                break;
-            }
+        for (int i = 1; i <= curNumOfButtons && i <= 4; i++) {
             buttonsOnLine = i;
-            if ((i + 1) * i >= i2) {
+            if ((i + 1) * i >= curNumOfButtons) {
                 break;
-            } else {
-                i++;
             }
         }
+
         clickerContainer.removeAllViews();
         int curButton = 0;
         while (curButton < curNumOfButtons) {
-            LinearLayout linearLayout = new LinearLayout(this);
-            LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(-1, 0);
-            layoutParams.weight = 1.0f;
-            linearLayout.setOrientation(0);
-            linearLayout.setLayoutParams(layoutParams);
-            int i3 = 0;
-            while (i3 < buttonsOnLine) {
+            LinearLayout row = new LinearLayout(this);
+            LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, 0);
+            rowParams.weight = 1.0f;
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setLayoutParams(rowParams);
+
+            for (int col = 0; col < buttonsOnLine && curButton < curNumOfButtons; col++) {
                 Button button = new Button(this);
-                LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(0, -1);
+                LinearLayout.LayoutParams buttonParams = new LinearLayout.LayoutParams(0,
+                        LinearLayout.LayoutParams.MATCH_PARENT);
                 buttonParams.weight = 1.0f;
-                int marginPx = (int) TypedValue.applyDimension(1, 3.0f, getResources().getDisplayMetrics());
+                int marginPx = (int) TypedValue.applyDimension(
+                        TypedValue.COMPLEX_UNIT_DIP, 3.0f, getResources().getDisplayMetrics());
                 buttonParams.setMargins(marginPx, marginPx, marginPx, marginPx);
                 button.setLayoutParams(buttonParams);
-                button.setText(Integer.toString(curButton + 1));
+                button.setText(String.valueOf(curButton + 1));
                 button.setOnClickListener(this);
-                linearLayout.addView(button);
-                i3++;
+                row.addView(button);
                 curButton++;
             }
-            clickerContainer.addView(linearLayout);
+            clickerContainer.addView(row);
         }
     }
 
     @Override
     public void onClick(View view) {
-        btOperation.write(Byte.parseByte(((Button) view).getText().toString()),
-                (BluetoothOperations.BluetoothOperationsCallback) this);
+        btOperation.write(Byte.parseByte(((Button) view).getText().toString()), this);
     }
 
     @Override
     public void onSuccess(byte type, Object returnValue) {
         switch (type) {
-            case 1:
-                byte byteValue = ((Byte) returnValue).byteValue();
-                if (byteValue == -1) {
+            case BluetoothOperationsConstants.TYPE_BYTE:
+                byte byteValue = (Byte) returnValue;
+                if (byteValue == CLICKER_ADD_POINT) {
                     addNewButton();
-                } else if (byteValue == -2) {
+                } else if (byteValue == CLICKER_DELETE_POINT) {
                     removeLastButton();
                 } else {
-                    System.out.println("Invalid byteValue: " + ((int) byteValue));
+                    System.out.println("Invalid byteValue: " + (int) byteValue);
                 }
                 break;
-            case 9:
+            case BluetoothOperationsConstants.TYPE_SUCCESS:
                 if (pendingAddButton) {
                     addNewButton();
                 }
@@ -147,7 +140,7 @@ public class ClickerActivity
                     removeLastButton();
                 }
                 break;
-            case 10:
+            case BluetoothOperationsConstants.TYPE_EXIT:
                 btOperation.close();
                 new AlertDialog.Builder(this)
                         .setTitle(R.string.device_disconnected)
@@ -158,7 +151,7 @@ public class ClickerActivity
                         .show();
                 break;
             default:
-                System.out.println("Unrecognized type: " + ((int) type));
+                System.out.println("Unrecognized type: " + (int) type);
                 break;
         }
     }
@@ -177,9 +170,8 @@ public class ClickerActivity
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        BluetoothOperations bluetoothOperations = btOperation;
-        if (bluetoothOperations != null) {
-            bluetoothOperations.close();
+        if (btOperation != null) {
+            btOperation.close();
         }
     }
 }

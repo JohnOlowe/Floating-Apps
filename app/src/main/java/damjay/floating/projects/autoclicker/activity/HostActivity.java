@@ -95,7 +95,7 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
                 alertDialog.dismiss();
                 alertDialog = null;
             }
-            if (resultCode == 1) {
+            if (resultCode == BluetoothCallback.SUCCESS) {
                 if (artifact != null && (artifact instanceof BluetoothSocket)) {
                     socket = (BluetoothSocket) artifact;
                     startSelectorActivity();

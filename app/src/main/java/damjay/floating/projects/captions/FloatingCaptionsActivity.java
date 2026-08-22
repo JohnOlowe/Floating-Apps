@@ -2,6 +2,7 @@ package damjay.floating.projects.captions;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -91,7 +92,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
     private String getContentCaptions(File captionsFile) {
         try {
             long fileLength = captionsFile.length();
-            if (fileLength <= 1048576 && fileLength > 0) {
+            if (fileLength <= 1024 * 1024 && fileLength > 0) {
                 byte[] captionsBytes = new byte[(int) fileLength];
                 FileInputStream captionsStream = new FileInputStream(captionsFile);
                 int read = captionsStream.read(captionsBytes, 0, captionsBytes.length);
@@ -184,7 +185,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
         if (requestCode != 101) {
             return;
         }
-        if (grantResults[0] == 0) {
+        if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             closeAlertDialog();
         } else {
             new AlertDialog.Builder(this)
