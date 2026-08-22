@@ -51,6 +51,7 @@ public class FileBrowserActivity extends AppCompatActivity {
     }
 
     private File validateInput() {
+        String str = currentInput;
         if (str == null || str.trim().isEmpty()) {
             return null;
         }
@@ -89,6 +90,7 @@ public class FileBrowserActivity extends AppCompatActivity {
 
     public void showPDF(File file) {
         try {
+            FileCallback fileCallback = callback;
             if (fileCallback != null) {
                 fileCallback.fileCallback(file.getCanonicalPath());
                 callback = null;

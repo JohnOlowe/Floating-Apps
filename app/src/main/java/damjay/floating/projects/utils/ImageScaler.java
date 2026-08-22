@@ -20,6 +20,7 @@ public class ImageScaler {
     }
 
     public void decreaseScale() {
+        float f = this.scale;
         if (f - 0.1f >= this.defaultMinScale) {
             this.scale = f - 0.1f;
         }
@@ -34,6 +35,8 @@ public class ImageScaler {
     }
 
     public Bitmap getFastScaled(Bitmap bitmap) {
+        float f = this.scale;
+        float f2 = this.defaultMinScale;
         if (f < f2) {
             this.scale = f2;
         }
@@ -41,6 +44,8 @@ public class ImageScaler {
     }
 
     public Bitmap getScaled(Bitmap bitmap) {
+        float f = this.scale;
+        float f2 = this.defaultMinScale;
         if (f < f2) {
             this.scale = f2;
         }

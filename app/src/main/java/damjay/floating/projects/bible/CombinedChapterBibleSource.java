@@ -96,6 +96,7 @@ public class CombinedChapterBibleSource {
     }
 
     private void loadChapter(int bookIndex, int chapterIndex) throws IOException {
+        int i = this.currentBookIndex;
         if (i != bookIndex || this.currentChapterIndex != chapterIndex) {
             if (i != bookIndex || this.combinedChapterIndex[bookIndex][chapterIndex << 2] != this.currentFileIndex) {
                 if (i != bookIndex) {

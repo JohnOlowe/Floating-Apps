@@ -71,6 +71,7 @@ public class BibleService extends Service {
             public void onItemSelected(AdapterView<?> spinner, View view, int position, long id) {
                 if (BibleService.this.bibleAdapter.getCurrentBookIndex() != position) {
                     BibleService.this.bibleAdapter.makeChapter(position, 0);
+                    BibleService bibleService = BibleService.this;
                     ArrayAdapter<String> chapterListAdapter =
                             new ArrayAdapter<>(bibleService, android.R.layout.simple_spinner_item,
                                     bibleService.getCountTill(bibleService.bibleAdapter.getNumberOfChapters()));

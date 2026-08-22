@@ -64,6 +64,7 @@ public class PDFReaderService extends Service {
             super.onCreate();
             this.pdfLayout = LayoutInflater.from(this).inflate(R.layout.pdf_reader_layout, (ViewGroup) null);
             this.params = getLayoutParams();
+            WindowManager windowManager = (WindowManager) getSystemService("window");
             this.windowManager = windowManager;
             windowManager.addView(this.pdfLayout, this.params);
             View collapsedView = this.pdfLayout.findViewById(R.id.collapsed);

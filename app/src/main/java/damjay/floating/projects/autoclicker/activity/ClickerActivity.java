@@ -32,6 +32,7 @@ public class ClickerActivity
         this.clickerContainer = (LinearLayout) findViewById(R.id.clickerContainer);
         this.addButton = (Button) findViewById(R.id.addButton);
         this.removeButton = (Button) findViewById(R.id.removeButton);
+        BluetoothSocket bluetoothSocket2 = bluetoothSocket;
         if (bluetoothSocket2 != null) {
             BluetoothOperations bluetoothOperations = new BluetoothOperations(bluetoothSocket2);
             btOperation = bluetoothOperations;
@@ -50,6 +51,7 @@ public class ClickerActivity
     }
 
     public void sendToDevice(byte value, BluetoothOperations.BluetoothOperationsCallback callback) {
+        BluetoothOperations bluetoothOperations = btOperation;
         if (bluetoothOperations != null) {
             bluetoothOperations.write(value, callback);
             this.pendingAddButton = value == -1 || this.pendingAddButton;
@@ -175,6 +177,7 @@ public class ClickerActivity
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        BluetoothOperations bluetoothOperations = btOperation;
         if (bluetoothOperations != null) {
             bluetoothOperations.close();
         }

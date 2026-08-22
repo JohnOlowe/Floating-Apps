@@ -10,6 +10,7 @@ import java.util.zip.ZipFile;
 public class ZipUtils {
     public static boolean extractZip(File file, File outputDir) {
         try {
+            ZipFile zipFile = new ZipFile(file);
             try {
                 Enumeration<? extends ZipEntry> enumerationEntries = zipFile.entries();
                 while (enumerationEntries.hasMoreElements()) {

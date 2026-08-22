@@ -11,6 +11,7 @@ import java.io.OutputStream;
 
 public class IOUtils {
     public static String getFileName(Context context, Uri uri) {
+        int index;
         String result = null;
         if (uri.getScheme().equals("content")) {
             Cursor cursor = context.getContentResolver().query(uri, null, null, null, null);

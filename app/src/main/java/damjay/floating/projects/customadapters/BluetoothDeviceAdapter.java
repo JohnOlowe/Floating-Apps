@@ -34,6 +34,7 @@ public class BluetoothDeviceAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
+        ArrayList<BluetoothDevice> arrayList = this.bluetoothDevices;
         if (arrayList == null) {
             return 0;
         }
@@ -42,6 +43,7 @@ public class BluetoothDeviceAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int position) {
+        ArrayList<BluetoothDevice> arrayList = this.bluetoothDevices;
         if (arrayList == null || arrayList.size() <= position) {
             return null;
         }
@@ -55,6 +57,7 @@ public class BluetoothDeviceAdapter extends BaseAdapter {
 
     @Override
     public View getView(int position, View view, ViewGroup viewGroup) {
+        ArrayList<BluetoothDevice> arrayList = this.bluetoothDevices;
         boolean deviceAvailable = arrayList != null && arrayList.size() > position;
         if (view == null) {
             view = LayoutInflater.from(this.context).inflate(R.layout.simple_list_item_2, viewGroup, false);

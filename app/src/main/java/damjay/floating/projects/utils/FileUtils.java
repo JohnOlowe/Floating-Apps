@@ -61,6 +61,7 @@ public class FileUtils {
             fr = new FileReader(new File(path));
 
             char[] buff = new char[1024];
+            int length = 0;
 
             while ((length = fr.read(buff)) > 0) {
                 sb.append(new String(buff, 0, length));
@@ -112,6 +113,7 @@ public class FileUtils {
             fos = new FileOutputStream(destPath, false);
 
             byte[] buff = new byte[1024];
+            int length = 0;
 
             while ((length = fis.read(buff)) > 0) {
                 fos.write(buff, 0, length);
@@ -139,6 +141,7 @@ public class FileUtils {
     public static boolean copyStream(InputStream srcStream, OutputStream destStream) {
     	try {
             byte[] buff = new byte[1024];
+            int length = 0;
 
             while ((length = srcStream.read(buff)) > 0) {
                 destStream.write(buff, 0, length);
