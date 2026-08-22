@@ -65,7 +65,7 @@ public class ModeSelectorActivity extends AppCompatActivity {
                                 (dialog, id) -> {
                                     dialog.dismiss();
                                     Intent intent = new Intent("android.bluetooth.adapter.action.REQUEST_ENABLE");
-                                    startActivityForResult(intent, 104);
+                                    startActivityForResult(intent, ENABLE_BLUETOOTH);
                                 })
                         .setNegativeButton(R.string.cancel, (dialog, id) -> finish())
                         .setCancelable(false)
@@ -86,7 +86,7 @@ public class ModeSelectorActivity extends AppCompatActivity {
 
     private boolean permissionsGranted() {
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.S
-                || ContextCompat.checkSelfPermission(this, "android.permission.BLUETOOTH_CONNECT") == 0;
+                || ContextCompat.checkSelfPermission(this, "android.permission.BLUETOOTH_CONNECT") == PackageManager.PERMISSION_GRANTED;
     }
 
     private void showPermissions() {
@@ -116,8 +116,8 @@ public class ModeSelectorActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 104) {
-            if (resultCode != -1) {
+        if (requestCode == ENABLE_BLUETOOTH) {
+            if (resultCode != RESULT_OK) {
                 new AlertDialog.Builder(this)
                         .setMessage(R.string.enable_bluetooth)
                         .setPositiveButton(R.string.cancel, (dialog, id) -> finish())
@@ -136,7 +136,7 @@ public class ModeSelectorActivity extends AppCompatActivity {
                 return;
             }
         }
-        if (requestCode == 105) {
+        if (requestCode == BLUETOOTH_PERMISSIONS) {
             if (permissionsGranted()) {
                 checkBluetooth();
             } else {
@@ -159,7 +159,7 @@ public class ModeSelectorActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 105) {
+        if (requestCode == BLUETOOTH_PERMISSIONS) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 checkBluetooth();
             } else {

@@ -129,11 +129,11 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
                                                     "android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
                                             intent.setData(Uri.parse(String.format(
                                                     "package:%s", getApplicationContext().getPackageName())));
-                                            startActivityForResult(intent, 101);
+                                            startActivityForResult(intent, FloatingPDFActivity.FILE_REQUEST_PERMISSION);
                                         } catch (Throwable th) {
                                             Intent intent2 = new Intent();
                                             intent2.setAction("android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION");
-                                            startActivityForResult(intent2, 101);
+                                            startActivityForResult(intent2, FloatingPDFActivity.FILE_REQUEST_PERMISSION);
                                         }
                                         closeAlertDialog();
                                     })
@@ -144,7 +144,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
             return false;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.R
-                && checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE") != 0) {
+                && checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE") != PackageManager.PERMISSION_GRANTED) {
             if (alertDialog != null) {
                 return false;
             }
@@ -182,7 +182,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode != 101) {
+        if (requestCode != FloatingPDFActivity.FILE_REQUEST_PERMISSION) {
             return;
         }
         if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -212,7 +212,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == -1 || checkPermission()) {
+        if (resultCode == RESULT_OK || checkPermission()) {
             closeAlertDialog();
         }
     }

@@ -99,7 +99,7 @@ public class MainActivity extends AppCompatActivity {
                                                 .show();
                                         Intent intent = new Intent("android.settings.action.MANAGE_OVERLAY_PERMISSION",
                                                 Uri.parse("package:" + getPackageName()));
-                                        startActivityForResult(intent, 100);
+                                        startActivityForResult(intent, FLOAT_PERMISSION_REQUEST);
                                     })
                             .setNegativeButton(R.string.exit, (dialog, id) -> finish())
                             .create();

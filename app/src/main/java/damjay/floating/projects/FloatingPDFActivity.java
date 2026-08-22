@@ -41,7 +41,6 @@ public class FloatingPDFActivity extends AppCompatActivity {
 
     public FloatingPDFActivity() {
         DIALOG_EXIT_LISTENER = (dialog, id) -> finish();
-        ;
     }
 
     @Override
@@ -59,7 +58,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
     private boolean viewIntent() {
         Uri uri;
         Intent intent = getIntent();
-        if (!"android.intent.action.VIEW".equals(intent.getAction()) || (uri = intent.getData()) == null) {
+        if (!Intent.ACTION_VIEW.equals(intent.getAction()) || (uri = intent.getData()) == null) {
             return false;
         }
         String name = IOUtils.getFileName(this, uri);
@@ -93,13 +92,11 @@ public class FloatingPDFActivity extends AppCompatActivity {
             selectFiles.setOnClickListener((v) -> {
                 FileBrowserActivity.currentInput = filePath.getText().toString();
                 FileBrowserActivity.callback = getDefaultCallback();
-                Intent intent = new Intent(this, FileBrowserActivity.class);
-                startActivity(intent);
+                startActivity(new Intent(this, FileBrowserActivity.class));
             });
             searchFiles.setOnClickListener((v) -> {
                 FileSearchActivity.callback = getDefaultCallback();
-                Intent intent = new Intent(this, FileSearchActivity.class);
-                startActivity(intent);
+                startActivity(new Intent(this, FileSearchActivity.class));
             });
         } catch (Throwable report) {
             report.printStackTrace();
@@ -115,23 +112,16 @@ public class FloatingPDFActivity extends AppCompatActivity {
 
             @Override
             public String extensionAllowed() {
-                return FloatingPDFActivity.PDF_EXTENSION;
+                return PDF_EXTENSION;
             }
         };
     }
 
     public boolean openFloatingPDF(File file, File newFile) {
         if (newFile == null) {
-            if (file != null) {
-                try {
-                    if (file.exists()) {
-                        newFile = copyToCache(file);
-                        if (newFile == null) {
-                            Toast.makeText(this, R.string.file_load_error, Toast.LENGTH_LONG).show();
-                            return false;
-                        }
-                    }
-                } catch (Throwable th) {
+            if (file != null && file.exists()) {
+                newFile = copyToCache(file);
+                if (newFile == null) {
                     Toast.makeText(this, R.string.file_load_error, Toast.LENGTH_LONG).show();
                     return false;
                 }
@@ -157,14 +147,14 @@ public class FloatingPDFActivity extends AppCompatActivity {
         ArrayList<File> fileList = new ArrayList<>();
         String[] entries = {"fileName", "fileInfo"};
         try {
-            File[] fileArrListFiles = getCacheDir().listFiles();
-            files = fileArrListFiles;
-            if (fileArrListFiles == null) {
+            File[] cacheFiles = getCacheDir().listFiles();
+            files = cacheFiles;
+            if (cacheFiles == null) {
                 return;
             }
-            for (File file : fileArrListFiles) {
-                HashMap<String, Object> map = new HashMap<>();
+            for (File file : cacheFiles) {
                 if (!file.getName().toLowerCase().endsWith(HISTORY_EXTENSION)) {
+                    HashMap<String, Object> map = new HashMap<>();
                     map.put(entries[0], file.getName());
                     map.put(entries[1],
                             FormatUtils.formatDate(file.lastModified()) + ", " + FormatUtils.formatSize(file.length()));
@@ -172,7 +162,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
                     list.add(map);
                 }
             }
-            files = (File[]) fileList.toArray(new File[0]);
+            files = fileList.toArray(new File[0]);
             SimpleAdapter adapter = new HistorySimpleAdapter(this, list, R.layout.history_files, entries,
                     new int[] {R.id.file_name, R.id.file_info}, new HistorySimpleAdapter.Callback() {
                         @Override
@@ -181,34 +171,30 @@ public class FloatingPDFActivity extends AppCompatActivity {
                                     .setMessage(R.string.delete_file_confirm)
                                     .setPositiveButton(android.R.string.yes,
                                             (dialog, id) -> {
-                                                if (FloatingPDFActivity.this.files[position].delete()) {
-                                                    FloatingPDFActivity.this.populateList();
+                                                if (files[position].delete()) {
+                                                    populateList();
                                                 } else {
-                                                    Toast.makeText(FloatingPDFActivity.this, R.string.delete_file_error,
-                                                                 1)
-                                                            .show();
+                                                    Toast.makeText(FloatingPDFActivity.this,
+                                                            R.string.delete_file_error, Toast.LENGTH_SHORT).show();
                                                 }
                                             })
-                                    .setNegativeButton(android.R.string.no, (DialogInterface.OnClickListener) null)
+                                    .setNegativeButton(android.R.string.no, null)
                                     .show();
                         }
 
                         @Override
                         public void run(int position) {
-                            if (FloatingPDFActivity.this.files == null) {
+                            if (files == null) {
                                 return;
                             }
-                            FloatingPDFActivity floatingPDFActivity = FloatingPDFActivity.this;
-                            floatingPDFActivity.openFloatingPDF(null, floatingPDFActivity.files[position]);
+                            openFloatingPDF(null, files[position]);
                         }
                     });
-            listView.setAdapter((ListAdapter) adapter);
+            listView.setAdapter(adapter);
             listView.setOnItemClickListener((adapterView, view, position, id) -> {
-                File[] fileArr = files;
-                if (fileArr == null) {
-                    return;
+                if (files != null) {
+                    openFloatingPDF(null, files[position]);
                 }
-                openFloatingPDF(null, fileArr[position]);
             });
         } catch (Throwable t) {
             t.printStackTrace();
@@ -250,75 +236,70 @@ public class FloatingPDFActivity extends AppCompatActivity {
             if (alertDialog != null) {
                 return false;
             }
-            AlertDialog alertDialogCreate =
-                    new AlertDialog.Builder(this)
-                            .setTitle(R.string.grant_permissions)
-                            .setMessage(R.string.display_permission_message)
-                            .setCancelable(false)
-                            .setPositiveButton(R.string.settings,
-                                    (dialog, id) -> {
-                                        Intent intent = new Intent("android.settings.action.MANAGE_OVERLAY_PERMISSION",
-                                                Uri.parse("package:" + getPackageName()));
-                                        startActivityForResult(intent, 100);
-                                    })
-                            .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER)
-                            .create();
-            alertDialog = alertDialogCreate;
-            alertDialogCreate.show();
+            alertDialog = new AlertDialog.Builder(this)
+                    .setTitle(R.string.grant_permissions)
+                    .setMessage(R.string.display_permission_message)
+                    .setCancelable(false)
+                    .setPositiveButton(R.string.settings,
+                            (dialog, id) -> {
+                                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                        Uri.parse("package:" + getPackageName()));
+                                startActivityForResult(intent, FLOAT_PERMISSION_REQUEST);
+                            })
+                    .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER)
+                    .create();
+            alertDialog.show();
             return false;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
             if (alertDialog != null) {
                 return false;
             }
-            AlertDialog alertDialogCreate2 =
-                    new AlertDialog.Builder(this)
-                            .setTitle(R.string.grant_permissions)
-                            .setMessage(R.string.manage_files_permission_message)
-                            .setCancelable(false)
-                            .setPositiveButton(android.R.string.ok,
-                                    (dialog, id) -> {
-                                        try {
-                                            Intent intent = new Intent(
-                                                    "android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
-                                            intent.setData(Uri.parse(String.format(
-                                                    "package:%s", getApplicationContext().getPackageName())));
-                                            startActivityForResult(intent, 101);
-                                        } catch (Throwable th) {
-                                            Intent intent2 = new Intent();
-                                            intent2.setAction("android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION");
-                                            startActivityForResult(intent2, 101);
-                                        }
-                                        closeAlertDialog();
-                                    })
-                            .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER)
-                            .create();
-            alertDialog = alertDialogCreate2;
-            alertDialogCreate2.show();
+            alertDialog = new AlertDialog.Builder(this)
+                    .setTitle(R.string.grant_permissions)
+                    .setMessage(R.string.manage_files_permission_message)
+                    .setCancelable(false)
+                    .setPositiveButton(android.R.string.ok,
+                            (dialog, id) -> {
+                                try {
+                                    Intent intent = new Intent(
+                                            Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                                    intent.setData(Uri.parse(String.format(
+                                            "package:%s", getApplicationContext().getPackageName())));
+                                    startActivityForResult(intent, FILE_REQUEST_PERMISSION);
+                                } catch (Throwable th) {
+                                    Intent intent = new Intent();
+                                    intent.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                                    startActivityForResult(intent, FILE_REQUEST_PERMISSION);
+                                }
+                                closeAlertDialog();
+                            })
+                    .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER)
+                    .create();
+            alertDialog.show();
             return false;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.R
-                && checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE") != 0) {
+                && checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE")
+                        != PackageManager.PERMISSION_GRANTED) {
             if (alertDialog != null) {
                 return false;
             }
-            AlertDialog alertDialogCreate3 =
-                    new AlertDialog.Builder(this)
-                            .setTitle(R.string.grant_permissions)
-                            .setMessage(R.string.files_permission_message)
-                            .setCancelable(false)
-                            .setPositiveButton(android.R.string.ok,
-                                    (dialog, id) -> {
-                                        ActivityCompat.requestPermissions(this,
-                                                new String[] {"android.permission.READ_EXTERNAL_STORAGE",
-                                                        "android.permission.WRITE_EXTERNAL_STORAGE"},
-                                                101);
-                                        closeAlertDialog();
-                                    })
-                            .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER)
-                            .create();
-            alertDialog = alertDialogCreate3;
-            alertDialogCreate3.show();
+            alertDialog = new AlertDialog.Builder(this)
+                    .setTitle(R.string.grant_permissions)
+                    .setMessage(R.string.files_permission_message)
+                    .setCancelable(false)
+                    .setPositiveButton(android.R.string.ok,
+                            (dialog, id) -> {
+                                ActivityCompat.requestPermissions(this,
+                                        new String[] {"android.permission.READ_EXTERNAL_STORAGE",
+                                                "android.permission.WRITE_EXTERNAL_STORAGE"},
+                                        FILE_REQUEST_PERMISSION);
+                                closeAlertDialog();
+                            })
+                    .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER)
+                    .create();
+            alertDialog.show();
             return false;
         }
         closeAlertDialog();
@@ -333,18 +314,15 @@ public class FloatingPDFActivity extends AppCompatActivity {
 
     @Override
     protected void onResume() {
-        String str;
         super.onResume();
-        EditText editText = filePath;
-        if (editText != null && (str = returnedPath) != null) {
-            editText.setText(str);
+        if (filePath != null && returnedPath != null) {
+            filePath.setText(returnedPath);
             returnedPath = null;
         }
         checkPermission();
     }
 
     private void closeAlertDialog() {
-        AlertDialog alertDialog = alertDialog;
         if (alertDialog != null) {
             alertDialog.dismiss();
             alertDialog = null;
@@ -354,7 +332,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode != 101) {
+        if (requestCode != FILE_REQUEST_PERMISSION) {
             return;
         }
         if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -368,12 +346,11 @@ public class FloatingPDFActivity extends AppCompatActivity {
                             (dialog, id) -> {
                                 Intent intent;
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                    intent = new Intent("android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
+                                    intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                                 } else {
-                                    intent = new Intent("android.settings.APPLICATION_SETTINGS");
+                                    intent = new Intent(Settings.ACTION_APPLICATION_SETTINGS);
                                 }
-                                Uri uri = Uri.fromParts("package", getPackageName(), null);
-                                intent.setData(uri);
+                                intent.setData(Uri.fromParts("package", getPackageName(), null));
                                 startActivity(intent);
                                 closeAlertDialog();
                             })
@@ -385,16 +362,13 @@ public class FloatingPDFActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        switch (requestCode) {
-            case 100:
-            case 101:
-                if (resultCode == -1) {
-                    closeAlertDialog();
-                    viewIntent();
-                } else if (checkPermission()) {
-                    viewIntent();
-                }
-                break;
+        if (requestCode == FLOAT_PERMISSION_REQUEST || requestCode == FILE_REQUEST_PERMISSION) {
+            if (resultCode == RESULT_OK) {
+                closeAlertDialog();
+                viewIntent();
+            } else if (checkPermission()) {
+                viewIntent();
+            }
         }
     }
 }

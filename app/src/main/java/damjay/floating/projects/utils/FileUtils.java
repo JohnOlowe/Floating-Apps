@@ -565,11 +565,11 @@ public class FileUtils {
             ExifInterface exif = new ExifInterface(filePath);
             int iOrientation = exif.getAttributeInt("Orientation", -1);
             switch (iOrientation) {
-                case 3:
+                case ExifInterface.ORIENTATION_ROTATE_180:
                     return 180;
-                case 6:
+                case ExifInterface.ORIENTATION_ROTATE_90:
                     return 90;
-                case 8:
+                case ExifInterface.ORIENTATION_ROTATE_270:
                     return 270;
                 default:
                     return 0;
