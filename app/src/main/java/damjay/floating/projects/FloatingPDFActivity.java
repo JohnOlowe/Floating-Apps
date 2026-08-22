@@ -266,19 +266,40 @@ public class FloatingPDFActivity extends AppCompatActivity {
                 .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER).create();
             alertDialog.show();
             return false;
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            // If a dialog is open, don't open another
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
+            // Android 11+ needs MANAGE_EXTERNAL_STORAGE
+            if (alertDialog != null) return false;
+            alertDialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.grant_permissions)
+                .setMessage(R.string.manage_files_permission_message)
+                .setCancelable(false)
+                .setPositiveButton(android.R.string.ok, (dialog, id) -> {
+                        try {
+                            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                            intent.setData(Uri.parse(String.format("package:%s", getApplicationContext().getPackageName())));
+                            startActivityForResult(intent, FILE_REQUEST_PERMISSION);
+                        } catch (Throwable th) {
+                            Intent intent = new Intent();
+                            intent.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                            startActivityForResult(intent, FILE_REQUEST_PERMISSION);
+                        }
+                        closeAlertDialog();
+                    })
+                .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER).create();
+            alertDialog.show();
+            return false;
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+                && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            // Android 6-10 needs READ_EXTERNAL_STORAGE
             if (alertDialog != null) return false;
             alertDialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.grant_permissions)
                 .setMessage(R.string.files_permission_message)
                 .setCancelable(false)
                 .setPositiveButton(android.R.string.ok, (dialog, id) -> {
-                        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                            ActivityCompat.requestPermissions(FloatingPDFActivity.this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE}, FILE_REQUEST_PERMISSION);
-                       } else {
-                            ViewsUtils.openAppInfo(this, getClass().getPackage().getName());
-                        }
+                        ActivityCompat.requestPermissions(FloatingPDFActivity.this,
+                            new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                            FILE_REQUEST_PERMISSION);
                         closeAlertDialog();
                     })
                 .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER).create();
@@ -287,7 +308,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
         } else {
             closeAlertDialog();
             return true;
-        } 
+        }
     }
 
     @Override
