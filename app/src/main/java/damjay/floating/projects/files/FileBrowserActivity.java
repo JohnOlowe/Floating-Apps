@@ -51,7 +51,7 @@ public class FileBrowserActivity extends AppCompatActivity {
                             new AlertDialog.Builder(FileBrowserActivity.this)
                                 .setMessage(getResources().getString(
                                     R.string.incorrect_format_message, ext.toUpperCase()))
-                                .setPositiveButton(android.R.string.yes, (dialog, id) -> showPDF(item.getFile()))
+                                .setPositiveButton(android.R.string.yes, (dialog, which) -> showPDF(item.getFile()))
                                 .setNegativeButton(android.R.string.no, null)
                                 .show();
                         }
