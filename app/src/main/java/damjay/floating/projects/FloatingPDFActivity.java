@@ -36,9 +36,9 @@ public class FloatingPDFActivity extends AppCompatActivity {
     public static final String PDF_EXTENSION = "pdf";
 
     private static final int FLOAT_PERMISSION_REQUEST = 100;
-    private static final int FILE_REQUEST_PERMISSION = 101;
+    public static final int FILE_REQUEST_PERMISSION = 101;
     
-    private static DialogInterface.OnClickListener DIALOG_EXIT_LISTENER;
+    public static DialogInterface.OnClickListener DIALOG_EXIT_LISTENER;
 
     private File[] files;
     private EditText filePath;

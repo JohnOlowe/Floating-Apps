@@ -92,7 +92,7 @@ public class CaptionsService extends Service {
         collapsedCaptionsView = captionsView.findViewById(R.id.collapsed_captions_settings);
         String str = contentCaptions;
         if (str != null) {
-            captionsReader = new CaptionsReader(str, (str) -> displayCaptionText(str));
+            captionsReader = new CaptionsReader(str, (text) -> displayCaptionText(text));
             TextView fileName = (TextView) captionsSettingsView.findViewById(R.id.captions_file_name);
             fileName.setText(captionsFileName);
         }

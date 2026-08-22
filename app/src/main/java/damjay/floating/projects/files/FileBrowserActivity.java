@@ -15,15 +15,20 @@ import java.io.File;
 import java.io.IOException;
 
 public class FileBrowserActivity extends AppCompatActivity {
-    ListView fileList;
+    public static FileCallback callback;
     public static String currentInput;
+    ListView fileList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_file_browser);
 
-        getSupportActionBar().setTitle(R.string.floating_pdf);
+        if (callback != null) {
+            getSupportActionBar().setTitle(callback.titleOfBrowser());
+        } else {
+            getSupportActionBar().setTitle(R.string.floating_pdf);
+        }
 
         fileList = findViewById(R.id.fileList);
         View upButton = findViewById(R.id.traverseUp);
@@ -39,17 +44,14 @@ public class FileBrowserActivity extends AppCompatActivity {
                         listAdapter.updatePath(item.getFile());
                         if (item.isDirectory()) fileList.setAdapter(listAdapter);
                     } else {
-                        if (item.getFileName().toLowerCase().endsWith(".pdf")) {
+                        String ext = callback != null ? callback.extensionAllowed() : "pdf";
+                        if (item.getFileName().toLowerCase().endsWith("." + ext)) {
                             showPDF(item.getFile());
                         } else {
                             new AlertDialog.Builder(FileBrowserActivity.this)
-                                .setMessage(R.string.incorrect_format_message)
-                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int id) {
-                                        showPDF(item.getFile()); 
-                                    }
-                                })
+                                .setMessage(getResources().getString(
+                                    R.string.incorrect_format_message, ext.toUpperCase()))
+                                .setPositiveButton(android.R.string.yes, (dialog, id) -> showPDF(item.getFile()))
                                 .setNegativeButton(android.R.string.no, null)
                                 .show();
                         }
@@ -97,9 +99,22 @@ public class FileBrowserActivity extends AppCompatActivity {
 
     public void showPDF(File file) {
         try {
-            FloatingPDFActivity.returnedPath = file.getCanonicalPath();
+            FileCallback fileCallback = callback;
+            if (fileCallback != null) {
+                fileCallback.fileCallback(file.getCanonicalPath());
+                callback = null;
+            }
         } catch (IOException e) {}
         super.onBackPressed();
     }
 
+    public interface FileCallback {
+        String extensionAllowed();
+
+        void fileCallback(String str);
+
+        default String titleOfBrowser() {
+            return "Floating " + extensionAllowed().toUpperCase();
+        }
+    }
 }

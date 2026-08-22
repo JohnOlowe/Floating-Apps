@@ -25,6 +25,7 @@ import java.io.File;
 import java.util.Locale;
 
 public class ViewsUtils {
+    public static Class<?> mainClass;
     public static Context mainContext;
         
     public static View.OnTouchListener getViewTouchListener(
@@ -199,6 +200,14 @@ public class ViewsUtils {
     
     public static LayoutParams getFloatingLayoutParams() {
         return getFloatingLayoutParams(0, 100);
+    }
+
+    public static LayoutParams getFloatingLayoutParams(boolean focused) {
+        LayoutParams params = getFloatingLayoutParams();
+        if (focused) {
+            params.flags = LayoutParams.FLAG_NOT_TOUCH_MODAL;
+        }
+        return params;
     }
 
     public static void openDownloads(@NonNull Activity activity) {

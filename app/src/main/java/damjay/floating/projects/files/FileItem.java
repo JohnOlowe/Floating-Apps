@@ -9,6 +9,8 @@ public class FileItem {
     private File file;
 
     private String fileName;
+    private String directoryName;
+    private String fullPath;
     private long fileSize;
     private boolean isDirectory;
 
@@ -16,14 +18,16 @@ public class FileItem {
 
     private ViewLayout layout;
 
-    private FileItem(String fileName, long fileSize, boolean isDirectory) {
+    private FileItem(String fileName, String directoryName, String fullPath, long fileSize, boolean isDirectory) {
         this.fileName = fileName;
+        this.directoryName = directoryName;
         this.fileSize = fileSize;
+        this.fullPath = fullPath;
         this.isDirectory = isDirectory;
     }
 
     public FileItem(File file) {
-        this(file.getName(), file.length(), file.isDirectory());
+        this(file.getName(), file.getParent(), file.getPath(), file.length(), file.isDirectory());
         this.file = file;
     }
     
@@ -50,6 +54,22 @@ public class FileItem {
 
     public String getFileName() {
         return fileName;
+    }
+
+    public String getDirectoryName() {
+        return directoryName;
+    }
+
+    public void setDirectoryName(String directoryName) {
+        this.directoryName = directoryName;
+    }
+
+    public String getFullPath() {
+        return fullPath;
+    }
+
+    public void setFullPath(String fullPath) {
+        this.fullPath = fullPath;
     }
 
     public void setFileSize(long fileSize) {
