@@ -1,100 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_height="fill_parent"
-    android:layout_width="fill_parent"
-    android:orientation="vertical">
-
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
     <ImageView
+        android:id="@+id/minimizedBible"
+        android:background="@android:color/white"
         android:layout_width="40sp"
         android:layout_height="40sp"
-        android:background="@android:color/white"
         android:src="@drawable/bible_logo"
-        android:contentDescription="@string/floating_bible"
-        android:id="@+id/minimizedBible" />
+        android:contentDescription="@string/floating_bible"/>
     <LinearLayout
-        android:layout_height="wrap_content"
-        android:layout_width="wrap_content"
-        android:background="@color/buttonColor"
-        android:orientation="horizontal"
         android:layout_gravity="end"
-        android:id="@+id/windowControls">
-
+        android:orientation="horizontal"
+        android:id="@+id/windowControls"
+        android:background="@color/buttonColor"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
         <ImageView
-            android:layout_height="30sp"
-            android:layout_width="30sp"
-            android:src="@drawable/launch_app"
-            android:paddingEnd="5sp"
-            android:paddingStart="5sp"
-            android:id="@+id/bibleLaunchApp"
-            android:contentDescription="@string/launch_app"
-            android:layout_gravity="center_vertical" />
-
-        <ImageView
-            android:layout_width="30sp"
-            android:layout_height="30sp"
-            android:paddingEnd="5sp"
-            android:paddingStart="5sp"
-            android:id="@+id/minimizeBible"
-            android:contentDescription="@string/minimize_bible"
             android:layout_gravity="center_vertical"
-            android:src="@drawable/minimize_icon"/>
-
+            android:id="@+id/bibleLaunchApp"
+            android:layout_width="30sp"
+            android:layout_height="30sp"
+            android:src="@drawable/launch_app"
+            android:contentDescription="@string/launch_app"
+            android:paddingStart="5sp"
+            android:paddingEnd="5sp"/>
+        <ImageView
+            android:layout_gravity="center_vertical"
+            android:id="@+id/minimizeBible"
+            android:layout_width="30sp"
+            android:layout_height="30sp"
+            android:src="@drawable/minimize_icon"
+            android:contentDescription="@string/minimize_bible"
+            android:paddingStart="5sp"
+            android:paddingEnd="5sp"/>
         <ImageButton
-            android:layout_height="wrap_content"
-            android:layout_width="wrap_content"
-            android:src="@android:drawable/ic_delete"
-            android:paddingEnd="5sp"
-            android:background="@color/buttonColor"
-            android:paddingStart="10sp"
+            android:layout_gravity="center_vertical"
             android:id="@+id/bibleCloseView"
-            android:contentDescription="@string/close_bible"
-            android:layout_gravity="center_vertical" />
-
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_height="wrap_content"
-        android:layout_width="match_parent"
-        android:background="@color/biblePaddingBackground"
-        android:id="@+id/bibleNavPadding"
-        android:padding="2dp">
-
-        <RelativeLayout
+            android:background="@color/buttonColor"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:src="@android:drawable/ic_delete"
+            android:contentDescription="@string/close_bible"
+            android:paddingStart="10sp"
+            android:paddingEnd="5sp"/>
+    </LinearLayout>
+    <LinearLayout
+        android:id="@+id/bibleNavPadding"
+        android:background="@color/biblePaddingBackground"
+        android:padding="2dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+        <RelativeLayout
+            android:background="@color/buttonColor"
             android:layout_width="match_parent"
-            android:background="@color/buttonColor">
-            
+            android:layout_height="wrap_content">
             <LinearLayout
-                android:layout_height="wrap_content"
-                android:layout_width="wrap_content"
-                android:background="@color/buttonColor"
-                android:layout_centerVertical="true"
                 android:orientation="horizontal"
-                android:layout_centerHorizontal="true">
-
+                android:background="@color/buttonColor"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_centerVertical="true">
                 <Spinner
-                    android:layout_height="wrap_content"
+                    android:id="@+id/bibleBookSpinner"
                     android:layout_width="wrap_content"
-                    android:layout_marginEnd="5dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginStart="5dp"
-                    android:id="@+id/bibleBookSpinner" />
-
+                    android:layout_marginEnd="5dp"/>
                 <Spinner
-                    android:layout_height="wrap_content"
+                    android:id="@+id/bibleChapterSpinner"
                     android:layout_width="wrap_content"
-                    android:layout_marginEnd="5dp"
+                    android:layout_height="wrap_content"
                     android:layout_marginStart="5dp"
-                    android:id="@+id/bibleChapterSpinner" />
-
+                    android:layout_marginEnd="5dp"/>
             </LinearLayout>
-
         </RelativeLayout>
     </LinearLayout>
-
     <ListView
-        android:layout_height="match_parent"
-        android:layout_width="match_parent"
+        android:id="@+id/bibleVerses"
         android:background="@color/bibleBackground"
-        android:id="@+id/bibleVerses" />
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
 </LinearLayout>

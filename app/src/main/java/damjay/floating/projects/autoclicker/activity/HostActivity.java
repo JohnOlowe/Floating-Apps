@@ -4,128 +4,114 @@ import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothSocket;
-import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
-import damjay.floating.projects.autoclicker.service.ClickerAccessibilityService;
-import damjay.floating.projects.bluetooth.BluetoothCallback;
-import damjay.floating.projects.bluetooth.BluetoothServerThread;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
-
 import damjay.floating.projects.R;
+import damjay.floating.projects.bluetooth.BluetoothCallback;
+import damjay.floating.projects.bluetooth.BluetoothServerThread;
 import java.util.UUID;
 
 public class HostActivity extends AppCompatActivity implements BluetoothCallback {
     private BluetoothAdapter adapter;
-    private BluetoothSocket socket;
-    
     private AlertDialog alertDialog;
-    private BluetoothServerThread serverThread;
     private boolean closed;
+    private BluetoothServerThread serverThread;
+    private BluetoothSocket socket;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_host);
-
         getSupportActionBar().setTitle(R.string.asHost);
-
         if (startListening()) {
             startWaiting();
         } else {
-            new AlertDialog.Builder(this)
-                    .setMessage(R.string.bluetooth_error_occurred)
-                    .setPositiveButton(R.string.finish, (dialog, id) -> {
-                        dialog.dismiss();
-                        finish();
-                    })
-                    .setCancelable(false)
-                    .create()
-                    .show();
+            new AlertDialog.Builder(this).setMessage(R.string.bluetooth_error_occurred).setPositiveButton(R.string.finish, (dialogInterface, i) -> this.m144x29b3e007(dialogInterface, i)).setCancelable(false).create().show();
         }
     }
-    
+
+    void m144x29b3e007(DialogInterface dialog, int id) {
+        dialog.dismiss();
+        finish();
+    }
+
     private boolean startListening() {
         try {
-            BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
-            adapter = bluetoothManager.getAdapter();
+            BluetoothManager bluetoothManager = (BluetoothManager) getSystemService("bluetooth");
+            this.adapter = bluetoothManager.getAdapter();
         } catch (Throwable t) {
             t.printStackTrace();
         }
-        if (adapter != null) {
-            serverThread = new BluetoothServerThread(
-                            this,
-                            adapter,
-                            getResources().getString(R.string.app_name),
-                            UUID.fromString(getResources().getString(R.string.clicker_uuid)));
-            serverThread.start();
+        if (this.adapter != null) {
+            BluetoothServerThread bluetoothServerThread = new BluetoothServerThread(this, this.adapter, getResources().getString(R.string.app_name), UUID.fromString(getResources().getString(R.string.clicker_uuid)));
+            this.serverThread = bluetoothServerThread;
+            bluetoothServerThread.start();
             return true;
         }
         return false;
     }
 
     private void startWaiting() {
-        View view = getLayoutInflater().inflate(R.layout.loading_view, null);
-        TextView loadingText = view.findViewById(R.id.loading_text);
+        View view = getLayoutInflater().inflate(R.layout.loading_view, (ViewGroup) null);
+        TextView loadingText = (TextView) view.findViewById(R.id.loading_text);
         loadingText.setText(R.string.waiting_for_connection);
-
-        alertDialog = new AlertDialog.Builder(this)
-                .setView(view)
-                .setNegativeButton(R.string.cancel, (dialog, id) -> {
-                    dialog.dismiss();
-                    cancel();
-                })
-                .setCancelable(false)
-                .create();
-        alertDialog.show();
+        AlertDialog alertDialogCreate = new AlertDialog.Builder(this).setView(view).setNegativeButton(R.string.cancel, (dialogInterface, i) -> this.m146x3579f416(dialogInterface, i)).setCancelable(false).create();
+        this.alertDialog = alertDialogCreate;
+        alertDialogCreate.show();
     }
-    
+
+    void m146x3579f416(DialogInterface dialog, int id) {
+        dialog.dismiss();
+        cancel();
+    }
+
     private void cancel() {
-        closed = true;
-    	if (serverThread != null) {
-            serverThread.cancel();
+        this.closed = true;
+        BluetoothServerThread bluetoothServerThread = this.serverThread;
+        if (bluetoothServerThread != null) {
+            bluetoothServerThread.cancel();
         }
         finish();
     }
 
     @Override
     public void onResult(int resultCode, Object artifact) {
-        runOnUiThread(() -> checkResult(resultCode, artifact));
-    }
-    
-    private void startSelectorActivity() {
-        Intent intent = new Intent(this, ActionSelectorActivity.class);
-        ActionSelectorActivity.bluetoothSocket = socket;
-        // finish();
-        startActivity(intent);
-    }
-    
-    public void checkResult(int resultCode, Object artifact) {
-        if (alertDialog != null) {
-            alertDialog.dismiss();
-            alertDialog = null;
-        }
-        if (resultCode == BluetoothCallback.SUCCESS) {
-            if (artifact != null && artifact instanceof BluetoothSocket) {
-                // Connected successfully
-                socket = (BluetoothSocket) artifact;
-                startSelectorActivity();
-            }
-        } else {
-            if (closed) return;
-            new AlertDialog.Builder(this)
-                .setMessage(R.string.bluetooth_error_occurred)
-                .setPositiveButton(R.string.finish, (dialog, id) -> {
-                    dialog.dismiss();
-                    finish();
-                })
-                .setCancelable(false)
-                .create()
-                .show();
-        }
+        runOnUiThread(() -> this.m145xe4e11344(resultCode, artifact));
     }
 
+    private void startSelectorActivity() {
+        Intent intent = new Intent(this, (Class<?>) ActionSelectorActivity.class);
+        ActionSelectorActivity.bluetoothSocket = this.socket;
+        startActivity(intent);
+    }
+
+    public void m145xe4e11344(int resultCode, Object artifact) {
+        AlertDialog alertDialog = this.alertDialog;
+        if (alertDialog != null) {
+            alertDialog.dismiss();
+            this.alertDialog = null;
+        }
+        if (resultCode == 1) {
+            if (artifact != null && (artifact instanceof BluetoothSocket)) {
+                this.socket = (BluetoothSocket) artifact;
+                startSelectorActivity();
+                return;
+            }
+            return;
+        }
+        if (this.closed) {
+            return;
+        }
+        new AlertDialog.Builder(this).setMessage(R.string.bluetooth_error_occurred).setPositiveButton(R.string.finish, (dialogInterface, i) -> this.m143x55484234(dialogInterface, i)).setCancelable(false).create().show();
+    }
+
+    void m143x55484234(DialogInterface dialog, int id) {
+        dialog.dismiss();
+        finish();
+    }
 }

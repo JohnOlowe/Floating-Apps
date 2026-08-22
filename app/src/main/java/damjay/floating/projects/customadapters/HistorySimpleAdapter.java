@@ -11,8 +11,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class HistorySimpleAdapter extends SimpleAdapter {
-    private HistorySimpleAdapter.Callback callback;
+    private Callback callback;
     private Context context;
+
+    public interface Callback {
+        void delete(int i);
+
+        void run(int i);
+    }
 
     public HistorySimpleAdapter(Context context, ArrayList<HashMap<String, Object>> list, int id, String[] entries, int[] content, Callback callback) {
         super(context, list, id, entries, content);
@@ -21,45 +27,39 @@ public class HistorySimpleAdapter extends SimpleAdapter {
     }
 
     @Override
-    public View getView(final int position, View convertView, ViewGroup parent) {
+    public View getView(int position, View convertView, ViewGroup parent) {
         View view = super.getView(position, convertView, parent);
-        view.findViewById(R.id.delete_button).setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View p1) {
-                    callback.delete(position);
-                }
-            });
-        view.setOnLongClickListener(new View.OnLongClickListener() {
-                @Override
-                public boolean onLongClick(View view) {
-                    PopupMenu menu = new PopupMenu(context, view);
-                    menu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
-                            @Override
-                            public boolean onMenuItemClick(MenuItem item) {
-                                    if (item.getItemId() == R.id.open_history_file)
-                                        callback.run(position);
-                                    else if (item.getItemId() == R.id.delete_history_file)
-                                        callback.delete(position);
-                                return true;
-                            }
-                        });
-                    menu.inflate(R.menu.history_menu);
-                    menu.show();
-                    return true;
-                }
-            });
-        view.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    callback.run(position);
-                }
-            });
+        view.findViewById(R.id.delete_button).setOnClickListener((view) -> this.m203xda70dc34(position, view));
+        view.setOnLongClickListener((view) -> this.m205x2edbb72(position, view));
+        view.setOnClickListener((view) -> this.m206x972c2b11(position, view));
         return view;
     }
 
-    public static interface Callback {
-        void run(int position);
-        void delete(int position);
+    void m203xda70dc34(int position, View p1) {
+        this.callback.delete(position);
     }
 
+    boolean m205x2edbb72(int position, View view1) {
+        PopupMenu menu = new PopupMenu(this.context, view1);
+        menu.setOnMenuItemClickListener((menuItem) -> this.m204x6eaf4bd3(position, menuItem));
+        menu.inflate(R.menu.history_menu);
+        menu.show();
+        return true;
+    }
+
+    boolean m204x6eaf4bd3(int position, MenuItem item) {
+        if (item.getItemId() == R.id.open_history_file) {
+            this.callback.run(position);
+            return true;
+        }
+        if (item.getItemId() == R.id.delete_history_file) {
+            this.callback.delete(position);
+            return true;
+        }
+        return true;
+    }
+
+    void m206x972c2b11(int position, View view12) {
+        this.callback.run(position);
+    }
 }

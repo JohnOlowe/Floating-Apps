@@ -40,7 +40,7 @@
     <string name="clicker_uuid">1cf64473-3259-4cb7-8f91-5ebb341506cd</string>
     
     <string name="grant_permissions">Grant Permissions</string>
-    <string name="incorrect_format_message">Are you sure this is a PDF file?</string>
+    <string name="incorrect_format_message">Are you sure this is a %1$s file?</string>
     <string name="display_permission_message">For this app to work, you need to grant display over other apps permission.</string>
     <string name="waiting_for_connection">Waiting for connection...</string>
     <string name="null_socket">Bluetooth Socket is not available</string>
@@ -48,7 +48,7 @@
     <string name="activate_bluetooth">For this feature to work, you need to activate Bluetooth.</string>
     <string name="bluetooth_permission_needed">Please grant Nearby Devices permission so that this app will be able to use Bluetooth.</string>
     <string name="enable_bluetooth">Please turn on Bluetooth for this feature to work.</string>
-    <string name="files_permission_message">For this app to work, you need to grant management of all files permission.</string>
+    <string name="files_permission_message">For this app to work, you need to grant read and write permission.</string>
     <string name="bluetooth_error_occurred">An error occurred while trying to use Bluetooth. Please try again.</string>
     <string name="permission_denied_grant_manually">This app cannot request your permission. The app won\'t work unless you grant it in Setttings.</string>
     <string name="invalid_path_message">Please enter a valid file path in the text field.</string>
@@ -102,4 +102,44 @@
     <string name="floating_web_browser">Floating Web Browser</string>
     <string name="floating_copy_text_coming">Input text into a floating text field and copy to clipboard is coming soon.</string>
     <string name="floating_browser_coming">Floating Browser is coming soon.</string>
+
+    <string name="activate_display_over_app_message">Select Floating Apps in the list, and turn on the checkbox for Allow display over other apps</string>
+    <string name="blue">Blue</string>
+    <string name="caption_color">Caption Color</string>
+    <string name="caption_settings">Caption Settings</string>
+    <string name="captions_size">Captions Size</string>
+    <string name="choose_app_to_open">Choose an app to open with.</string>
+    <string name="choose_music_folder_msg">Manage directories where music is found</string>
+    <string name="clear_history">Clear history</string>
+    <string name="close_captions">Close Captions</string>
+    <string name="close_field">Close Text Copy</string>
+    <string name="collapsed_captions_settings">Collapsed Captions Settings</string>
+    <string name="collapsed_notes">Collapsed Notes</string>
+    <string name="copy">Copy</string>
+    <string name="directory_not_exist">Choose a folder that exists, and not a file.</string>
+    <string name="enter_file_path">Enter File Path</string>
+    <string name="enter_keyword">Enter keyword</string>
+    <string name="error_occurred">An error occurred</string>
+    <string name="fast_backward">Fast Backward</string>
+    <string name="fast_forward">Fast Forward</string>
+    <string name="file_name">file_name</string>
+    <string name="floating_captions">Floating Captions</string>
+    <string name="floating_notes">Floating Notes</string>
+    <string name="green">Green</string>
+    <string name="insert_at_cursor_position">Insert at cursor position</string>
+    <string name="manage_files_permission_message">For this app to work, you need to grant management of all files permission.</string>
+    <string name="minimize_captions_settings">Minimize Captions Settings</string>
+    <string name="no_app_to_open_pdf">No app is available to open this PDF File</string>
+    <string name="open_caption_settings">Open Caption Settings</string>
+    <string name="open_in_app">Open in another app</string>
+    <string name="pause_captions">Pause captions when opening captions settings</string>
+    <string name="play">Play</string>
+    <string name="red">Red</string>
+    <string name="remove_from_history">Remove from History</string>
+    <string name="sample_text">Sample Text</string>
+    <string name="search_files">Search Files</string>
+    <string name="show_in_calculator">Show in Calculator</string>
+    <string name="start">Start</string>
+    <string name="start_captions">Start Captions</string>
+    <string name="toggle_focus">Toggle Focus</string>
 </resources>
