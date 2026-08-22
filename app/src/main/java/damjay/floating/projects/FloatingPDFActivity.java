@@ -76,13 +76,13 @@ public class FloatingPDFActivity extends AppCompatActivity {
 
     private void initializeViews() {
         try {
-            this.filePath = (EditText) findViewById(R.id.file_path);
+            filePath = (EditText) findViewById(R.id.file_path);
             Button loadFileButton = (Button) findViewById(R.id.selectFile);
             Button selectFiles = (Button) findViewById(R.id.browseFile);
             Button searchFiles = (Button) findViewById(R.id.searchFile);
             populateList();
             loadFileButton.setOnClickListener((v) -> {
-                String text = this.filePath.getText().toString();
+                String text = filePath.getText().toString();
                 if (text.trim().isEmpty()) {
                     Toast.makeText(this, R.string.invalid_path_message, Toast.LENGTH_SHORT).show();
                 } else {
@@ -90,7 +90,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
                 }
             });
             selectFiles.setOnClickListener((v) -> {
-                FileBrowserActivity.currentInput = this.filePath.getText().toString();
+                FileBrowserActivity.currentInput = filePath.getText().toString();
                 FileBrowserActivity.callback = getDefaultCallback();
                 Intent intent = new Intent(this, FileBrowserActivity.class);
                 startActivity(intent);
@@ -157,7 +157,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
         String[] entries = {"fileName", "fileInfo"};
         try {
             File[] fileArrListFiles = getCacheDir().listFiles();
-            this.files = fileArrListFiles;
+            files = fileArrListFiles;
             if (fileArrListFiles == null) {
                 return;
             }
@@ -171,7 +171,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
                     list.add(map);
                 }
             }
-            this.files = (File[]) fileList.toArray(new File[0]);
+            files = (File[]) fileList.toArray(new File[0]);
             SimpleAdapter adapter = new HistorySimpleAdapter(this, list, R.layout.history_files, entries,
                     new int[] {R.id.file_name, R.id.file_info}, new HistorySimpleAdapter.Callback() {
                         @Override
@@ -203,7 +203,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
                     });
             listView.setAdapter((ListAdapter) adapter);
             listView.setOnItemClickListener((adapterView, view, position, id) -> {
-                File[] fileArr = this.files;
+                File[] fileArr = files;
                 if (fileArr == null) {
                     return;
                 }
@@ -246,7 +246,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
 
     private boolean checkPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            if (this.alertDialog != null) {
+            if (alertDialog != null) {
                 return false;
             }
             AlertDialog alertDialogCreate =
@@ -262,12 +262,12 @@ public class FloatingPDFActivity extends AppCompatActivity {
                                     })
                             .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER)
                             .create();
-            this.alertDialog = alertDialogCreate;
+            alertDialog = alertDialogCreate;
             alertDialogCreate.show();
             return false;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-            if (this.alertDialog != null) {
+            if (alertDialog != null) {
                 return false;
             }
             AlertDialog alertDialogCreate2 =
@@ -292,13 +292,13 @@ public class FloatingPDFActivity extends AppCompatActivity {
                                     })
                             .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER)
                             .create();
-            this.alertDialog = alertDialogCreate2;
+            alertDialog = alertDialogCreate2;
             alertDialogCreate2.show();
             return false;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.R
                 && checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE") != 0) {
-            if (this.alertDialog != null) {
+            if (alertDialog != null) {
                 return false;
             }
             AlertDialog alertDialogCreate3 =
@@ -316,7 +316,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
                                     })
                             .setNegativeButton(R.string.exit, DIALOG_EXIT_LISTENER)
                             .create();
-            this.alertDialog = alertDialogCreate3;
+            alertDialog = alertDialogCreate3;
             alertDialogCreate3.show();
             return false;
         }
@@ -334,7 +334,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
     protected void onResume() {
         String str;
         super.onResume();
-        EditText editText = this.filePath;
+        EditText editText = filePath;
         if (editText != null && (str = returnedPath) != null) {
             editText.setText(str);
             returnedPath = null;
@@ -343,10 +343,10 @@ public class FloatingPDFActivity extends AppCompatActivity {
     }
 
     private void closeAlertDialog() {
-        AlertDialog alertDialog = this.alertDialog;
+        AlertDialog alertDialog = alertDialog;
         if (alertDialog != null) {
             alertDialog.dismiss();
-            this.alertDialog = null;
+            alertDialog = null;
         }
     }
 

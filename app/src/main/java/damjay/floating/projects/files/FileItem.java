@@ -30,7 +30,7 @@ public class FileItem {
 
     public FileItem(File file, String name) {
         this(file);
-        this.fileName = name;
+        fileName = name;
     }
 
     public void setFile(File file) {
@@ -38,11 +38,11 @@ public class FileItem {
     }
 
     public File getFile() {
-        return this.file;
+        return file;
     }
 
     public long getLastModified() {
-        return this.file.lastModified();
+        return file.lastModified();
     }
 
     public void setFileName(String fileName) {
@@ -50,11 +50,11 @@ public class FileItem {
     }
 
     public String getFileName() {
-        return this.fileName;
+        return fileName;
     }
 
     public String getDirectoryName() {
-        return this.directoryName;
+        return directoryName;
     }
 
     public void setDirectoryName(String directoryName) {
@@ -62,7 +62,7 @@ public class FileItem {
     }
 
     public String getFullPath() {
-        return this.fullPath;
+        return fullPath;
     }
 
     public void setFullPath(String fullPath) {
@@ -74,7 +74,7 @@ public class FileItem {
     }
 
     public long getFileSize() {
-        return this.fileSize;
+        return fileSize;
     }
 
     public void setFormattedSize(String formattedSize) {
@@ -82,7 +82,7 @@ public class FileItem {
     }
 
     public String getFormattedSize() {
-        return this.formattedSize;
+        return formattedSize;
     }
 
     public void setIsDirectory(boolean isDirectory) {
@@ -90,7 +90,7 @@ public class FileItem {
     }
 
     public boolean isDirectory() {
-        return this.isDirectory;
+        return isDirectory;
     }
 
     public void setLayout(ViewLayout layout) {
@@ -98,7 +98,7 @@ public class FileItem {
     }
 
     public ViewLayout getLayout() {
-        ViewLayout viewLayout = this.layout;
+        ViewLayout viewLayout = layout;
         return viewLayout == null ? new ViewLayout() : viewLayout;
     }
 
@@ -109,32 +109,32 @@ public class FileItem {
 
         public ImageView setIcon(View icon) {
             ImageView imageView = (ImageView) icon;
-            this.icon = imageView;
+            icon = imageView;
             return imageView;
         }
 
         public ImageView getIcon() {
-            return this.icon;
+            return icon;
         }
 
         public TextView setName(View name) {
             TextView textView = (TextView) name;
-            this.name = textView;
+            name = textView;
             return textView;
         }
 
         public TextView getName() {
-            return this.name;
+            return name;
         }
 
         public TextView setInfo(View info) {
             TextView textView = (TextView) info;
-            this.info = textView;
+            info = textView;
             return textView;
         }
 
         public TextView getInfo() {
-            return this.info;
+            return info;
         }
     }
 }

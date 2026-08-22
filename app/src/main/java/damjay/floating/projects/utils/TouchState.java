@@ -34,37 +34,37 @@ public class TouchState {
     public void setFinalPosition(float finalX, float finalY) {
         this.finalX = finalX;
         this.finalY = finalY;
-        this.maxDistanceMoved = (int) Math.max(this.maxDistanceMoved, Math.max(Math.abs(getMoveX()), Math.abs(getMoveY())));
+        maxDistanceMoved = (int) Math.max(maxDistanceMoved, Math.max(Math.abs(getMoveX()), Math.abs(getMoveY())));
     }
 
     public void setOriginalPosition(int x, int y) {
-        this.originalX = x;
-        this.originalY = y;
+        originalX = x;
+        originalY = y;
     }
 
     public int updatedPositionX() {
-        int updatedX = this.originalX + ((int) getMoveX());
+        int updatedX = originalX + ((int) getMoveX());
         return Math.max(updatedX, 0);
     }
 
     public int updatedPositionY() {
-        int updatedY = this.originalY + ((int) getMoveY());
+        int updatedY = originalY + ((int) getMoveY());
         return Math.max(updatedY, 0);
     }
 
     public float getMoveX() {
-        return this.finalX - this.initialX;
+        return finalX - initialX;
     }
 
     public float getMoveY() {
-        return this.finalY - this.initialY;
+        return finalY - initialY;
     }
 
     public boolean hasMoved() {
-        if (this.maxDistanceMoved <= moveTolerance) {
+        if (maxDistanceMoved <= moveTolerance) {
             return Math.abs(getMoveX()) > ((float) moveTolerance) || Math.abs(getMoveY()) > ((float) moveTolerance);
         }
-        this.maxDistanceMoved = 0;
+        maxDistanceMoved = 0;
         return true;
     }
 }

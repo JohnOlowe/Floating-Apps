@@ -22,16 +22,16 @@ public class FileBrowserActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_file_browser);
         getSupportActionBar().setTitle(callback.titleOfBrowser());
-        this.fileList = (ListView) findViewById(R.id.fileList);
+        fileList = (ListView) findViewById(R.id.fileList);
         View upButton = findViewById(R.id.traverseUp);
-        this.fileList.setAdapter((ListAdapter) new FileListAdapter(this, validateInput()));
-        this.fileList.setOnItemClickListener((a, v, position, id) -> {
-            FileItem item = (FileItem) this.fileList.getItemAtPosition(position);
+        fileList.setAdapter((ListAdapter) new FileListAdapter(this, validateInput()));
+        fileList.setOnItemClickListener((a, v, position, id) -> {
+            FileItem item = (FileItem) fileList.getItemAtPosition(position);
             if (item.isDirectory()) {
-                FileListAdapter listAdapter = (FileListAdapter) this.fileList.getAdapter();
+                FileListAdapter listAdapter = (FileListAdapter) fileList.getAdapter();
                 listAdapter.updatePath(item.getFile());
                 if (item.isDirectory()) {
-                    this.fileList.setAdapter((ListAdapter) listAdapter);
+                    fileList.setAdapter((ListAdapter) listAdapter);
                     return;
                 }
                 return;
@@ -68,7 +68,7 @@ public class FileBrowserActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         File parent = null;
-        FileListAdapter listAdapter = (FileListAdapter) this.fileList.getAdapter();
+        FileListAdapter listAdapter = (FileListAdapter) fileList.getAdapter();
         try {
             if (listAdapter.folder == null) {
                 super.onBackPressed();
@@ -78,11 +78,11 @@ public class FileBrowserActivity extends AppCompatActivity {
             if (listAdapter.getCount() == 0) {
                 parent = listAdapter.folder.getParentFile();
             } else {
-                parent = ((FileItem) this.fileList.getItemAtPosition(0)).getFile().getParentFile().getParentFile();
+                parent = ((FileItem) fileList.getItemAtPosition(0)).getFile().getParentFile().getParentFile();
             }
             if (parent != null) {
                 listAdapter.updatePath(parent);
-                this.fileList.setAdapter((ListAdapter) listAdapter);
+                fileList.setAdapter((ListAdapter) listAdapter);
             }
         } catch (Throwable th) {
         }

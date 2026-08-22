@@ -16,7 +16,7 @@ public class CompoundExpression extends Expression {
     private final ArrayList<Expression> expressions;
 
     public CompoundExpression(String input) {
-        this.expressions = makeExpressions(input);
+        expressions = makeExpressions(input);
         setType(ExpressionType.CompoundExpression);
     }
 
@@ -138,21 +138,21 @@ public class CompoundExpression extends Expression {
     }
 
     public ArrayList<Expression> getExpressions() {
-        return this.expressions;
+        return expressions;
     }
 
     private Expression finalCompute() {
-        if (this.expressions == null) {
+        if (expressions == null) {
             return null;
         }
         for (int i = 0; i < 3; i++) {
             int index = getIndex(OPERATOR_TYPE[i]);
             while (index >= 0) {
-                Expression left = this.expressions.remove(index - 1);
-                Expression right = this.expressions.remove(index);
-                this.expressions.remove(index - 1);
+                Expression left = expressions.remove(index - 1);
+                Expression right = expressions.remove(index);
+                expressions.remove(index - 1);
                 String[] strArr = OPERATOR_TYPE;
-                this.expressions.add(index - 1, evaluate(left, right, strArr[i]));
+                expressions.add(index - 1, evaluate(left, right, strArr[i]));
                 index = getIndex(strArr[i]);
             }
         }
@@ -162,18 +162,18 @@ public class CompoundExpression extends Expression {
         int operatorType = (plusIndex != -1 && (minusIndex == -1 || plusIndex <= minusIndex)) ? 3 : 4;
         int index2 = operatorType == 3 ? plusIndex : minusIndex;
         while (index2 >= 0) {
-            Expression left2 = this.expressions.remove(index2 - 1);
-            Expression right2 = this.expressions.remove(index2);
-            this.expressions.remove(index2 - 1);
+            Expression left2 = expressions.remove(index2 - 1);
+            Expression right2 = expressions.remove(index2);
+            expressions.remove(index2 - 1);
             String[] strArr3 = OPERATOR_TYPE;
-            this.expressions.add(index2 - 1, evaluate(left2, right2, strArr3[operatorType]));
+            expressions.add(index2 - 1, evaluate(left2, right2, strArr3[operatorType]));
             int plusIndex2 = getIndex(strArr3[3]);
             int minusIndex2 = getIndex(strArr3[4]);
             operatorType = (plusIndex2 != -1 && (minusIndex2 == -1 || plusIndex2 <= minusIndex2)) ? 3 : 4;
             index2 = operatorType == 3 ? plusIndex2 : minusIndex2;
         }
-        if (this.expressions.size() <= 1 && !this.expressions.isEmpty()) {
-            return this.expressions.get(0);
+        if (expressions.size() <= 1 && !expressions.isEmpty()) {
+            return expressions.get(0);
         }
         return null;
     }
@@ -240,8 +240,8 @@ public class CompoundExpression extends Expression {
     }
 
     private int getIndex(String type) {
-        for (int i = 0; i < this.expressions.size(); i++) {
-            if (Objects.equals(this.expressions.get(i).getType(), type)) {
+        for (int i = 0; i < expressions.size(); i++) {
+            if (Objects.equals(expressions.get(i).getType(), type)) {
                 return i;
             }
         }
@@ -249,11 +249,11 @@ public class CompoundExpression extends Expression {
     }
 
     public Expression compute() {
-        if (this.expressions == null) {
+        if (expressions == null) {
             return null;
         }
-        for (int i = 0; i < this.expressions.size(); i++) {
-            Expression expression = this.expressions.get(i);
+        for (int i = 0; i < expressions.size(); i++) {
+            Expression expression = expressions.get(i);
             if (expression == null) {
                 return null;
             }
@@ -262,7 +262,7 @@ public class CompoundExpression extends Expression {
                 if (computed == null) {
                     return null;
                 }
-                this.expressions.set(i, computed);
+                expressions.set(i, computed);
             }
         }
         return finalCompute();
@@ -271,7 +271,7 @@ public class CompoundExpression extends Expression {
     @Override
     public String toString() {
         StringBuilder builder = new StringBuilder();
-        for (Expression expression : this.expressions) {
+        for (Expression expression : expressions) {
             if (expression instanceof CompoundExpression) {
                 builder.append(expression);
             } else {

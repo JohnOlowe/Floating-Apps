@@ -40,8 +40,8 @@ public class BluetoothOperations implements Runnable {
     public BluetoothOperations(BluetoothSocket socket) {
         this.socket = socket;
         try {
-            this.inputStream = new DataInputStream(socket.getInputStream());
-            this.outputStream = new DataOutputStream(socket.getOutputStream());
+            inputStream = new DataInputStream(socket.getInputStream());
+            outputStream = new DataOutputStream(socket.getOutputStream());
         } catch (Throwable openError) {
             this.openError = openError;
             openError.printStackTrace();
@@ -49,13 +49,13 @@ public class BluetoothOperations implements Runnable {
     }
 
     public BluetoothSocket getSocket() {
-        return this.socket;
+        return socket;
     }
 
     public void startReading(BluetoothOperationsCallback bluetoothOperationsCallback) {
         checkNull(bluetoothOperationsCallback);
-        this.bluetoothCallback = bluetoothOperationsCallback;
-        Throwable th = this.openError;
+        bluetoothCallback = bluetoothOperationsCallback;
+        Throwable th = openError;
         if (th != null) {
             handle(th, bluetoothOperationsCallback);
         } else {
@@ -65,60 +65,60 @@ public class BluetoothOperations implements Runnable {
 
     @Override
     public void run() {
-        Throwable th = this.openError;
+        Throwable th = openError;
         if (th != null) {
-            onError(this.bluetoothCallback, th);
+            onError(bluetoothCallback, th);
             return;
         }
-        while (!this.closed) {
+        while (!closed) {
             try {
-                int type = this.inputStream.read();
+                int type = inputStream.read();
                 if (type != -1) {
                     switch (type) {
                         case 0:
-                            onSuccess(this.bluetoothCallback, (byte) 0, this.inputStream.readUTF());
+                            onSuccess(bluetoothCallback, (byte) 0, inputStream.readUTF());
                             break;
                         case 1:
-                            onSuccess(this.bluetoothCallback, (byte) 0, Byte.valueOf(this.inputStream.readByte()));
+                            onSuccess(bluetoothCallback, (byte) 0, Byte.valueOf(inputStream.readByte()));
                             break;
                         case 2:
-                            onSuccess(this.bluetoothCallback, (byte) 0, Short.valueOf(this.inputStream.readShort()));
+                            onSuccess(bluetoothCallback, (byte) 0, Short.valueOf(inputStream.readShort()));
                             break;
                         case 3:
-                            onSuccess(this.bluetoothCallback, (byte) 0, Character.valueOf(this.inputStream.readChar()));
+                            onSuccess(bluetoothCallback, (byte) 0, Character.valueOf(inputStream.readChar()));
                             break;
                         case 4:
-                            onSuccess(this.bluetoothCallback, (byte) 0, Integer.valueOf(this.inputStream.readInt()));
+                            onSuccess(bluetoothCallback, (byte) 0, Integer.valueOf(inputStream.readInt()));
                             break;
                         case 5:
-                            onSuccess(this.bluetoothCallback, (byte) 0, Long.valueOf(this.inputStream.readLong()));
+                            onSuccess(bluetoothCallback, (byte) 0, Long.valueOf(inputStream.readLong()));
                             break;
                         case 6:
-                            onSuccess(this.bluetoothCallback, (byte) 0, Float.valueOf(this.inputStream.readFloat()));
+                            onSuccess(bluetoothCallback, (byte) 0, Float.valueOf(inputStream.readFloat()));
                             break;
                         case 7:
-                            onSuccess(this.bluetoothCallback, (byte) 0, Double.valueOf(this.inputStream.readDouble()));
+                            onSuccess(bluetoothCallback, (byte) 0, Double.valueOf(inputStream.readDouble()));
                             break;
                         case 8:
-                            byte[] bytes = new byte[this.inputStream.readUnsignedShort()];
-                            this.inputStream.readFully(bytes);
-                            onSuccess(this.bluetoothCallback, (byte) 8, bytes);
+                            byte[] bytes = new byte[inputStream.readUnsignedShort()];
+                            inputStream.readFully(bytes);
+                            onSuccess(bluetoothCallback, (byte) 8, bytes);
                             break;
                         case 9:
                         default:
                             throw new IllegalArgumentException("Unknown type " + type);
                         case 10:
-                            onSuccess(this.bluetoothCallback, (byte) 10, null);
+                            onSuccess(bluetoothCallback, (byte) 10, null);
                             break;
                     }
                     return;
                 }
             } catch (Throwable t) {
                 t.printStackTrace();
-                if (this.closed) {
+                if (closed) {
                     return;
                 }
-                onError(this.bluetoothCallback, t);
+                onError(bluetoothCallback, t);
                 return;
             }
         }
@@ -127,8 +127,8 @@ public class BluetoothOperations implements Runnable {
     public void write(String content, BluetoothOperationsCallback bluetoothOperationsCallback) {
         checkNull(bluetoothOperationsCallback);
         try {
-            this.outputStream.write(0);
-            this.outputStream.writeUTF(content);
+            outputStream.write(0);
+            outputStream.writeUTF(content);
             onSuccess(bluetoothOperationsCallback, (byte) 9, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -138,8 +138,8 @@ public class BluetoothOperations implements Runnable {
     public void write(byte content, BluetoothOperationsCallback bluetoothOperationsCallback) {
         checkNull(bluetoothOperationsCallback);
         try {
-            this.outputStream.write(1);
-            this.outputStream.writeByte(content);
+            outputStream.write(1);
+            outputStream.writeByte(content);
             onSuccess(bluetoothOperationsCallback, (byte) 9, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -149,8 +149,8 @@ public class BluetoothOperations implements Runnable {
     public void write(short content, BluetoothOperationsCallback bluetoothOperationsCallback) {
         checkNull(bluetoothOperationsCallback);
         try {
-            this.outputStream.write(2);
-            this.outputStream.writeShort(content);
+            outputStream.write(2);
+            outputStream.writeShort(content);
             onSuccess(bluetoothOperationsCallback, (byte) 9, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -160,8 +160,8 @@ public class BluetoothOperations implements Runnable {
     public void write(char content, BluetoothOperationsCallback bluetoothOperationsCallback) {
         checkNull(bluetoothOperationsCallback);
         try {
-            this.outputStream.write(3);
-            this.outputStream.writeChar(content);
+            outputStream.write(3);
+            outputStream.writeChar(content);
             onSuccess(bluetoothOperationsCallback, (byte) 9, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -171,8 +171,8 @@ public class BluetoothOperations implements Runnable {
     public void write(int content, BluetoothOperationsCallback bluetoothOperationsCallback) {
         checkNull(bluetoothOperationsCallback);
         try {
-            this.outputStream.write(4);
-            this.outputStream.writeInt(content);
+            outputStream.write(4);
+            outputStream.writeInt(content);
             onSuccess(bluetoothOperationsCallback, (byte) 9, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -182,8 +182,8 @@ public class BluetoothOperations implements Runnable {
     public void write(long content, BluetoothOperationsCallback bluetoothOperationsCallback) {
         checkNull(bluetoothOperationsCallback);
         try {
-            this.outputStream.write(5);
-            this.outputStream.writeLong(content);
+            outputStream.write(5);
+            outputStream.writeLong(content);
             onSuccess(bluetoothOperationsCallback, (byte) 9, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -193,8 +193,8 @@ public class BluetoothOperations implements Runnable {
     public void write(float content, BluetoothOperationsCallback bluetoothOperationsCallback) {
         checkNull(bluetoothOperationsCallback);
         try {
-            this.outputStream.write(6);
-            this.outputStream.writeFloat(content);
+            outputStream.write(6);
+            outputStream.writeFloat(content);
             onSuccess(bluetoothOperationsCallback, (byte) 9, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -204,8 +204,8 @@ public class BluetoothOperations implements Runnable {
     public void write(double content, BluetoothOperationsCallback bluetoothOperationsCallback) {
         checkNull(bluetoothOperationsCallback);
         try {
-            this.outputStream.write(7);
-            this.outputStream.writeDouble(content);
+            outputStream.write(7);
+            outputStream.writeDouble(content);
             onSuccess(bluetoothOperationsCallback, (byte) 9, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -215,8 +215,8 @@ public class BluetoothOperations implements Runnable {
     public void write(byte[] content, BluetoothOperationsCallback bluetoothOperationsCallback) {
         checkNull(bluetoothOperationsCallback);
         try {
-            this.outputStream.write(8);
-            this.outputStream.write(content);
+            outputStream.write(8);
+            outputStream.write(content);
             onSuccess(bluetoothOperationsCallback, (byte) 9, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -225,7 +225,7 @@ public class BluetoothOperations implements Runnable {
 
     public void writeExit(BluetoothOperationsCallback bluetoothOperationsCallback) {
         try {
-            this.outputStream.write(10);
+            outputStream.write(10);
             onSuccess(bluetoothOperationsCallback, (byte) 9, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -234,10 +234,10 @@ public class BluetoothOperations implements Runnable {
 
     public void close() {
         try {
-            this.closed = true;
-            this.inputStream.close();
-            this.outputStream.close();
-            this.socket.close();
+            closed = true;
+            inputStream.close();
+            outputStream.close();
+            socket.close();
         } catch (Throwable t) {
             t.printStackTrace();
         }

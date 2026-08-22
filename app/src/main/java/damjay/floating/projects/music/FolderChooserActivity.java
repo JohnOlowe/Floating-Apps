@@ -27,27 +27,27 @@ public class FolderChooserActivity extends AppCompatActivity {
     }
 
     private void initializeViews() {
-        this.directoriesAdded = (TextView) findViewById(R.id.directories_added);
-        this.directoriesInput = (EditText) findViewById(R.id.directories_field);
-        this.addDirectory = (Button) findViewById(R.id.add_chosen_directories);
-        this.savePrefs = (Button) findViewById(R.id.save_music_prefs);
-        this.fullPath = new HashSet<>();
-        this.addDirectory.setOnClickListener((v) -> {
+        directoriesAdded = (TextView) findViewById(R.id.directories_added);
+        directoriesInput = (EditText) findViewById(R.id.directories_field);
+        addDirectory = (Button) findViewById(R.id.add_chosen_directories);
+        savePrefs = (Button) findViewById(R.id.save_music_prefs);
+        fullPath = new HashSet<>();
+        addDirectory.setOnClickListener((v) -> {
             boolean notAccepted = false;
-            String filePath = this.directoriesInput.getText().toString().trim();
+            String filePath = directoriesInput.getText().toString().trim();
             if (filePath.isEmpty()) {
                 return;
             }
             File folder = new File(filePath);
             if (folder.exists() && folder.isDirectory()) {
-                this.fullPath.add(filePath);
+                fullPath.add(filePath);
             } else {
                 if (filePath.startsWith("/")) {
                     filePath = filePath.substring(1).trim();
                 }
                 File folder2 = new File("/storage/emulated/0/", filePath);
                 if (folder2.exists() && folder2.isDirectory()) {
-                    this.fullPath.add("/storage/emulated/0/" + filePath);
+                    fullPath.add("/storage/emulated/0/" + filePath);
                 } else {
                     notAccepted = true;
                     Toast.makeText(this, R.string.directory_not_exist, Toast.LENGTH_LONG).show();
@@ -56,7 +56,7 @@ public class FolderChooserActivity extends AppCompatActivity {
             if (!notAccepted) {
                 boolean firstFile = true;
                 StringBuilder builder = null;
-                for (String dir : this.fullPath) {
+                for (String dir : fullPath) {
                     if (firstFile) {
                         firstFile = false;
                         builder = new StringBuilder(new File(dir).getName());
@@ -65,11 +65,11 @@ public class FolderChooserActivity extends AppCompatActivity {
                     }
                 }
                 if (builder != null) {
-                    this.directoriesAdded.setText(builder.toString());
+                    directoriesAdded.setText(builder.toString());
                 }
             }
         });
-        this.savePrefs.setOnClickListener((v) -> {
+        savePrefs.setOnClickListener((v) -> {
             File fileSafe = new File(getCacheDir(), PlayerService.CHOSEN_FOLDERS_FILE);
             String text = getDirectoriesText();
             if (text == null) {
@@ -91,7 +91,7 @@ public class FolderChooserActivity extends AppCompatActivity {
     private String getDirectoriesText() {
         boolean firstFile = true;
         StringBuilder builder = null;
-        for (String folder : this.fullPath) {
+        for (String folder : fullPath) {
             if (firstFile) {
                 firstFile = false;
                 builder = new StringBuilder(folder);

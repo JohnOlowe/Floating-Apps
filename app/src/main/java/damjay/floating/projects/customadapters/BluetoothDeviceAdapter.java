@@ -26,15 +26,15 @@ public class BluetoothDeviceAdapter extends BaseAdapter {
     private void startSearching() {
         BluetoothAdapter adapter;
         Set<BluetoothDevice> bluetoothDevices;
-        BluetoothManager bluetoothManager = (BluetoothManager) this.context.getSystemService("bluetooth");
+        BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService("bluetooth");
         if (bluetoothManager != null && (adapter = bluetoothManager.getAdapter()) != null && adapter.isEnabled() && (bluetoothDevices = adapter.getBondedDevices()) != null) {
-            this.bluetoothDevices = new ArrayList<>(bluetoothDevices);
+            bluetoothDevices = new ArrayList<>(bluetoothDevices);
         }
     }
 
     @Override
     public int getCount() {
-        ArrayList<BluetoothDevice> arrayList = this.bluetoothDevices;
+        ArrayList<BluetoothDevice> arrayList = bluetoothDevices;
         if (arrayList == null) {
             return 0;
         }
@@ -43,11 +43,11 @@ public class BluetoothDeviceAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int position) {
-        ArrayList<BluetoothDevice> arrayList = this.bluetoothDevices;
+        ArrayList<BluetoothDevice> arrayList = bluetoothDevices;
         if (arrayList == null || arrayList.size() <= position) {
             return null;
         }
-        return this.bluetoothDevices.get(position);
+        return bluetoothDevices.get(position);
     }
 
     @Override
@@ -57,16 +57,16 @@ public class BluetoothDeviceAdapter extends BaseAdapter {
 
     @Override
     public View getView(int position, View view, ViewGroup viewGroup) {
-        ArrayList<BluetoothDevice> arrayList = this.bluetoothDevices;
+        ArrayList<BluetoothDevice> arrayList = bluetoothDevices;
         boolean deviceAvailable = arrayList != null && arrayList.size() > position;
         if (view == null) {
-            view = LayoutInflater.from(this.context).inflate(R.layout.simple_list_item_2, viewGroup, false);
+            view = LayoutInflater.from(context).inflate(R.layout.simple_list_item_2, viewGroup, false);
             if (deviceAvailable) {
-                view.setTag(this.bluetoothDevices.get(position));
+                view.setTag(bluetoothDevices.get(position));
             }
         }
         if (deviceAvailable) {
-            BluetoothDevice device = this.bluetoothDevices.get(position);
+            BluetoothDevice device = bluetoothDevices.get(position);
             TextView text1 = (TextView) view.findViewById(R.id.text1);
             TextView text2 = (TextView) view.findViewById(R.id.text2);
             text1.setText(device.getName());

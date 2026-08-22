@@ -12,7 +12,7 @@ public class Expression {
     }
 
     public String getType() {
-        return this.type;
+        return type;
     }
 
     public static Expression createExact(String input, String type) {
@@ -27,10 +27,10 @@ public class Expression {
     }
 
     public String getExact() {
-        return this.exact;
+        return exact;
     }
 
     public String toString() {
-        return "type=" + this.type + ", value=" + this.exact;
+        return "type=" + type + ", value=" + exact;
     }
 }

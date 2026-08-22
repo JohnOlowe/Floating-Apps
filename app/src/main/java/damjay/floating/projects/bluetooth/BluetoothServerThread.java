@@ -14,7 +14,7 @@ public class BluetoothServerThread extends Thread {
         this.callback = callback;
         try {
             BluetoothServerSocket bluetoothServerSocketListenUsingRfcommWithServiceRecord = adapter.listenUsingRfcommWithServiceRecord(name, uuid);
-            this.serverSocket = bluetoothServerSocketListenUsingRfcommWithServiceRecord;
+            serverSocket = bluetoothServerSocketListenUsingRfcommWithServiceRecord;
             if (bluetoothServerSocketListenUsingRfcommWithServiceRecord == null) {
                 callback.onResult(0, null);
             }
@@ -26,13 +26,13 @@ public class BluetoothServerThread extends Thread {
 
     @Override
     public void run() throws IOException {
-        if (this.serverSocket == null) {
+        if (serverSocket == null) {
             return;
         }
         BluetoothSocket socket = null;
         while (true) {
             try {
-                BluetoothServerSocket bluetoothServerSocket = this.serverSocket;
+                BluetoothServerSocket bluetoothServerSocket = serverSocket;
                 if (bluetoothServerSocket == null || socket != null) {
                     break;
                 } else {
@@ -40,9 +40,9 @@ public class BluetoothServerThread extends Thread {
                 }
             } catch (Throwable t) {
                 t.printStackTrace();
-                this.callback.onResult(0, t);
+                callback.onResult(0, t);
                 try {
-                    this.serverSocket.close();
+                    serverSocket.close();
                     return;
                 } catch (Throwable closeError) {
                     closeError.printStackTrace();
@@ -51,10 +51,10 @@ public class BluetoothServerThread extends Thread {
             }
         }
         if (socket != null) {
-            this.callback.onResult(1, socket);
+            callback.onResult(1, socket);
         }
         try {
-            BluetoothServerSocket bluetoothServerSocket2 = this.serverSocket;
+            BluetoothServerSocket bluetoothServerSocket2 = serverSocket;
             if (bluetoothServerSocket2 != null) {
                 bluetoothServerSocket2.close();
             }
@@ -65,8 +65,8 @@ public class BluetoothServerThread extends Thread {
 
     public void cancel() {
         try {
-            this.serverSocket.close();
-            this.serverSocket = null;
+            serverSocket.close();
+            serverSocket = null;
         } catch (Throwable t) {
             t.printStackTrace();
         }

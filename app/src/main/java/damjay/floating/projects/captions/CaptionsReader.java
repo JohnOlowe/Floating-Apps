@@ -29,22 +29,22 @@ public class CaptionsReader implements Runnable {
 
     public void gotoPreviousCaption() {
         int i;
-        if (!this.isDisplaying || (i = this.currentCaptionIndex) == 0) {
+        if (!isDisplaying || (i = currentCaptionIndex) == 0) {
             return;
         }
         CaptionElement prevCaptionElement = CaptionElement.getCaptionAtIndex(Math.max(1, i - 1));
-        this.startTime =
-                prevCaptionElement != null ? System.currentTimeMillis() - prevCaptionElement.startTime : this.startTime;
+        startTime =
+                prevCaptionElement != null ? System.currentTimeMillis() - prevCaptionElement.startTime : startTime;
         if (!isPlaying()) {
             play();
         }
     }
 
     public void gotoNextCaption() {
-        if (this.isDisplaying) {
-            CaptionElement nextCaptionElement = CaptionElement.getCaptionAtIndex(this.currentCaptionIndex + 1);
-            this.startTime = nextCaptionElement != null ? System.currentTimeMillis() - nextCaptionElement.startTime
-                                                        : this.startTime;
+        if (isDisplaying) {
+            CaptionElement nextCaptionElement = CaptionElement.getCaptionAtIndex(currentCaptionIndex + 1);
+            startTime = nextCaptionElement != null ? System.currentTimeMillis() - nextCaptionElement.startTime
+                                                        : startTime;
             if (!isPlaying()) {
                 play();
             }
@@ -52,17 +52,17 @@ public class CaptionsReader implements Runnable {
     }
 
     public void play() {
-        this.startTime = System.currentTimeMillis() - this.captionTime;
+        startTime = System.currentTimeMillis() - captionTime;
         setPlayMode(1);
     }
 
     public void pause() {
         setPlayMode(0);
-        this.captionTime = System.currentTimeMillis() - this.startTime;
+        captionTime = System.currentTimeMillis() - startTime;
     }
 
     public boolean isPlaying() {
-        return this.playMode == 1;
+        return playMode == 1;
     }
 
     private void setPlayMode(int playMode) {
@@ -70,19 +70,19 @@ public class CaptionsReader implements Runnable {
     }
 
     public void startDisplaying() {
-        this.isDisplaying = true;
-        this.startTime = System.currentTimeMillis();
+        isDisplaying = true;
+        startTime = System.currentTimeMillis();
         new Thread(this).start();
     }
 
     public boolean isDisplaying() {
-        return this.isDisplaying;
+        return isDisplaying;
     }
 
     public String getCaptions(long time) {
         CaptionElement correspondingCaption = CaptionElement.getCorrespondingCaption(time);
         if (correspondingCaption != null) {
-            this.currentCaptionIndex = correspondingCaption.getCaptionIndex();
+            currentCaptionIndex = correspondingCaption.getCaptionIndex();
         }
         return correspondingCaption == null ? "" : correspondingCaption.getCaptionText();
     }
@@ -92,11 +92,11 @@ public class CaptionsReader implements Runnable {
         String previousText = "";
         while (isDisplaying()) {
             if (isPlaying()) {
-                long currentTime = System.currentTimeMillis() - this.startTime;
+                long currentTime = System.currentTimeMillis() - startTime;
                 String newText = getCaptions(currentTime);
                 if (!newText.equals(previousText)) {
                     previousText = newText;
-                    this.handler.post(() -> this.captionsCallback.displayCaption(newText));
+                    handler.post(() -> captionsCallback.displayCaption(newText));
                 }
                 try {
                     Thread.sleep(50L);
@@ -130,11 +130,11 @@ public class CaptionsReader implements Runnable {
         }
 
         public String getCaptionText() {
-            return this.captionText;
+            return captionText;
         }
 
         public int getCaptionIndex() {
-            return this.index;
+            return index;
         }
 
         public static void initializeCaptionElements(String captionText) {

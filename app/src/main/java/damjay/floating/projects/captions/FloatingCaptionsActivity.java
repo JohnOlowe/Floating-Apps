@@ -36,11 +36,11 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
     }
 
     private void initializeViews() {
-        this.filePathField = (TextView) findViewById(R.id.caption_file_path);
+        filePathField = (TextView) findViewById(R.id.caption_file_path);
         findViewById(R.id.start_captions).setOnClickListener((v) -> {
             File captionsFile;
             String contentCaptions;
-            String filePath = this.filePathField.getText().toString().trim();
+            String filePath = filePathField.getText().toString().trim();
             if (filePath.isEmpty()
                     || (contentCaptions = getContentCaptions((captionsFile = new File(filePath)))) == null) {
                 return;
@@ -57,7 +57,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
         });
         findViewById(R.id.browse_files).setOnClickListener((v) -> {
             FileBrowserActivity.callback = getCaptionsCallback();
-            FileBrowserActivity.currentInput = this.filePathField.getText().toString();
+            FileBrowserActivity.currentInput = filePathField.getText().toString();
             Intent intent = new Intent(this, FileBrowserActivity.class);
             startActivity(intent);
         });
@@ -113,7 +113,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
 
     private boolean checkPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-            if (this.alertDialog != null) {
+            if (alertDialog != null) {
                 return false;
             }
             AlertDialog alertDialogCreate =
@@ -138,13 +138,13 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
                                     })
                             .setNegativeButton(R.string.exit, FloatingPDFActivity.DIALOG_EXIT_LISTENER)
                             .create();
-            this.alertDialog = alertDialogCreate;
+            alertDialog = alertDialogCreate;
             alertDialogCreate.show();
             return false;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.R
                 && checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE") != 0) {
-            if (this.alertDialog != null) {
+            if (alertDialog != null) {
                 return false;
             }
             AlertDialog alertDialogCreate2 =
@@ -162,7 +162,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
                                     })
                             .setNegativeButton(R.string.exit, FloatingPDFActivity.DIALOG_EXIT_LISTENER)
                             .create();
-            this.alertDialog = alertDialogCreate2;
+            alertDialog = alertDialogCreate2;
             alertDialogCreate2.show();
             return false;
         }
@@ -171,10 +171,10 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
     }
 
     private void closeAlertDialog() {
-        AlertDialog alertDialog = this.alertDialog;
+        AlertDialog alertDialog = alertDialog;
         if (alertDialog != null) {
             alertDialog.dismiss();
-            this.alertDialog = null;
+            alertDialog = null;
         }
     }
 

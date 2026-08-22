@@ -23,14 +23,14 @@ public class MusicListAdapter extends BaseAdapter {
     private void initializeMusicList(ArrayList<String> savedSongHistory, ArrayList<String> chosenDirectories) {
         if (savedSongHistory != null && savedSongHistory.size() > 0) {
             for (String songPath : savedSongHistory) {
-                this.musicList.add(new MusicFile(songPath));
+                musicList.add(new MusicFile(songPath));
             }
             return;
         }
         for (String directory : chosenDirectories) {
             checkAudioFiles(new File(directory));
         }
-        System.out.println("Music list is now " + this.musicList);
+        System.out.println("Music list is now " + musicList);
         System.out.println("Saved song history is " + savedSongHistory);
         System.out.println("Chosen directories is " + chosenDirectories);
     }
@@ -46,7 +46,7 @@ public class MusicListAdapter extends BaseAdapter {
                 String fileExtension = fileName.substring(fileName.lastIndexOf(46, fileName.length() - 1) + 1).toLowerCase();
                 for (String audioExtension : AUDIO_FILE_EXTENSIONS) {
                     if (audioExtension.equals(fileExtension)) {
-                        this.musicList.add(new MusicFile(file));
+                        musicList.add(new MusicFile(file));
                         break;
                     }
                 }
@@ -58,7 +58,7 @@ public class MusicListAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        ArrayList<MusicFile> arrayList = this.musicList;
+        ArrayList<MusicFile> arrayList = musicList;
         if (arrayList != null) {
             return arrayList.size();
         }
@@ -67,11 +67,11 @@ public class MusicListAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int position) {
-        ArrayList<MusicFile> arrayList = this.musicList;
+        ArrayList<MusicFile> arrayList = musicList;
         if (arrayList == null || arrayList.size() <= position) {
             return null;
         }
-        return this.musicList.get(position);
+        return musicList.get(position);
     }
 
     @Override
@@ -82,10 +82,10 @@ public class MusicListAdapter extends BaseAdapter {
     @Override
     public View getView(int position, View view, ViewGroup viewGroup) {
         if (view == null) {
-            view = LayoutInflater.from(this.context).inflate(R.layout.simple_list_item_2, viewGroup, false);
-            view.setTag(this.musicList.get(position));
+            view = LayoutInflater.from(context).inflate(R.layout.simple_list_item_2, viewGroup, false);
+            view.setTag(musicList.get(position));
         }
-        MusicFile musicFile = this.musicList.get(position);
+        MusicFile musicFile = musicList.get(position);
         TextView text1 = (TextView) view.findViewById(R.id.text1);
         TextView text2 = (TextView) view.findViewById(R.id.text2);
         text1.setText(musicFile.getFileName());
@@ -105,32 +105,32 @@ public class MusicListAdapter extends BaseAdapter {
         MusicFile(String fullPath) {
             String strSubstring;
             this.fullPath = fullPath;
-            this.fileName = fullPath.substring(fullPath.lastIndexOf(47) + 1);
+            fileName = fullPath.substring(fullPath.lastIndexOf(47) + 1);
             String strSubstring2 = fullPath.substring(0, fullPath.lastIndexOf(47));
-            this.fullPath = strSubstring2;
+            fullPath = strSubstring2;
             if (strSubstring2.equals("/storage/emulated/0")) {
                 strSubstring = "Internal Storage Root";
             } else {
-                String str = this.fullPath;
+                String str = fullPath;
                 strSubstring = str.substring(str.lastIndexOf(47) + 1);
             }
-            this.directoryName = strSubstring;
+            directoryName = strSubstring;
         }
 
         public String getFullPath() {
-            return this.fullPath;
+            return fullPath;
         }
 
         public String getDirectoryName() {
-            return this.directoryName;
+            return directoryName;
         }
 
         public String getFileName() {
-            return this.fileName;
+            return fileName;
         }
 
         public String toString() {
-            return "fileName=" + this.fileName + ", fullPath=" + this.fullPath;
+            return "fileName=" + fileName + ", fullPath=" + fullPath;
         }
     }
 }

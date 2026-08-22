@@ -27,20 +27,20 @@ public class GuestActivity extends AppCompatActivity implements AdapterView.OnIt
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         initView();
-        setContentView(this.deviceList);
+        setContentView(deviceList);
         getSupportActionBar().setTitle(R.string.asGuest);
     }
 
     private void initView() {
         ListView listView = new ListView(this);
-        this.deviceList = listView;
+        deviceList = listView;
         listView.setLayoutParams(new ViewGroup.LayoutParams(-1, -1));
         View content = getLayoutInflater().inflate(R.layout.activity_guest, (ViewGroup) null);
-        this.deviceList.addHeaderView(content);
-        BluetoothDeviceAdapter bluetoothDeviceAdapter = new BluetoothDeviceAdapter(this, this.deviceList);
-        this.bluetoothAdapter = bluetoothDeviceAdapter;
-        this.deviceList.setAdapter((ListAdapter) bluetoothDeviceAdapter);
-        this.deviceList.setOnItemClickListener(this);
+        deviceList.addHeaderView(content);
+        BluetoothDeviceAdapter bluetoothDeviceAdapter = new BluetoothDeviceAdapter(this, deviceList);
+        bluetoothAdapter = bluetoothDeviceAdapter;
+        deviceList.setAdapter((ListAdapter) bluetoothDeviceAdapter);
+        deviceList.setOnItemClickListener(this);
     }
 
     @Override
@@ -59,17 +59,17 @@ public class GuestActivity extends AppCompatActivity implements AdapterView.OnIt
                 onComplete(null);
                 return;
             }
-            this.bluetoothSocket = socket;
+            bluetoothSocket = socket;
             new Thread(this).start();
             startWaiting();
         }
     }
 
     private void onComplete(BluetoothSocket connectedSocket) {
-        AlertDialog alertDialog = this.waitingDialog;
+        AlertDialog alertDialog = waitingDialog;
         if (alertDialog != null) {
             alertDialog.dismiss();
-            this.waitingDialog = null;
+            waitingDialog = null;
         }
         if (connectedSocket == null) {
             new AlertDialog.Builder(this)
@@ -97,7 +97,7 @@ public class GuestActivity extends AppCompatActivity implements AdapterView.OnIt
                                                         })
                                                 .setCancelable(false)
                                                 .create();
-        this.waitingDialog = alertDialogCreate;
+        waitingDialog = alertDialogCreate;
         alertDialogCreate.show();
     }
 
@@ -109,18 +109,18 @@ public class GuestActivity extends AppCompatActivity implements AdapterView.OnIt
     public void run() {
         boolean connected = false;
         try {
-            this.bluetoothSocket.connect();
+            bluetoothSocket.connect();
             connected = true;
         } catch (Throwable connectException) {
             connectException.printStackTrace();
             try {
-                this.bluetoothSocket.close();
-                this.bluetoothSocket = null;
+                bluetoothSocket.close();
+                bluetoothSocket = null;
             } catch (Throwable closeException) {
                 closeException.printStackTrace();
             }
         }
         boolean connectedFlag = connected;
-        runOnUiThread(() -> onComplete(connectedFlag ? this.bluetoothSocket : null));
+        runOnUiThread(() -> onComplete(connectedFlag ? bluetoothSocket : null));
     }
 }

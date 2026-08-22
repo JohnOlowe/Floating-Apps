@@ -36,74 +36,74 @@ public class NoteService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        this.view = LayoutInflater.from(this).inflate(R.layout.service_note, (ViewGroup) null);
+        view = LayoutInflater.from(this).inflate(R.layout.service_note, (ViewGroup) null);
         initializeViews();
         setOnClickListeners();
-        View view = this.view;
+        View view = view;
         ViewsUtils.addTouchListener(view,
-                ViewsUtils.getViewTouchListener(this, view, this.windowManager, this.layoutParams), true, true,
+                ViewsUtils.getViewTouchListener(this, view, windowManager, layoutParams), true, true,
                 Button.class, ImageView.class, LinearLayout.class, RelativeLayout.class);
     }
 
     private void initializeViews() {
-        this.windowManager = (WindowManager) getSystemService("window");
-        this.collapsedField = this.view.findViewById(R.id.collapsed_field);
-        this.expandedField = this.view.findViewById(R.id.expanded_field);
-        this.toggleFocus = this.view.findViewById(R.id.toggle_focus);
-        this.textField = (EditText) this.view.findViewById(R.id.copy_text_field);
-        this.copyButton = (Button) this.view.findViewById(R.id.copy_button);
-        WindowManager windowManager = this.windowManager;
-        View view = this.view;
+        windowManager = (WindowManager) getSystemService("window");
+        collapsedField = view.findViewById(R.id.collapsed_field);
+        expandedField = view.findViewById(R.id.expanded_field);
+        toggleFocus = view.findViewById(R.id.toggle_focus);
+        textField = (EditText) view.findViewById(R.id.copy_text_field);
+        copyButton = (Button) view.findViewById(R.id.copy_button);
+        WindowManager windowManager = windowManager;
+        View view = view;
         WindowManager.LayoutParams floatingLayoutParams = ViewsUtils.getFloatingLayoutParams(true);
-        this.layoutParams = floatingLayoutParams;
+        layoutParams = floatingLayoutParams;
         windowManager.addView(view, floatingLayoutParams);
-        this.expandedField.setVisibility(View.GONE);
-        this.collapsedField.setVisibility(View.VISIBLE);
+        expandedField.setVisibility(View.GONE);
+        collapsedField.setVisibility(View.VISIBLE);
     }
 
     private void setOnClickListeners() {
-        this.view.findViewById(R.id.launch_app).setOnClickListener(v -> ViewsUtils.launchApp(this, MainActivity.class));
-        this.view.findViewById(R.id.minimize_field).setOnClickListener((v) -> {
-            this.expandedField.setVisibility(View.GONE);
-            this.collapsedField.setVisibility(View.VISIBLE);
-            this.layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-            this.windowManager.updateViewLayout(this.view, this.layoutParams);
+        view.findViewById(R.id.launch_app).setOnClickListener(v -> ViewsUtils.launchApp(this, MainActivity.class));
+        view.findViewById(R.id.minimize_field).setOnClickListener((v) -> {
+            expandedField.setVisibility(View.GONE);
+            collapsedField.setVisibility(View.VISIBLE);
+            layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+            windowManager.updateViewLayout(view, layoutParams);
         });
-        this.view.findViewById(R.id.close_field).setOnClickListener(v -> stopSelf());
-        this.view.findViewById(R.id.minimize_field).callOnClick();
-        this.collapsedField.setOnClickListener((v) -> {
-            this.expandedField.setVisibility(View.VISIBLE);
-            this.collapsedField.setVisibility(View.GONE);
-            this.layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
-            ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_on);
-            this.windowManager.updateViewLayout(this.view, this.layoutParams);
+        view.findViewById(R.id.close_field).setOnClickListener(v -> stopSelf());
+        view.findViewById(R.id.minimize_field).callOnClick();
+        collapsedField.setOnClickListener((v) -> {
+            expandedField.setVisibility(View.VISIBLE);
+            collapsedField.setVisibility(View.GONE);
+            layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+            ((ImageView) toggleFocus).setImageResource(R.drawable.focus_on);
+            windowManager.updateViewLayout(view, layoutParams);
         });
-        this.toggleFocus.setOnClickListener((v) -> {
-            if (this.layoutParams.flags == WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) {
-                this.layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
-                ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_on);
+        toggleFocus.setOnClickListener((v) -> {
+            if (layoutParams.flags == WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) {
+                layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+                ((ImageView) toggleFocus).setImageResource(R.drawable.focus_on);
             } else {
-                this.layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-                ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_off);
+                layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+                ((ImageView) toggleFocus).setImageResource(R.drawable.focus_off);
             }
-            this.windowManager.updateViewLayout(this.view, this.layoutParams);
+            windowManager.updateViewLayout(view, layoutParams);
         });
-        this.copyButton.setOnClickListener((v) -> {
-            String text = this.textField.getText().toString();
+        copyButton.setOnClickListener((v) -> {
+            String text = textField.getText().toString();
             if (text.trim().isEmpty()) {
                 return;
             }
             ClipboardManager clipboard = (ClipboardManager) getSystemService("clipboard");
             ClipData clip = ClipData.newPlainText(null, text);
             clipboard.setPrimaryClip(clip);
-            this.textField.setText("");
-            this.toggleFocus.callOnClick();
+            textField.setText("");
+            toggleFocus.callOnClick();
         });
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        this.windowManager.removeView(this.view);
+        windowManager.removeView(view);
     }
 }

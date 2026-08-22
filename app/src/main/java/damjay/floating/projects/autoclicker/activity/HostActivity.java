@@ -46,15 +46,15 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
     private boolean startListening() {
         try {
             BluetoothManager bluetoothManager = (BluetoothManager) getSystemService("bluetooth");
-            this.adapter = bluetoothManager.getAdapter();
+            adapter = bluetoothManager.getAdapter();
         } catch (Throwable t) {
             t.printStackTrace();
         }
-        if (this.adapter != null) {
+        if (adapter != null) {
             BluetoothServerThread bluetoothServerThread =
-                    new BluetoothServerThread(this, this.adapter, getResources().getString(R.string.app_name),
+                    new BluetoothServerThread(this, adapter, getResources().getString(R.string.app_name),
                             UUID.fromString(getResources().getString(R.string.clicker_uuid)));
-            this.serverThread = bluetoothServerThread;
+            serverThread = bluetoothServerThread;
             bluetoothServerThread.start();
             return true;
         }
@@ -74,13 +74,13 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
                                                         })
                                                 .setCancelable(false)
                                                 .create();
-        this.alertDialog = alertDialogCreate;
+        alertDialog = alertDialogCreate;
         alertDialogCreate.show();
     }
 
     private void cancel() {
-        this.closed = true;
-        BluetoothServerThread bluetoothServerThread = this.serverThread;
+        closed = true;
+        BluetoothServerThread bluetoothServerThread = serverThread;
         if (bluetoothServerThread != null) {
             bluetoothServerThread.cancel();
         }
@@ -90,20 +90,20 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
     @Override
     public void onResult(int resultCode, Object artifact) {
         runOnUiThread(() -> {
-            AlertDialog alertDialog = this.alertDialog;
+            AlertDialog alertDialog = alertDialog;
             if (alertDialog != null) {
                 alertDialog.dismiss();
-                this.alertDialog = null;
+                alertDialog = null;
             }
             if (resultCode == 1) {
                 if (artifact != null && (artifact instanceof BluetoothSocket)) {
-                    this.socket = (BluetoothSocket) artifact;
+                    socket = (BluetoothSocket) artifact;
                     startSelectorActivity();
                     return;
                 }
                 return;
             }
-            if (this.closed) {
+            if (closed) {
                 return;
             }
             new AlertDialog.Builder(this)
@@ -121,7 +121,7 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
 
     private void startSelectorActivity() {
         Intent intent = new Intent(this, ActionSelectorActivity.class);
-        ActionSelectorActivity.bluetoothSocket = this.socket;
+        ActionSelectorActivity.bluetoothSocket = socket;
         startActivity(intent);
     }
 }

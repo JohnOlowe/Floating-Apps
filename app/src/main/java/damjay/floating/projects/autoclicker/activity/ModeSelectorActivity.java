@@ -43,7 +43,7 @@ public class ModeSelectorActivity extends AppCompatActivity {
                     startActivity(new Intent(this, clazz));
                     return;
                 } else {
-                    this.pendingLaunchClass = clazz;
+                    pendingLaunchClass = clazz;
                     return;
                 }
             }
@@ -125,11 +125,11 @@ public class ModeSelectorActivity extends AppCompatActivity {
                         .show();
                 return;
             } else {
-                if (this.pendingLaunchClass != null) {
+                if (pendingLaunchClass != null) {
                     if (permissionsGranted()) {
-                        startActivity(new Intent(this, this.pendingLaunchClass));
+                        startActivity(new Intent(this, pendingLaunchClass));
                     }
-                    this.pendingLaunchClass = null;
+                    pendingLaunchClass = null;
                     return;
                 }
                 return;

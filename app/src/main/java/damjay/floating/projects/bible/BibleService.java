@@ -36,37 +36,37 @@ public class BibleService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        this.windowManager = (WindowManager) getSystemService("window");
-        this.view = LayoutInflater.from(this).inflate(R.layout.bible_layout, (ViewGroup) null);
-        this.params = getLayoutParams();
+        windowManager = (WindowManager) getSystemService("window");
+        view = LayoutInflater.from(this).inflate(R.layout.bible_layout, (ViewGroup) null);
+        params = getLayoutParams();
         initializeViewItems();
         initViewSize();
         minimizeView();
-        this.windowManager.addView(this.view, this.params);
-        this.windowManager.updateViewLayout(this.view, this.params);
-        addTouchListeners(this.view);
+        windowManager.addView(view, params);
+        windowManager.updateViewLayout(view, params);
+        addTouchListeners(view);
     }
 
     private void initializeViewItems() {
-        this.verseList = (ListView) this.view.findViewById(R.id.bibleVerses);
-        if (this.bibleAdapter == null) {
+        verseList = (ListView) view.findViewById(R.id.bibleVerses);
+        if (bibleAdapter == null) {
             BibleAdapter bibleAdapter = new BibleAdapter(this);
             this.bibleAdapter = bibleAdapter;
-            this.verseList.setAdapter((ListAdapter) bibleAdapter);
+            verseList.setAdapter((ListAdapter) bibleAdapter);
         }
-        this.bookList = (Spinner) this.view.findViewById(R.id.bibleBookSpinner);
-        this.chapterList = (Spinner) this.view.findViewById(R.id.bibleChapterSpinner);
-        this.view.findViewById(R.id.minimizedBible).setOnClickListener(v -> maximizeView());
-        this.view.findViewById(R.id.minimizeBible).setOnClickListener(v -> minimizeView());
+        bookList = (Spinner) view.findViewById(R.id.bibleBookSpinner);
+        chapterList = (Spinner) view.findViewById(R.id.bibleChapterSpinner);
+        view.findViewById(R.id.minimizedBible).setOnClickListener(v -> maximizeView());
+        view.findViewById(R.id.minimizeBible).setOnClickListener(v -> minimizeView());
         setArrayAdapters();
     }
 
     private void setArrayAdapters() {
         ArrayAdapter<String> bookListAdapter =
-                new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, this.bibleAdapter.getBooks());
+                new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, bibleAdapter.getBooks());
         bookListAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        this.bookList.setAdapter((SpinnerAdapter) bookListAdapter);
-        this.bookList.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        bookList.setAdapter((SpinnerAdapter) bookListAdapter);
+        bookList.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> spinner, View view, int position, long id) {
                 if (BibleService.this.bibleAdapter.getCurrentBookIndex() != position) {
@@ -85,10 +85,10 @@ public class BibleService extends Service {
             public void onNothingSelected(AdapterView<?> spinner) {}
         });
         ArrayAdapter<String> chapterListAdapter = new ArrayAdapter<>(
-                this, android.R.layout.simple_spinner_item, getCountTill(this.bibleAdapter.getNumberOfChapters()));
+                this, android.R.layout.simple_spinner_item, getCountTill(bibleAdapter.getNumberOfChapters()));
         chapterListAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        this.chapterList.setAdapter((SpinnerAdapter) chapterListAdapter);
-        this.chapterList.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+        chapterList.setAdapter((SpinnerAdapter) chapterListAdapter);
+        chapterList.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
             @Override
             public void onItemSelected(AdapterView<?> spinner, View view, int position, long id) {
                 BibleService.this.bibleAdapter.makeChapter(
@@ -103,31 +103,31 @@ public class BibleService extends Service {
     }
 
     private void initViewSize() {
-        this.view.findViewById(R.id.bibleCloseView).setOnClickListener(v -> stopSelf());
-        this.view.findViewById(R.id.bibleLaunchApp)
+        view.findViewById(R.id.bibleCloseView).setOnClickListener(v -> stopSelf());
+        view.findViewById(R.id.bibleLaunchApp)
                 .setOnClickListener(v -> ViewsUtils.launchApp(this, MainActivity.class));
-        this.view.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
-            ViewGroup.LayoutParams layoutParams = this.view.findViewById(R.id.bibleNavPadding).getLayoutParams();
-            ViewGroup.LayoutParams layoutParams2 = this.verseList.getLayoutParams();
+        view.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            ViewGroup.LayoutParams layoutParams = view.findViewById(R.id.bibleNavPadding).getLayoutParams();
+            ViewGroup.LayoutParams layoutParams2 = verseList.getLayoutParams();
             int viewWidth = ViewsUtils.getViewWidth(350.0f);
             layoutParams2.width = viewWidth;
             layoutParams.width = viewWidth;
-            this.verseList.getLayoutParams().height = ViewsUtils.getViewHeight(400.0f);
+            verseList.getLayoutParams().height = ViewsUtils.getViewHeight(400.0f);
         });
     }
 
     private void minimizeView() {
-        this.verseList.setVisibility(View.GONE);
-        this.view.findViewById(R.id.windowControls).setVisibility(View.GONE);
-        this.view.findViewById(R.id.bibleNavPadding).setVisibility(View.GONE);
-        this.view.findViewById(R.id.minimizedBible).setVisibility(View.VISIBLE);
+        verseList.setVisibility(View.GONE);
+        view.findViewById(R.id.windowControls).setVisibility(View.GONE);
+        view.findViewById(R.id.bibleNavPadding).setVisibility(View.GONE);
+        view.findViewById(R.id.minimizedBible).setVisibility(View.VISIBLE);
     }
 
     private void maximizeView() {
-        this.verseList.setVisibility(View.VISIBLE);
-        this.view.findViewById(R.id.windowControls).setVisibility(View.VISIBLE);
-        this.view.findViewById(R.id.bibleNavPadding).setVisibility(View.VISIBLE);
-        this.view.findViewById(R.id.minimizedBible).setVisibility(View.GONE);
+        verseList.setVisibility(View.VISIBLE);
+        view.findViewById(R.id.windowControls).setVisibility(View.VISIBLE);
+        view.findViewById(R.id.bibleNavPadding).setVisibility(View.VISIBLE);
+        view.findViewById(R.id.minimizedBible).setVisibility(View.GONE);
     }
 
     public String[] getCountTill(int chapters) {
@@ -151,13 +151,13 @@ public class BibleService extends Service {
     }
 
     private void addTouchListeners(View view) {
-        View.OnTouchListener listener = ViewsUtils.getViewTouchListener(this, view, this.windowManager, this.params);
+        View.OnTouchListener listener = ViewsUtils.getViewTouchListener(this, view, windowManager, params);
         ViewsUtils.addTouchListener(view, listener, true, true, ListView.class, Spinner.class, null);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        this.windowManager.removeView(this.view);
+        windowManager.removeView(view);
     }
 }

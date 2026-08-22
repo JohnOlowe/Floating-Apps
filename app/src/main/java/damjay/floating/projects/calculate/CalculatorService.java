@@ -45,72 +45,72 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
         super.onCreate();
         getViews();
         minimizeView(null);
-        this.params = ViewsUtils.getFloatingLayoutParams();
+        params = ViewsUtils.getFloatingLayoutParams();
         WindowManager windowManager = (WindowManager) getSystemService("window");
-        this.window = windowManager;
-        windowManager.addView(this.parentLayout, this.params);
+        window = windowManager;
+        windowManager.addView(parentLayout, params);
         addTouchListeners();
     }
 
     private void getViews() {
         View viewInflate = LayoutInflater.from(this).inflate(R.layout.calculator_layout, (ViewGroup) null);
-        this.parentLayout = viewInflate;
-        this.editor = (EditText) viewInflate.findViewById(R.id.calcField);
-        this.collapsed = this.parentLayout.findViewById(R.id.collapsedCalc);
-        this.expanded = this.parentLayout.findViewById(R.id.expandedCalc);
-        this.mainCalculator = this.parentLayout.findViewById(R.id.main_calculator);
-        if (this.historyList == null) {
-            this.historyList = (ListView) this.parentLayout.findViewById(R.id.calcHistory);
+        parentLayout = viewInflate;
+        editor = (EditText) viewInflate.findViewById(R.id.calcField);
+        collapsed = parentLayout.findViewById(R.id.collapsedCalc);
+        expanded = parentLayout.findViewById(R.id.expandedCalc);
+        mainCalculator = parentLayout.findViewById(R.id.main_calculator);
+        if (historyList == null) {
+            historyList = (ListView) parentLayout.findViewById(R.id.calcHistory);
             CalculatorHistoryAdapter calculatorHistoryAdapter =
-                    new CalculatorHistoryAdapter(this, this, this.calculatedItems);
-            this.historyAdapter = calculatorHistoryAdapter;
-            this.historyList.setAdapter((ListAdapter) calculatorHistoryAdapter);
+                    new CalculatorHistoryAdapter(this, this, calculatedItems);
+            historyAdapter = calculatorHistoryAdapter;
+            historyList.setAdapter((ListAdapter) calculatorHistoryAdapter);
         }
-        this.collapsed.setOnClickListener((view) -> {
-            this.expanded.setVisibility(View.VISIBLE);
-            this.collapsed.setVisibility(View.GONE);
-            View view2 = this.quickLaunchView;
+        collapsed.setOnClickListener((view) -> {
+            expanded.setVisibility(View.VISIBLE);
+            collapsed.setVisibility(View.GONE);
+            View view2 = quickLaunchView;
             if (view2 != null) {
                 view2.setVisibility(View.VISIBLE);
             }
         });
-        this.parentLayout.findViewById(R.id.calcLaunchActivity)
+        parentLayout.findViewById(R.id.calcLaunchActivity)
                 .setOnClickListener(v -> ViewsUtils.launchApp(this, MainActivity.class));
-        this.parentLayout.findViewById(R.id.show_quick_launch).setOnClickListener((v) -> {
-            View view = this.quickLaunchView;
+        parentLayout.findViewById(R.id.show_quick_launch).setOnClickListener((v) -> {
+            View view = quickLaunchView;
             if (view == null) {
                 View quickLaunchView = QuickLaunchControl.getQuickLaunchView(this);
                 this.quickLaunchView = quickLaunchView;
-                WindowManager windowManager = this.window;
+                WindowManager windowManager = window;
                 WindowManager.LayoutParams quickLaunchParams = getQuickLaunchParams(null);
                 this.quickLaunchParams = quickLaunchParams;
                 windowManager.addView(quickLaunchView, quickLaunchParams);
                 return;
             }
-            this.window.removeView(view);
-            this.quickLaunchView = null;
+            window.removeView(view);
+            quickLaunchView = null;
         });
-        this.expanded.getViewTreeObserver().addOnGlobalLayoutListener(
-                () -> this.expanded.getLayoutParams().width = ViewsUtils.getViewWidth(275.0f));
+        expanded.getViewTreeObserver().addOnGlobalLayoutListener(
+                () -> expanded.getLayoutParams().width = ViewsUtils.getViewWidth(275.0f));
         ViewTreeObserver.OnGlobalLayoutListener layoutListener = () -> {
-            int measuredHeight = this.mainCalculator.getMeasuredHeight();
+            int measuredHeight = mainCalculator.getMeasuredHeight();
             if (measuredHeight < 1) {
                 return;
             }
-            this.historyList.getLayoutParams().height = measuredHeight;
+            historyList.getLayoutParams().height = measuredHeight;
         };
-        this.mainCalculator.getViewTreeObserver().addOnGlobalLayoutListener(layoutListener);
-        this.historyList.getViewTreeObserver().addOnGlobalLayoutListener(layoutListener);
-        EditText editText = this.editor;
+        mainCalculator.getViewTreeObserver().addOnGlobalLayoutListener(layoutListener);
+        historyList.getViewTreeObserver().addOnGlobalLayoutListener(layoutListener);
+        EditText editText = editor;
         int length = editText.getText().length();
-        this.caretPosition = length;
+        caretPosition = length;
         editText.setSelection(length);
     }
 
     private WindowManager.LayoutParams getQuickLaunchParams(WindowManager.LayoutParams quickLaunchParams) {
-        int y = this.params.y;
-        int topNavHeight = this.parentLayout.findViewById(R.id.topNav).getMeasuredHeight();
-        int viewHeight = this.quickLaunchView.getMeasuredHeight();
+        int y = params.y;
+        int topNavHeight = parentLayout.findViewById(R.id.topNav).getMeasuredHeight();
+        int viewHeight = quickLaunchView.getMeasuredHeight();
         int viewHeight2 = viewHeight <= 0 ? topNavHeight : viewHeight;
         WindowManager.LayoutParams quickLaunchParams2 =
                 quickLaunchParams == null ? ViewsUtils.getFloatingLayoutParams() : quickLaunchParams;
@@ -119,227 +119,227 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
         } else {
             quickLaunchParams2.y = y - viewHeight2;
         }
-        quickLaunchParams2.x = this.params.x;
+        quickLaunchParams2.x = params.x;
         return quickLaunchParams2;
     }
 
     private void addTouchListeners() {
         View.OnTouchListener touchListener =
-                ViewsUtils.getViewTouchListener(this, this.parentLayout, this.window, this.params);
+                ViewsUtils.getViewTouchListener(this, parentLayout, window, params);
         View.OnTouchListener mainTouchListener = (view, event) -> {
             boolean result = touchListener.onTouch(view, event);
-            View view2 = this.quickLaunchView;
+            View view2 = quickLaunchView;
             if (view2 != null) {
-                this.window.updateViewLayout(view2, getQuickLaunchParams(this.quickLaunchParams));
+                window.updateViewLayout(view2, getQuickLaunchParams(quickLaunchParams));
             }
             return result;
         };
-        ViewsUtils.addTouchListener(this.expanded, mainTouchListener, true, true, ListView.class, null);
-        ViewsUtils.addTouchListener(this.collapsed, touchListener, true, true, new Class[0]);
+        ViewsUtils.addTouchListener(expanded, mainTouchListener, true, true, ListView.class, null);
+        ViewsUtils.addTouchListener(collapsed, touchListener, true, true, new Class[0]);
     }
 
     public void showHistory(View view) {
-        if (this.parentLayout.findViewById(R.id.calcHistory).getVisibility() == 0) {
+        if (parentLayout.findViewById(R.id.calcHistory).getVisibility() == 0) {
             hideHistory();
             return;
         }
-        if (this.historyList == null) {
-            this.historyList = (ListView) this.parentLayout.findViewById(R.id.calcHistory);
+        if (historyList == null) {
+            historyList = (ListView) parentLayout.findViewById(R.id.calcHistory);
             CalculatorHistoryAdapter calculatorHistoryAdapter =
-                    new CalculatorHistoryAdapter(this, this, this.calculatedItems);
-            this.historyAdapter = calculatorHistoryAdapter;
-            this.historyList.setAdapter((ListAdapter) calculatorHistoryAdapter);
+                    new CalculatorHistoryAdapter(this, this, calculatedItems);
+            historyAdapter = calculatorHistoryAdapter;
+            historyList.setAdapter((ListAdapter) calculatorHistoryAdapter);
         }
-        View mainCalculator = this.parentLayout.findViewById(R.id.main_calculator);
-        this.historyList.setVisibility(View.VISIBLE);
+        View mainCalculator = parentLayout.findViewById(R.id.main_calculator);
+        historyList.setVisibility(View.VISIBLE);
         mainCalculator.setVisibility(View.GONE);
     }
 
     @Override
     public void insertContent(int position) {
-        CalcItem item = (CalcItem) this.historyList.getItemAtPosition(position);
-        String editorText = this.editor.getText().toString();
-        int caretPosition = this.editor.getSelectionStart();
+        CalcItem item = (CalcItem) historyList.getItemAtPosition(position);
+        String editorText = editor.getText().toString();
+        int caretPosition = editor.getSelectionStart();
         if (caretPosition == 1 && "0".equals(editorText)) {
-            this.editor.setText(item.getExpression());
+            editor.setText(item.getExpression());
             caretPosition--;
         } else {
-            this.editor.setText(editorText.substring(0, caretPosition) + item.getExpression()
+            editor.setText(editorText.substring(0, caretPosition) + item.getExpression()
                     + editorText.substring(caretPosition));
         }
-        this.editor.setSelection(item.getExpression().length() + caretPosition);
-        this.editor.requestFocus();
+        editor.setSelection(item.getExpression().length() + caretPosition);
+        editor.requestFocus();
         hideHistory();
     }
 
     @Override
     public void replaceContent(int position) {
-        CalcItem item = (CalcItem) this.historyList.getItemAtPosition(position);
-        this.editor.setText(item.getExpression());
-        EditText editText = this.editor;
+        CalcItem item = (CalcItem) historyList.getItemAtPosition(position);
+        editor.setText(item.getExpression());
+        EditText editText = editor;
         int length = item.getExpression().length();
-        this.caretPosition = length;
+        caretPosition = length;
         editText.setSelection(length);
-        this.editor.requestFocus();
+        editor.requestFocus();
         hideHistory();
     }
 
     @Override
     public void deleteHistory(int position) {
-        this.calculatedItems.remove(position);
-        CalculatorHistoryAdapter calculatorHistoryAdapter = this.historyAdapter;
+        calculatedItems.remove(position);
+        CalculatorHistoryAdapter calculatorHistoryAdapter = historyAdapter;
         if (calculatorHistoryAdapter != null) {
             calculatorHistoryAdapter.notifyDataSetChanged();
         }
     }
 
     public void hideHistory() {
-        this.parentLayout.findViewById(R.id.calcHistory).setVisibility(View.GONE);
-        this.parentLayout.findViewById(R.id.main_calculator).setVisibility(View.VISIBLE);
+        parentLayout.findViewById(R.id.calcHistory).setVisibility(View.GONE);
+        parentLayout.findViewById(R.id.main_calculator).setVisibility(View.VISIBLE);
     }
 
     public void minimizeView(View view) {
-        this.expanded.setVisibility(View.GONE);
-        this.collapsed.setVisibility(View.VISIBLE);
-        View view2 = this.quickLaunchView;
+        expanded.setVisibility(View.GONE);
+        collapsed.setVisibility(View.VISIBLE);
+        View view2 = quickLaunchView;
         if (view2 != null) {
             view2.setVisibility(View.GONE);
         }
     }
 
     public void clearAction(View view) {
-        this.editor.setText("0");
-        EditText editText = this.editor;
-        this.caretPosition = 1;
+        editor.setText("0");
+        EditText editText = editor;
+        caretPosition = 1;
         editText.setSelection(1);
     }
 
     public void deleteAction(View view) {
-        String input = this.editor.getText().toString();
+        String input = editor.getText().toString();
         if (input.startsWith(getResources().getString(R.string.invalid_syntax))) {
             clearAction(null);
             return;
         }
-        int selectionStart = this.editor.getSelectionStart();
-        this.caretPosition = selectionStart;
+        int selectionStart = editor.getSelectionStart();
+        caretPosition = selectionStart;
         if (selectionStart == 0) {
             return;
         }
         if (selectionStart == input.length()) {
-            this.editor.setText(input.length() == 1 ? "0" : input.substring(0, input.length() - 1));
+            editor.setText(input.length() == 1 ? "0" : input.substring(0, input.length() - 1));
         } else {
-            this.editor.setText(input.substring(0, this.caretPosition - 1) + input.substring(this.caretPosition));
+            editor.setText(input.substring(0, caretPosition - 1) + input.substring(caretPosition));
         }
-        if ("0".equals(this.editor.getText().toString())) {
-            EditText editText = this.editor;
-            this.caretPosition = 1;
+        if ("0".equals(editor.getText().toString())) {
+            EditText editText = editor;
+            caretPosition = 1;
             editText.setSelection(1);
         } else {
-            EditText editText2 = this.editor;
-            int i = this.caretPosition - 1;
-            this.caretPosition = i;
+            EditText editText2 = editor;
+            int i = caretPosition - 1;
+            caretPosition = i;
             int i2 = i >= 0 ? i : 0;
-            this.caretPosition = i2;
+            caretPosition = i2;
             editText2.setSelection(i2);
         }
-        this.editor.requestFocus();
+        editor.requestFocus();
     }
 
     public void caretLeft(View view) {
-        int textLength = this.editor.getText().length();
-        if (this.editor.getText().toString().startsWith(getResources().getString(R.string.invalid_syntax))) {
-            String str = this.previousInvalidExpression;
+        int textLength = editor.getText().length();
+        if (editor.getText().toString().startsWith(getResources().getString(R.string.invalid_syntax))) {
+            String str = previousInvalidExpression;
             if (str != null) {
-                this.editor.setText(str);
+                editor.setText(str);
             }
-            this.previousInvalidExpression = null;
+            previousInvalidExpression = null;
             return;
         }
-        this.editor.setCursorVisible(true);
-        int selectionStart = this.editor.getSelectionStart();
-        this.caretPosition = selectionStart;
+        editor.setCursorVisible(true);
+        int selectionStart = editor.getSelectionStart();
+        caretPosition = selectionStart;
         int i = selectionStart - 1;
-        this.caretPosition = i;
+        caretPosition = i;
         if (i < 0) {
             i = textLength;
         }
-        this.caretPosition = i;
-        this.editor.setSelection(i);
-        this.editor.requestFocus();
+        caretPosition = i;
+        editor.setSelection(i);
+        editor.requestFocus();
     }
 
     public void caretRight(View view) {
-        int textLength = this.editor.getText().length();
-        if (this.editor.getText().toString().startsWith(getResources().getString(R.string.invalid_syntax))) {
-            String str = this.previousInvalidExpression;
+        int textLength = editor.getText().length();
+        if (editor.getText().toString().startsWith(getResources().getString(R.string.invalid_syntax))) {
+            String str = previousInvalidExpression;
             if (str != null) {
-                this.editor.setText(str);
+                editor.setText(str);
             }
-            this.previousInvalidExpression = null;
+            previousInvalidExpression = null;
             return;
         }
-        this.editor.setCursorVisible(true);
-        int selectionStart = this.editor.getSelectionStart();
-        this.caretPosition = selectionStart;
+        editor.setCursorVisible(true);
+        int selectionStart = editor.getSelectionStart();
+        caretPosition = selectionStart;
         int i = selectionStart + 1;
-        this.caretPosition = i;
+        caretPosition = i;
         if (i > textLength) {
             i = 0;
         }
-        this.caretPosition = i;
-        this.editor.setSelection(i);
-        this.editor.requestFocus();
+        caretPosition = i;
+        editor.setSelection(i);
+        editor.requestFocus();
     }
 
     public void buttonAction(View view) {
         String updatedContent;
         if (view instanceof Button) {
             Button button = (Button) view;
-            String fieldContent = this.editor.getText().toString();
-            this.caretPosition = this.editor.getSelectionStart();
+            String fieldContent = editor.getText().toString();
+            caretPosition = editor.getSelectionStart();
             if (fieldContent.startsWith(getResources().getString(R.string.invalid_syntax))) {
                 deleteAction(null);
-                this.caretPosition = this.editor.getSelectionStart();
+                caretPosition = editor.getSelectionStart();
             }
-            if (this.caretPosition == fieldContent.length()) {
+            if (caretPosition == fieldContent.length()) {
                 updatedContent =
                         ((!fieldContent.equals("0") || button.getText().toString().equals(".")) ? fieldContent : "")
                         + "" + ((Object) button.getText());
             } else {
-                updatedContent = fieldContent.substring(0, this.caretPosition) + ((Object) button.getText())
-                        + fieldContent.substring(this.caretPosition);
+                updatedContent = fieldContent.substring(0, caretPosition) + ((Object) button.getText())
+                        + fieldContent.substring(caretPosition);
             }
-            this.editor.setText(updatedContent);
-            EditText editText = this.editor;
-            int i = this.caretPosition + 1;
-            this.caretPosition = i;
-            int length = i > updatedContent.length() ? updatedContent.length() : this.caretPosition;
-            this.caretPosition = length;
+            editor.setText(updatedContent);
+            EditText editText = editor;
+            int i = caretPosition + 1;
+            caretPosition = i;
+            int length = i > updatedContent.length() ? updatedContent.length() : caretPosition;
+            caretPosition = length;
             editText.setSelection(length);
-            this.editor.requestFocus();
+            editor.requestFocus();
         }
     }
 
     public void computeCalculation(View view) {
         try {
-            String editorText = this.editor.getText().toString();
+            String editorText = editor.getText().toString();
             if (editorText.startsWith(getResources().getString(R.string.invalid_syntax))) {
                 return;
             }
             CompoundExpression firstResult = new CompoundExpression(editorText);
             Expression result = firstResult.compute();
             if (result != null) {
-                this.calculatedItems.add(0, new CalcItem(editorText, result.getExact()));
-                CalculatorHistoryAdapter calculatorHistoryAdapter = this.historyAdapter;
+                calculatedItems.add(0, new CalcItem(editorText, result.getExact()));
+                CalculatorHistoryAdapter calculatorHistoryAdapter = historyAdapter;
                 if (calculatorHistoryAdapter != null) {
                     calculatorHistoryAdapter.notifyDataSetChanged();
                 }
             }
-            this.editor.setText(result == null ? getResources().getString(R.string.invalid_syntax) : result.getExact());
-            this.previousInvalidExpression = editorText;
-            EditText editText = this.editor;
+            editor.setText(result == null ? getResources().getString(R.string.invalid_syntax) : result.getExact());
+            previousInvalidExpression = editorText;
+            EditText editText = editor;
             int length = editText.getText().length();
-            this.caretPosition = length;
+            caretPosition = length;
             editText.setSelection(length);
         } catch (Throwable t) {
             t.printStackTrace();
@@ -353,13 +353,13 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
     @Override
     public void onDestroy() {
         super.onDestroy();
-        View view = this.quickLaunchView;
+        View view = quickLaunchView;
         if (view != null) {
-            this.window.removeView(view);
+            window.removeView(view);
         }
-        View view2 = this.parentLayout;
+        View view2 = parentLayout;
         if (view2 != null) {
-            this.window.removeView(view2);
+            window.removeView(view2);
         }
     }
 
@@ -373,11 +373,11 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
         }
 
         public String getExpression() {
-            return this.expression;
+            return expression;
         }
 
         public String getAnswer() {
-            return this.answer;
+            return answer;
         }
     }
 }

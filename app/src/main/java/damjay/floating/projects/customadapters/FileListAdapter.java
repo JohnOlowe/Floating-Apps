@@ -34,14 +34,14 @@ public class FileListAdapter extends BaseAdapter {
 
     private void loadStorageDrives() {
         try {
-            if (this.internalDrive == null) {
-                this.internalDrive = Environment.getExternalStorageDirectory();
+            if (internalDrive == null) {
+                internalDrive = Environment.getExternalStorageDirectory();
             }
-            this.internalStorageDrives = getInternalStorageDrives();
-            this.folder = null;
-            this.fileItems.clear();
-            for (FileItem item : this.internalStorageDrives) {
-                this.fileItems.add(item);
+            internalStorageDrives = getInternalStorageDrives();
+            folder = null;
+            fileItems.clear();
+            for (FileItem item : internalStorageDrives) {
+                fileItems.add(item);
             }
         } catch (Throwable t) {
             t.printStackTrace();
@@ -49,7 +49,7 @@ public class FileListAdapter extends BaseAdapter {
     }
 
     private ArrayList<FileItem> getInternalStorageDrives() {
-        File[] externalFilesDirs = ContextCompat.getExternalFilesDirs(this.context, null);
+        File[] externalFilesDirs = ContextCompat.getExternalFilesDirs(context, null);
         ArrayList<FileItem> storageMedia = new ArrayList<>();
         int driveNo = 0;
         int length = externalFilesDirs.length;
@@ -67,25 +67,25 @@ public class FileListAdapter extends BaseAdapter {
     }
 
     public void updatePath(File folder) {
-        String rootValue = this.internalDrive.getParentFile().getParent();
+        String rootValue = internalDrive.getParentFile().getParent();
         if (folder.getPath().equals(rootValue)) {
-            File file = this.folder;
-            if (file == null || file.getPath().equals(this.internalDrive.getParent())) {
+            File file = folder;
+            if (file == null || file.getPath().equals(internalDrive.getParent())) {
                 return;
             }
-            Iterator<FileItem> it = this.internalStorageDrives.iterator();
+            Iterator<FileItem> it = internalStorageDrives.iterator();
             while (it.hasNext()) {
-                if (it.next().getFile().getPath().equals(this.folder.getPath())) {
+                if (it.next().getFile().getPath().equals(folder.getPath())) {
                     loadStorageDrives();
                     return;
                 }
             }
-            this.internalStorageDrives.add(new FileItem(this.folder, "SDCard" + this.internalStorageDrives.size()));
+            internalStorageDrives.add(new FileItem(folder, "SDCard" + internalStorageDrives.size()));
             loadStorageDrives();
             return;
         }
-        this.fileItems.clear();
-        String rootValue2 = this.internalDrive.getParent();
+        fileItems.clear();
+        String rootValue2 = internalDrive.getParent();
         if (folder.getPath().equals(rootValue2)) {
             loadStorageDrives();
             return;
@@ -97,10 +97,10 @@ public class FileListAdapter extends BaseAdapter {
         }
         for (File file2 : files) {
             if (file2.isDirectory()) {
-                this.fileItems.add(folders, new FileItem(file2));
+                fileItems.add(folders, new FileItem(file2));
                 folders++;
             } else {
-                this.fileItems.add(new FileItem(file2));
+                fileItems.add(new FileItem(file2));
             }
         }
         this.folder = folder;
@@ -108,7 +108,7 @@ public class FileListAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        ArrayList<FileItem> arrayList = this.fileItems;
+        ArrayList<FileItem> arrayList = fileItems;
         if (arrayList == null) {
             return 0;
         }
@@ -117,10 +117,10 @@ public class FileListAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int index) {
-        if (this.fileItems.size() <= index) {
+        if (fileItems.size() <= index) {
             return null;
         }
-        return this.fileItems.get(index);
+        return fileItems.get(index);
     }
 
     @Override
@@ -130,13 +130,13 @@ public class FileListAdapter extends BaseAdapter {
 
     @Override
     public View getView(int position, View view, ViewGroup viewGroup) {
-        if (this.fileItems == null) {
+        if (fileItems == null) {
             return view;
         }
         if (view == null) {
-            view = LayoutInflater.from(this.context).inflate(R.layout.file_items, viewGroup, false);
+            view = LayoutInflater.from(context).inflate(R.layout.file_items, viewGroup, false);
         }
-        FileItem item = this.fileItems.get(position);
+        FileItem item = fileItems.get(position);
         FileItem.ViewLayout layout = item.getLayout();
         layout.setName(view.findViewById(R.id.fileName)).setText(item.getFileName());
         layout.setInfo(view.findViewById(R.id.fileInfo))
@@ -146,7 +146,7 @@ public class FileListAdapter extends BaseAdapter {
         int resource = item.isDirectory() ? R.drawable.folder : R.drawable.file_icon;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             icon.setImageDrawable(
-                    ResourcesCompat.getDrawable(this.context.getResources(), resource, this.context.getTheme()));
+                    ResourcesCompat.getDrawable(context.getResources(), resource, context.getTheme()));
         } else {
             icon.setImageResource(resource);
         }

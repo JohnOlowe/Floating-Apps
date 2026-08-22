@@ -33,10 +33,10 @@ public class FileSearchAdapter extends BaseAdapter {
         this.context = context;
         this.callback = callback;
         File[] externalFilesDirs = ContextCompat.getExternalFilesDirs(context, null);
-        this.storageMedia = new ArrayList<>();
+        storageMedia = new ArrayList<>();
         for (File file : externalFilesDirs) {
             String filePath = file.getPath();
-            this.storageMedia.add(new File(filePath.substring(0, filePath.indexOf("Android"))));
+            storageMedia.add(new File(filePath.substring(0, filePath.indexOf("Android"))));
             System.out.println(file);
         }
         if (callback != null) {
@@ -48,18 +48,18 @@ public class FileSearchAdapter extends BaseAdapter {
     private void loadDocumentFiles() {
         Handler handler = new Handler();
         new Thread(() -> {
-            if (this.documentFiles != null) {
+            if (documentFiles != null) {
                 return;
             }
-            for (File storageMediaFile : this.storageMedia) {
-                if (this.documentFiles == null) {
-                    this.documentFiles = new ArrayList<>();
+            for (File storageMediaFile : storageMedia) {
+                if (documentFiles == null) {
+                    documentFiles = new ArrayList<>();
                 }
-                getDocumentFiles(getCommonDirectoryFiles(storageMediaFile), this.documentFiles, true);
-                getDocumentFiles(storageMediaFile.listFiles(), this.documentFiles, false);
+                getDocumentFiles(getCommonDirectoryFiles(storageMediaFile), documentFiles, true);
+                getDocumentFiles(storageMediaFile.listFiles(), documentFiles, false);
             }
             handler.post(() -> {
-                String str = this.pendingKeyword;
+                String str = pendingKeyword;
                 if (str == null) {
                     str = "";
                 }
@@ -70,18 +70,18 @@ public class FileSearchAdapter extends BaseAdapter {
 
     public void reloadSearchResults(String keyword) {
         String keyword2 = keyword.trim();
-        if (this.documentFiles == null) {
-            this.pendingKeyword = keyword2;
+        if (documentFiles == null) {
+            pendingKeyword = keyword2;
             return;
         }
         if (keyword2.isEmpty()) {
-            this.matchingFiles = this.documentFiles;
+            matchingFiles = documentFiles;
             notifyDataSetChanged();
             return;
         }
         ArrayList<DocumentFile> matchingFiles = new ArrayList<>();
         int originalMatchNumber = 0;
-        for (DocumentFile file : this.documentFiles) {
+        for (DocumentFile file : documentFiles) {
             if (file.name.contains(keyword2)) {
                 matchingFiles.add(originalMatchNumber, file);
                 originalMatchNumber++;
@@ -129,7 +129,7 @@ public class FileSearchAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        ArrayList<DocumentFile> arrayList = this.matchingFiles;
+        ArrayList<DocumentFile> arrayList = matchingFiles;
         if (arrayList == null) {
             return 0;
         }
@@ -138,7 +138,7 @@ public class FileSearchAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int position) {
-        ArrayList<DocumentFile> arrayList = this.matchingFiles;
+        ArrayList<DocumentFile> arrayList = matchingFiles;
         if (arrayList == null) {
             return null;
         }
@@ -152,13 +152,13 @@ public class FileSearchAdapter extends BaseAdapter {
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        if (this.matchingFiles == null) {
+        if (matchingFiles == null) {
             return null;
         }
         if (convertView == null) {
-            convertView = LayoutInflater.from(this.context).inflate(R.layout.file_items, parent, false);
+            convertView = LayoutInflater.from(context).inflate(R.layout.file_items, parent, false);
         }
-        FileItem item = this.matchingFiles.get(position).getFileItem();
+        FileItem item = matchingFiles.get(position).getFileItem();
         FileItem.ViewLayout layout = item.getLayout();
         layout.setName(convertView.findViewById(R.id.fileName)).setText(item.getFileName());
         layout.setInfo(convertView.findViewById(R.id.fileInfo))
@@ -167,7 +167,7 @@ public class FileSearchAdapter extends BaseAdapter {
         ImageView icon = layout.setIcon(convertView.findViewById(R.id.file_icon));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             icon.setImageDrawable(ResourcesCompat.getDrawable(
-                    this.context.getResources(), R.drawable.pdf_logo, this.context.getTheme()));
+                    context.getResources(), R.drawable.pdf_logo, context.getTheme()));
         } else {
             icon.setImageResource(R.drawable.pdf_logo);
         }
@@ -182,12 +182,12 @@ public class FileSearchAdapter extends BaseAdapter {
         DocumentFile(File file) {
             FileItem fileItem = new FileItem(file);
             this.fileItem = fileItem;
-            this.name = fileItem.getFileName();
-            this.path = fileItem.getDirectoryName();
+            name = fileItem.getFileName();
+            path = fileItem.getDirectoryName();
         }
 
         public FileItem getFileItem() {
-            return this.fileItem;
+            return fileItem;
         }
     }
 }

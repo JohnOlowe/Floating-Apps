@@ -29,16 +29,16 @@ public class HistorySimpleAdapter extends SimpleAdapter {
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         View view = super.getView(position, convertView, parent);
-        view.findViewById(R.id.delete_button).setOnClickListener(p1 -> this.callback.delete(position));
+        view.findViewById(R.id.delete_button).setOnClickListener(p1 -> callback.delete(position));
         view.setOnLongClickListener((view1) -> {
-            PopupMenu menu = new PopupMenu(this.context, view1);
+            PopupMenu menu = new PopupMenu(context, view1);
             menu.setOnMenuItemClickListener((item) -> {
                 if (item.getItemId() == R.id.open_history_file) {
-                    this.callback.run(position);
+                    callback.run(position);
                     return true;
                 }
                 if (item.getItemId() == R.id.delete_history_file) {
-                    this.callback.delete(position);
+                    callback.delete(position);
                     return true;
                 }
                 return true;
@@ -47,7 +47,7 @@ public class HistorySimpleAdapter extends SimpleAdapter {
             menu.show();
             return true;
         });
-        view.setOnClickListener(view12 -> this.callback.run(position));
+        view.setOnClickListener(view12 -> callback.run(position));
         return view;
     }
 }

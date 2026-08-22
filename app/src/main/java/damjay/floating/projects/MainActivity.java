@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         }
         if (!((PowerManager) getSystemService("power"))
                         .isIgnoringBatteryOptimizations(MainActivity.class.getPackage().getName())) {
-            if (this.alertDialog != null) {
+            if (alertDialog != null) {
                 return;
             }
             AlertDialog alertDialogCreate =
@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
                                     })
                             .setCancelable(false)
                             .create();
-            this.alertDialog = alertDialogCreate;
+            alertDialog = alertDialogCreate;
             alertDialogCreate.show();
             return;
         }
@@ -83,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
 
     private boolean checkPermissions() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            if (this.alertDialog != null) {
+            if (alertDialog != null) {
                 return false;
             }
             AlertDialog alertDialogCreate =
@@ -103,7 +103,7 @@ public class MainActivity extends AppCompatActivity {
                                     })
                             .setNegativeButton(R.string.exit, (dialog, id) -> finish())
                             .create();
-            this.alertDialog = alertDialogCreate;
+            alertDialog = alertDialogCreate;
             alertDialogCreate.show();
             return false;
         }
@@ -134,17 +134,17 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void closeAlertDialog() {
-        AlertDialog alertDialog = this.alertDialog;
+        AlertDialog alertDialog = alertDialog;
         if (alertDialog != null) {
             alertDialog.dismiss();
-            this.alertDialog = null;
+            alertDialog = null;
         }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        if (this.alertDialog == null) {
+        if (alertDialog == null) {
             checkPermissions();
         }
     }

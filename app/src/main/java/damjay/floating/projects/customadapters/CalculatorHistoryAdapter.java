@@ -32,7 +32,7 @@ public class CalculatorHistoryAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        ArrayList<CalculatorService.CalcItem> arrayList = this.list;
+        ArrayList<CalculatorService.CalcItem> arrayList = list;
         if (arrayList != null) {
             return arrayList.size();
         }
@@ -41,11 +41,11 @@ public class CalculatorHistoryAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int position) {
-        ArrayList<CalculatorService.CalcItem> arrayList = this.list;
+        ArrayList<CalculatorService.CalcItem> arrayList = list;
         if (arrayList == null || arrayList.size() <= position) {
             return null;
         }
-        return this.list.get(position);
+        return list.get(position);
     }
 
     @Override
@@ -56,27 +56,27 @@ public class CalculatorHistoryAdapter extends BaseAdapter {
     @Override
     public View getView(int position, View view, ViewGroup vg) {
         if (view == null) {
-            view = LayoutInflater.from(this.calcService).inflate(R.layout.calculator_history, vg, false);
+            view = LayoutInflater.from(calcService).inflate(R.layout.calculator_history, vg, false);
         }
         view.setOnLongClickListener((v) -> {
-            PopupMenu menu = new PopupMenu(this.calcService, v);
+            PopupMenu menu = new PopupMenu(calcService, v);
             menu.setOnMenuItemClickListener((item) -> {
                 if (item.getItemId() == R.id.replace_content) {
-                    this.historyListener.replaceContent(position);
+                    historyListener.replaceContent(position);
                     return true;
                 }
                 if (item.getItemId() == R.id.insert_content) {
-                    this.historyListener.insertContent(position);
+                    historyListener.insertContent(position);
                     return true;
                 }
                 if (item.getItemId() == R.id.delete_history) {
-                    this.historyListener.deleteHistory(position);
+                    historyListener.deleteHistory(position);
                     return true;
                 }
                 if (item.getItemId() == R.id.clear_history) {
-                    int originalListSize = this.list.size();
+                    int originalListSize = list.size();
                     for (int i = 0; i < originalListSize; i++) {
-                        this.historyListener.deleteHistory(0);
+                        historyListener.deleteHistory(0);
                     }
                     return true;
                 }
@@ -86,11 +86,11 @@ public class CalculatorHistoryAdapter extends BaseAdapter {
             menu.show();
             return true;
         });
-        view.setOnClickListener(v -> this.calcService.replaceContent(position));
+        view.setOnClickListener(v -> calcService.replaceContent(position));
         TextView expressionView = (TextView) view.findViewById(R.id.calc_history_expression);
-        expressionView.setText(this.list.get(position).getExpression());
+        expressionView.setText(list.get(position).getExpression());
         TextView solutionView = (TextView) view.findViewById(R.id.calc_history_solution);
-        solutionView.setText(this.list.get(position).getAnswer());
+        solutionView.setText(list.get(position).getAnswer());
         return view;
     }
 }

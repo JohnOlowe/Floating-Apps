@@ -23,59 +23,59 @@ public class BibleAdapter extends BaseAdapter {
     }
 
     public void makeChapter(int bookIndex, int chapterIndex) {
-        this.curBookIndex = bookIndex;
-        if (this.bibleSource == null) {
+        curBookIndex = bookIndex;
+        if (bibleSource == null) {
             try {
-                Context context = this.context;
-                this.bibleSource = new CombinedChapterBibleSource(context, context.getFilesDir());
+                Context context = context;
+                bibleSource = new CombinedChapterBibleSource(context, context.getFilesDir());
             } catch (Throwable t) {
                 t.printStackTrace();
                 return;
             }
         }
         try {
-            loadVerses(this.curBookIndex, chapterIndex);
+            loadVerses(curBookIndex, chapterIndex);
         } catch (Throwable t2) {
             t2.printStackTrace();
         }
     }
 
     private void loadVerses(int bookIndex, int chapterIndex) throws IOException {
-        this.versesList.clear();
-        CombinedChapterBibleSource combinedChapterBibleSource = this.bibleSource;
+        versesList.clear();
+        CombinedChapterBibleSource combinedChapterBibleSource = bibleSource;
         if (combinedChapterBibleSource == null) {
             return;
         }
         char[] verses = combinedChapterBibleSource.getChapter(bookIndex, chapterIndex);
-        int[] verseIndices = this.bibleSource.getChapterIndex(bookIndex, chapterIndex);
+        int[] verseIndices = bibleSource.getChapterIndex(bookIndex, chapterIndex);
         for (int i = 0; i < verseIndices.length / 2; i++) {
-            this.versesList.add(new String(verses, verseIndices[i << 1], verseIndices[(i << 1) + 1] - verseIndices[i << 1]));
+            versesList.add(new String(verses, verseIndices[i << 1], verseIndices[(i << 1) + 1] - verseIndices[i << 1]));
         }
     }
 
     public int getCurrentBookIndex() {
-        return this.curBookIndex;
+        return curBookIndex;
     }
 
     public int getNumberOfChapters() {
-        return this.bibleSource.getNumberOfChapters(this.curBookIndex);
+        return bibleSource.getNumberOfChapters(curBookIndex);
     }
 
     public String[] getBooks() {
-        return this.bibleSource.getBookNames();
+        return bibleSource.getBookNames();
     }
 
     @Override
     public int getCount() {
-        if (this.bibleSource == null) {
+        if (bibleSource == null) {
             return 0;
         }
-        return this.versesList.size();
+        return versesList.size();
     }
 
     @Override
     public Object getItem(int position) {
-        return this.versesList.size() > position ? this.versesList.get(position) : Integer.valueOf(position);
+        return versesList.size() > position ? versesList.get(position) : Integer.valueOf(position);
     }
 
     @Override
@@ -86,13 +86,13 @@ public class BibleAdapter extends BaseAdapter {
     @Override
     public View getView(int position, View view, ViewGroup vg) {
         if (view == null) {
-            view = LayoutInflater.from(this.context).inflate(R.layout.bible_verse, vg, false);
+            view = LayoutInflater.from(context).inflate(R.layout.bible_verse, vg, false);
         }
         TextView verseNumber = (TextView) view.findViewById(R.id.bibleVerseIndex);
         TextView verseContent = (TextView) view.findViewById(R.id.bibleVerseContent);
         verseNumber.setText((position + 1) + "");
-        if (this.versesList.size() > position) {
-            verseContent.setText(this.versesList.get(position));
+        if (versesList.size() > position) {
+            verseContent.setText(versesList.get(position));
         }
         if (position == 1) {
             System.out.println(verseContent.getText());

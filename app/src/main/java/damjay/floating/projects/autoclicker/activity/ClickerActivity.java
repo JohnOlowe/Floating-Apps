@@ -29,17 +29,17 @@ public class ClickerActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_clicker);
-        this.clickerContainer = (LinearLayout) findViewById(R.id.clickerContainer);
-        this.addButton = (Button) findViewById(R.id.addButton);
-        this.removeButton = (Button) findViewById(R.id.removeButton);
+        clickerContainer = (LinearLayout) findViewById(R.id.clickerContainer);
+        addButton = (Button) findViewById(R.id.addButton);
+        removeButton = (Button) findViewById(R.id.removeButton);
         BluetoothSocket bluetoothSocket2 = bluetoothSocket;
         if (bluetoothSocket2 != null) {
             BluetoothOperations bluetoothOperations = new BluetoothOperations(bluetoothSocket2);
             btOperation = bluetoothOperations;
             bluetoothOperations.startReading(this);
-            this.addButton.setOnClickListener(v -> sendToDevice((byte) -1, this));
-            this.removeButton.setOnClickListener(v -> sendToDevice((byte) -2, this));
-            this.removeButton.setEnabled(false);
+            addButton.setOnClickListener(v -> sendToDevice((byte) -1, this));
+            removeButton.setOnClickListener(v -> sendToDevice((byte) -2, this));
+            removeButton.setEnabled(false);
             return;
         }
         new AlertDialog.Builder(this)
@@ -54,27 +54,27 @@ public class ClickerActivity
         BluetoothOperations bluetoothOperations = btOperation;
         if (bluetoothOperations != null) {
             bluetoothOperations.write(value, callback);
-            this.pendingAddButton = value == -1 || this.pendingAddButton;
-            this.pendingRemoveButton = value == -2 || this.pendingRemoveButton;
+            pendingAddButton = value == -1 || pendingAddButton;
+            pendingRemoveButton = value == -2 || pendingRemoveButton;
             return;
         }
         Toast.makeText(this, R.string.null_socket, Toast.LENGTH_SHORT).show();
     }
 
     private void addNewButton() {
-        this.pendingAddButton = false;
-        this.curNumOfButtons++;
-        this.removeButton.setEnabled(true);
+        pendingAddButton = false;
+        curNumOfButtons++;
+        removeButton.setEnabled(true);
         showButtons();
     }
 
     private void removeLastButton() {
-        this.pendingRemoveButton = false;
-        int i = this.curNumOfButtons - 1;
-        this.curNumOfButtons = i;
+        pendingRemoveButton = false;
+        int i = curNumOfButtons - 1;
+        curNumOfButtons = i;
         if (i <= 0) {
-            this.curNumOfButtons = 0;
-            this.removeButton.setEnabled(false);
+            curNumOfButtons = 0;
+            removeButton.setEnabled(false);
         }
         showButtons();
     }
@@ -83,7 +83,7 @@ public class ClickerActivity
         int buttonsOnLine = 0;
         int i = 1;
         while (true) {
-            int i2 = this.curNumOfButtons;
+            int i2 = curNumOfButtons;
             if (i > i2 || i > 4) {
                 break;
             }
@@ -94,9 +94,9 @@ public class ClickerActivity
                 i++;
             }
         }
-        this.clickerContainer.removeAllViews();
+        clickerContainer.removeAllViews();
         int curButton = 0;
-        while (curButton < this.curNumOfButtons) {
+        while (curButton < curNumOfButtons) {
             LinearLayout linearLayout = new LinearLayout(this);
             LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(-1, 0);
             layoutParams.weight = 1.0f;
@@ -116,7 +116,7 @@ public class ClickerActivity
                 i3++;
                 curButton++;
             }
-            this.clickerContainer.addView(linearLayout);
+            clickerContainer.addView(linearLayout);
         }
     }
 
@@ -140,10 +140,10 @@ public class ClickerActivity
                 }
                 break;
             case 9:
-                if (this.pendingAddButton) {
+                if (pendingAddButton) {
                     addNewButton();
                 }
-                if (this.pendingRemoveButton) {
+                if (pendingRemoveButton) {
                     removeLastButton();
                 }
                 break;

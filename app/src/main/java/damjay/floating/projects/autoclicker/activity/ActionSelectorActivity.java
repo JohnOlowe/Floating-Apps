@@ -60,17 +60,17 @@ public class ActionSelectorActivity extends AppCompatActivity {
                             .setPositiveButton(R.string.settings, (dialog, id) -> showAccessibilityPage())
                             .setNegativeButton(R.string.cancel, (dialog, id) -> finish())
                             .create();
-            this.alertDialog = alertDialogCreate;
+            alertDialog = alertDialogCreate;
             alertDialogCreate.show();
         }
         return accessEnabled != 0;
     }
 
     private void showAccessibilityPage() {
-        AlertDialog alertDialog = this.alertDialog;
+        AlertDialog alertDialog = alertDialog;
         if (alertDialog != null) {
             alertDialog.dismiss();
-            this.alertDialog = null;
+            alertDialog = null;
         }
         Intent intent = new Intent("android.settings.ACCESSIBILITY_SETTINGS");
         intent.addFlags(268435456);

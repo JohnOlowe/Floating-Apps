@@ -47,64 +47,64 @@ public class PlayerService extends Service {
             stopSelf();
             return;
         }
-        this.playerLayout = LayoutInflater.from(this).inflate(R.layout.service_player, (ViewGroup) null);
+        playerLayout = LayoutInflater.from(this).inflate(R.layout.service_player, (ViewGroup) null);
         initializeViews();
         setOnClickListeners();
-        View view = this.playerLayout;
+        View view = playerLayout;
         ViewsUtils.addTouchListener(view,
-                ViewsUtils.getViewTouchListener(this, view, this.windowManager, this.layoutParams), true, true,
+                ViewsUtils.getViewTouchListener(this, view, windowManager, layoutParams), true, true,
                 ListView.class, null);
     }
 
     private void initializeViews() {
-        this.windowManager = (WindowManager) getSystemService("window");
-        this.expandedPlayer = this.playerLayout.findViewById(R.id.expanded_player);
-        this.collapsedPlayer = this.playerLayout.findViewById(R.id.collapsed_player);
-        this.toggleFocus = this.playerLayout.findViewById(R.id.toggle_focus);
-        ListView listView = (ListView) this.playerLayout.findViewById(R.id.music_list);
-        this.musicFiles = listView;
-        listView.setAdapter((ListAdapter) new MusicListAdapter(this, this.chosenDirectories, this.historyFiles));
-        WindowManager windowManager = this.windowManager;
-        View view = this.playerLayout;
+        windowManager = (WindowManager) getSystemService("window");
+        expandedPlayer = playerLayout.findViewById(R.id.expanded_player);
+        collapsedPlayer = playerLayout.findViewById(R.id.collapsed_player);
+        toggleFocus = playerLayout.findViewById(R.id.toggle_focus);
+        ListView listView = (ListView) playerLayout.findViewById(R.id.music_list);
+        musicFiles = listView;
+        listView.setAdapter((ListAdapter) new MusicListAdapter(this, chosenDirectories, historyFiles));
+        WindowManager windowManager = windowManager;
+        View view = playerLayout;
         WindowManager.LayoutParams floatingLayoutParams = ViewsUtils.getFloatingLayoutParams(true);
-        this.layoutParams = floatingLayoutParams;
+        layoutParams = floatingLayoutParams;
         windowManager.addView(view, floatingLayoutParams);
-        this.expandedPlayer.setVisibility(View.GONE);
-        this.collapsedPlayer.setVisibility(View.VISIBLE);
+        expandedPlayer.setVisibility(View.GONE);
+        collapsedPlayer.setVisibility(View.VISIBLE);
     }
 
     private void setOnClickListeners() {
-        this.playerLayout.findViewById(R.id.launch_app)
+        playerLayout.findViewById(R.id.launch_app)
                 .setOnClickListener(v -> ViewsUtils.launchApp(this, MainActivity.class));
-        this.playerLayout.findViewById(R.id.minimize_player).setOnClickListener((v) -> {
-            this.expandedPlayer.setVisibility(View.GONE);
-            this.collapsedPlayer.setVisibility(View.VISIBLE);
-            this.layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-            this.windowManager.updateViewLayout(this.playerLayout, this.layoutParams);
+        playerLayout.findViewById(R.id.minimize_player).setOnClickListener((v) -> {
+            expandedPlayer.setVisibility(View.GONE);
+            collapsedPlayer.setVisibility(View.VISIBLE);
+            layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+            windowManager.updateViewLayout(playerLayout, layoutParams);
         });
-        this.playerLayout.findViewById(R.id.close_player).setOnClickListener(v -> stopSelf());
-        this.playerLayout.findViewById(R.id.minimize_player).callOnClick();
-        this.collapsedPlayer.setOnClickListener((v) -> {
-            this.expandedPlayer.setVisibility(View.VISIBLE);
-            this.collapsedPlayer.setVisibility(View.GONE);
-            this.layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
-            this.windowManager.updateViewLayout(this.playerLayout, this.layoutParams);
+        playerLayout.findViewById(R.id.close_player).setOnClickListener(v -> stopSelf());
+        playerLayout.findViewById(R.id.minimize_player).callOnClick();
+        collapsedPlayer.setOnClickListener((v) -> {
+            expandedPlayer.setVisibility(View.VISIBLE);
+            collapsedPlayer.setVisibility(View.GONE);
+            layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+            windowManager.updateViewLayout(playerLayout, layoutParams);
         });
-        this.toggleFocus.setOnClickListener((v) -> {
-            WindowManager.LayoutParams layoutParams = this.layoutParams;
+        toggleFocus.setOnClickListener((v) -> {
+            WindowManager.LayoutParams layoutParams = layoutParams;
             layoutParams.flags = layoutParams.flags == WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                     ? WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
                     : WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-            this.windowManager.updateViewLayout(this.playerLayout, this.layoutParams);
+            windowManager.updateViewLayout(playerLayout, layoutParams);
         });
     }
 
     private boolean searchDirectoriesAvailable() {
         File savedHistoryFile = new File(getCacheDir(), MUSIC_HISTORY_FILE);
         File chosenDirectoriesFile = new File(getCacheDir(), CHOSEN_FOLDERS_FILE);
-        this.historyFiles = getContentArray(savedHistoryFile);
-        this.chosenDirectories = getContentArray(chosenDirectoriesFile);
-        return (this.historyFiles.size() == 0 && this.chosenDirectories.size() == 0) ? false : true;
+        historyFiles = getContentArray(savedHistoryFile);
+        chosenDirectories = getContentArray(chosenDirectoriesFile);
+        return (historyFiles.size() == 0 && chosenDirectories.size() == 0) ? false : true;
     }
 
     private ArrayList<String> getContentArray(File file) {
@@ -122,9 +122,9 @@ public class PlayerService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        WindowManager windowManager = this.windowManager;
+        WindowManager windowManager = windowManager;
         if (windowManager != null) {
-            windowManager.removeView(this.playerLayout);
+            windowManager.removeView(playerLayout);
         }
     }
 }
