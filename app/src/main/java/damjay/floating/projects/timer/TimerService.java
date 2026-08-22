@@ -38,7 +38,6 @@ public class TimerService extends Service implements Runnable {
         view = LayoutInflater.from(this).inflate(R.layout.service_timer, (ViewGroup) null);
         initializeViews();
         setOnClickListeners();
-        View view = view;
         ViewsUtils.addTouchListener(view,
                 ViewsUtils.getViewTouchListener(this, view, windowManager, layoutParams), true, true, null);
     }
@@ -47,8 +46,6 @@ public class TimerService extends Service implements Runnable {
         windowManager = (WindowManager) getSystemService("window");
         collapsedTimer = view.findViewById(R.id.collapsedTimer);
         expandedTimer = view.findViewById(R.id.expandedTimer);
-        WindowManager windowManager = windowManager;
-        View view = view;
         WindowManager.LayoutParams floatingLayoutParams = ViewsUtils.getFloatingLayoutParams();
         layoutParams = floatingLayoutParams;
         windowManager.addView(view, floatingLayoutParams);

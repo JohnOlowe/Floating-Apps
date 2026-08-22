@@ -32,11 +32,10 @@ public class BluetoothServerThread extends Thread {
         BluetoothSocket socket = null;
         while (true) {
             try {
-                BluetoothServerSocket bluetoothServerSocket = serverSocket;
-                if (bluetoothServerSocket == null || socket != null) {
+                if (serverSocket == null || socket != null) {
                     break;
                 } else {
-                    socket = bluetoothServerSocket.accept();
+                    socket = serverSocket.accept();
                 }
             } catch (Throwable t) {
                 t.printStackTrace();
@@ -54,9 +53,8 @@ public class BluetoothServerThread extends Thread {
             callback.onResult(1, socket);
         }
         try {
-            BluetoothServerSocket bluetoothServerSocket2 = serverSocket;
-            if (bluetoothServerSocket2 != null) {
-                bluetoothServerSocket2.close();
+            if (serverSocket != null) {
+                serverSocket.close();
             }
         } catch (Throwable closeError2) {
             closeError2.printStackTrace();

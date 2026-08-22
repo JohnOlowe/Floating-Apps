@@ -26,7 +26,6 @@ public class BibleAdapter extends BaseAdapter {
         curBookIndex = bookIndex;
         if (bibleSource == null) {
             try {
-                Context context = context;
                 bibleSource = new CombinedChapterBibleSource(context, context.getFilesDir());
             } catch (Throwable t) {
                 t.printStackTrace();
@@ -42,11 +41,10 @@ public class BibleAdapter extends BaseAdapter {
 
     private void loadVerses(int bookIndex, int chapterIndex) throws IOException {
         versesList.clear();
-        CombinedChapterBibleSource combinedChapterBibleSource = bibleSource;
-        if (combinedChapterBibleSource == null) {
+        if (bibleSource == null) {
             return;
         }
-        char[] verses = combinedChapterBibleSource.getChapter(bookIndex, chapterIndex);
+        char[] verses = bibleSource.getChapter(bookIndex, chapterIndex);
         int[] verseIndices = bibleSource.getChapterIndex(bookIndex, chapterIndex);
         for (int i = 0; i < verseIndices.length / 2; i++) {
             versesList.add(new String(verses, verseIndices[i << 1], verseIndices[(i << 1) + 1] - verseIndices[i << 1]));

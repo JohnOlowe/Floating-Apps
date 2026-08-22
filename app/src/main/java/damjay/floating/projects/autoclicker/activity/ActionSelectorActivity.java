@@ -67,7 +67,6 @@ public class ActionSelectorActivity extends AppCompatActivity {
     }
 
     private void showAccessibilityPage() {
-        AlertDialog alertDialog = alertDialog;
         if (alertDialog != null) {
             alertDialog.dismiss();
             alertDialog = null;

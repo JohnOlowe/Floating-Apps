@@ -98,8 +98,7 @@ public class FileItem {
     }
 
     public ViewLayout getLayout() {
-        ViewLayout viewLayout = layout;
-        return viewLayout == null ? new ViewLayout() : viewLayout;
+        return layout == null ? new ViewLayout() : layout;
     }
 
     public static class ViewLayout {

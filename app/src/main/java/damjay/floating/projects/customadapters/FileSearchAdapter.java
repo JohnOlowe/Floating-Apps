@@ -59,11 +59,10 @@ public class FileSearchAdapter extends BaseAdapter {
                 getDocumentFiles(storageMediaFile.listFiles(), documentFiles, false);
             }
             handler.post(() -> {
-                String str = pendingKeyword;
-                if (str == null) {
-                    str = "";
+                if (pendingKeyword == null) {
+                    pendingKeyword = "";
                 }
-                reloadSearchResults(str);
+                reloadSearchResults(pendingKeyword);
             });
         }).start();
     }
@@ -129,20 +128,18 @@ public class FileSearchAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        ArrayList<DocumentFile> arrayList = matchingFiles;
-        if (arrayList == null) {
+        if (matchingFiles == null) {
             return 0;
         }
-        return arrayList.size();
+        return matchingFiles.size();
     }
 
     @Override
     public Object getItem(int position) {
-        ArrayList<DocumentFile> arrayList = matchingFiles;
-        if (arrayList == null) {
+        if (matchingFiles == null) {
             return null;
         }
-        return arrayList.get(position);
+        return matchingFiles.get(position);
     }
 
     @Override

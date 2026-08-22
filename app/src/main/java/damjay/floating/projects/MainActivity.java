@@ -134,7 +134,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void closeAlertDialog() {
-        AlertDialog alertDialog = alertDialog;
         if (alertDialog != null) {
             alertDialog.dismiss();
             alertDialog = null;

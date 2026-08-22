@@ -46,96 +46,92 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
         getViews();
         minimizeView(null);
         params = ViewsUtils.getFloatingLayoutParams();
-        WindowManager windowManager = (WindowManager) getSystemService("window");
-        window = windowManager;
-        windowManager.addView(parentLayout, params);
+        window = (WindowManager) getSystemService(WINDOW_SERVICE);
+        window.addView(parentLayout, params);
         addTouchListeners();
     }
 
     private void getViews() {
-        View viewInflate = LayoutInflater.from(this).inflate(R.layout.calculator_layout, (ViewGroup) null);
+        View viewInflate = LayoutInflater.from(this).inflate(R.layout.calculator_layout, null);
         parentLayout = viewInflate;
         editor = (EditText) viewInflate.findViewById(R.id.calcField);
         collapsed = parentLayout.findViewById(R.id.collapsedCalc);
         expanded = parentLayout.findViewById(R.id.expandedCalc);
         mainCalculator = parentLayout.findViewById(R.id.main_calculator);
+
         if (historyList == null) {
             historyList = (ListView) parentLayout.findViewById(R.id.calcHistory);
-            CalculatorHistoryAdapter calculatorHistoryAdapter =
-                    new CalculatorHistoryAdapter(this, this, calculatedItems);
-            historyAdapter = calculatorHistoryAdapter;
-            historyList.setAdapter((ListAdapter) calculatorHistoryAdapter);
+            historyAdapter = new CalculatorHistoryAdapter(this, this, calculatedItems);
+            historyList.setAdapter(historyAdapter);
         }
-        collapsed.setOnClickListener((view) -> {
+
+        collapsed.setOnClickListener((v) -> {
             expanded.setVisibility(View.VISIBLE);
             collapsed.setVisibility(View.GONE);
-            View view2 = quickLaunchView;
-            if (view2 != null) {
-                view2.setVisibility(View.VISIBLE);
+            if (quickLaunchView != null) {
+                quickLaunchView.setVisibility(View.VISIBLE);
             }
         });
+
         parentLayout.findViewById(R.id.calcLaunchActivity)
                 .setOnClickListener(v -> ViewsUtils.launchApp(this, MainActivity.class));
+
         parentLayout.findViewById(R.id.show_quick_launch).setOnClickListener((v) -> {
-            View view = quickLaunchView;
-            if (view == null) {
-                View quickLaunchView = QuickLaunchControl.getQuickLaunchView(this);
-                this.quickLaunchView = quickLaunchView;
-                WindowManager windowManager = window;
-                WindowManager.LayoutParams quickLaunchParams = getQuickLaunchParams(null);
-                this.quickLaunchParams = quickLaunchParams;
-                windowManager.addView(quickLaunchView, quickLaunchParams);
-                return;
+            if (quickLaunchView == null) {
+                quickLaunchView = QuickLaunchControl.getQuickLaunchView(this);
+                quickLaunchParams = getQuickLaunchParams(null);
+                window.addView(quickLaunchView, quickLaunchParams);
+            } else {
+                window.removeView(quickLaunchView);
+                quickLaunchView = null;
             }
-            window.removeView(view);
-            quickLaunchView = null;
         });
+
         expanded.getViewTreeObserver().addOnGlobalLayoutListener(
                 () -> expanded.getLayoutParams().width = ViewsUtils.getViewWidth(275.0f));
+
         ViewTreeObserver.OnGlobalLayoutListener layoutListener = () -> {
             int measuredHeight = mainCalculator.getMeasuredHeight();
-            if (measuredHeight < 1) {
-                return;
+            if (measuredHeight >= 1) {
+                historyList.getLayoutParams().height = measuredHeight;
             }
-            historyList.getLayoutParams().height = measuredHeight;
         };
         mainCalculator.getViewTreeObserver().addOnGlobalLayoutListener(layoutListener);
         historyList.getViewTreeObserver().addOnGlobalLayoutListener(layoutListener);
-        EditText editText = editor;
-        int length = editText.getText().length();
-        caretPosition = length;
-        editText.setSelection(length);
+
+        caretPosition = editor.getText().length();
+        editor.setSelection(caretPosition);
     }
 
-    private WindowManager.LayoutParams getQuickLaunchParams(WindowManager.LayoutParams quickLaunchParams) {
+    private WindowManager.LayoutParams getQuickLaunchParams(WindowManager.LayoutParams inputParams) {
         int y = params.y;
         int topNavHeight = parentLayout.findViewById(R.id.topNav).getMeasuredHeight();
         int viewHeight = quickLaunchView.getMeasuredHeight();
-        int viewHeight2 = viewHeight <= 0 ? topNavHeight : viewHeight;
-        WindowManager.LayoutParams quickLaunchParams2 =
-                quickLaunchParams == null ? ViewsUtils.getFloatingLayoutParams() : quickLaunchParams;
-        if (y <= viewHeight2) {
-            quickLaunchParams2.y = topNavHeight + y;
+        int effectiveHeight = viewHeight <= 0 ? topNavHeight : viewHeight;
+
+        WindowManager.LayoutParams resultParams =
+                inputParams == null ? ViewsUtils.getFloatingLayoutParams() : inputParams;
+        if (y <= effectiveHeight) {
+            resultParams.y = topNavHeight + y;
         } else {
-            quickLaunchParams2.y = y - viewHeight2;
+            resultParams.y = y - effectiveHeight;
         }
-        quickLaunchParams2.x = params.x;
-        return quickLaunchParams2;
+        resultParams.x = params.x;
+        return resultParams;
     }
 
     private void addTouchListeners() {
         View.OnTouchListener touchListener =
                 ViewsUtils.getViewTouchListener(this, parentLayout, window, params);
-        View.OnTouchListener mainTouchListener = (view, event) -> {
-            boolean result = touchListener.onTouch(view, event);
-            View view2 = quickLaunchView;
-            if (view2 != null) {
-                window.updateViewLayout(view2, getQuickLaunchParams(quickLaunchParams));
+        View.OnTouchListener mainTouchListener = (v, event) -> {
+            boolean result = touchListener.onTouch(v, event);
+            if (quickLaunchView != null) {
+                window.updateViewLayout(quickLaunchView, getQuickLaunchParams(quickLaunchParams));
             }
             return result;
         };
         ViewsUtils.addTouchListener(expanded, mainTouchListener, true, true, ListView.class, null);
-        ViewsUtils.addTouchListener(collapsed, touchListener, true, true, new Class[0]);
+        ViewsUtils.addTouchListener(collapsed, touchListener, true, true);
     }
 
     public void showHistory(View view) {
@@ -145,29 +141,26 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
         }
         if (historyList == null) {
             historyList = (ListView) parentLayout.findViewById(R.id.calcHistory);
-            CalculatorHistoryAdapter calculatorHistoryAdapter =
-                    new CalculatorHistoryAdapter(this, this, calculatedItems);
-            historyAdapter = calculatorHistoryAdapter;
-            historyList.setAdapter((ListAdapter) calculatorHistoryAdapter);
+            historyAdapter = new CalculatorHistoryAdapter(this, this, calculatedItems);
+            historyList.setAdapter(historyAdapter);
         }
-        View mainCalculator = parentLayout.findViewById(R.id.main_calculator);
         historyList.setVisibility(View.VISIBLE);
-        mainCalculator.setVisibility(View.GONE);
+        parentLayout.findViewById(R.id.main_calculator).setVisibility(View.GONE);
     }
 
     @Override
     public void insertContent(int position) {
         CalcItem item = (CalcItem) historyList.getItemAtPosition(position);
         String editorText = editor.getText().toString();
-        int caretPosition = editor.getSelectionStart();
-        if (caretPosition == 1 && "0".equals(editorText)) {
+        int caret = editor.getSelectionStart();
+        if (caret == 1 && "0".equals(editorText)) {
             editor.setText(item.getExpression());
-            caretPosition--;
+            caret--;
         } else {
-            editor.setText(editorText.substring(0, caretPosition) + item.getExpression()
-                    + editorText.substring(caretPosition));
+            editor.setText(editorText.substring(0, caret) + item.getExpression()
+                    + editorText.substring(caret));
         }
-        editor.setSelection(item.getExpression().length() + caretPosition);
+        editor.setSelection(item.getExpression().length() + caret);
         editor.requestFocus();
         hideHistory();
     }
@@ -176,10 +169,8 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
     public void replaceContent(int position) {
         CalcItem item = (CalcItem) historyList.getItemAtPosition(position);
         editor.setText(item.getExpression());
-        EditText editText = editor;
-        int length = item.getExpression().length();
-        caretPosition = length;
-        editText.setSelection(length);
+        caretPosition = item.getExpression().length();
+        editor.setSelection(caretPosition);
         editor.requestFocus();
         hideHistory();
     }
@@ -187,9 +178,8 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
     @Override
     public void deleteHistory(int position) {
         calculatedItems.remove(position);
-        CalculatorHistoryAdapter calculatorHistoryAdapter = historyAdapter;
-        if (calculatorHistoryAdapter != null) {
-            calculatorHistoryAdapter.notifyDataSetChanged();
+        if (historyAdapter != null) {
+            historyAdapter.notifyDataSetChanged();
         }
     }
 
@@ -201,17 +191,15 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
     public void minimizeView(View view) {
         expanded.setVisibility(View.GONE);
         collapsed.setVisibility(View.VISIBLE);
-        View view2 = quickLaunchView;
-        if (view2 != null) {
-            view2.setVisibility(View.GONE);
+        if (quickLaunchView != null) {
+            quickLaunchView.setVisibility(View.GONE);
         }
     }
 
     public void clearAction(View view) {
         editor.setText("0");
-        EditText editText = editor;
         caretPosition = 1;
-        editText.setSelection(1);
+        editor.setSelection(1);
     }
 
     public void deleteAction(View view) {
@@ -231,16 +219,11 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
             editor.setText(input.substring(0, caretPosition - 1) + input.substring(caretPosition));
         }
         if ("0".equals(editor.getText().toString())) {
-            EditText editText = editor;
             caretPosition = 1;
-            editText.setSelection(1);
+            editor.setSelection(1);
         } else {
-            EditText editText2 = editor;
-            int i = caretPosition - 1;
-            caretPosition = i;
-            int i2 = i >= 0 ? i : 0;
-            caretPosition = i2;
-            editText2.setSelection(i2);
+            caretPosition = Math.max(caretPosition - 1, 0);
+            editor.setSelection(caretPosition);
         }
         editor.requestFocus();
     }
@@ -248,76 +231,65 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
     public void caretLeft(View view) {
         int textLength = editor.getText().length();
         if (editor.getText().toString().startsWith(getResources().getString(R.string.invalid_syntax))) {
-            String str = previousInvalidExpression;
-            if (str != null) {
-                editor.setText(str);
+            if (previousInvalidExpression != null) {
+                editor.setText(previousInvalidExpression);
             }
             previousInvalidExpression = null;
             return;
         }
         editor.setCursorVisible(true);
-        int selectionStart = editor.getSelectionStart();
-        caretPosition = selectionStart;
-        int i = selectionStart - 1;
-        caretPosition = i;
-        if (i < 0) {
-            i = textLength;
+        caretPosition = editor.getSelectionStart() - 1;
+        if (caretPosition < 0) {
+            caretPosition = textLength;
         }
-        caretPosition = i;
-        editor.setSelection(i);
+        editor.setSelection(caretPosition);
         editor.requestFocus();
     }
 
     public void caretRight(View view) {
         int textLength = editor.getText().length();
         if (editor.getText().toString().startsWith(getResources().getString(R.string.invalid_syntax))) {
-            String str = previousInvalidExpression;
-            if (str != null) {
-                editor.setText(str);
+            if (previousInvalidExpression != null) {
+                editor.setText(previousInvalidExpression);
             }
             previousInvalidExpression = null;
             return;
         }
         editor.setCursorVisible(true);
-        int selectionStart = editor.getSelectionStart();
-        caretPosition = selectionStart;
-        int i = selectionStart + 1;
-        caretPosition = i;
-        if (i > textLength) {
-            i = 0;
+        caretPosition = editor.getSelectionStart() + 1;
+        if (caretPosition > textLength) {
+            caretPosition = 0;
         }
-        caretPosition = i;
-        editor.setSelection(i);
+        editor.setSelection(caretPosition);
         editor.requestFocus();
     }
 
     public void buttonAction(View view) {
-        String updatedContent;
-        if (view instanceof Button) {
-            Button button = (Button) view;
-            String fieldContent = editor.getText().toString();
-            caretPosition = editor.getSelectionStart();
-            if (fieldContent.startsWith(getResources().getString(R.string.invalid_syntax))) {
-                deleteAction(null);
-                caretPosition = editor.getSelectionStart();
-            }
-            if (caretPosition == fieldContent.length()) {
-                updatedContent =
-                        ((!fieldContent.equals("0") || button.getText().toString().equals(".")) ? fieldContent : "")
-                        + "" + ((Object) button.getText());
-            } else {
-                updatedContent = fieldContent.substring(0, caretPosition) + ((Object) button.getText())
-                        + fieldContent.substring(caretPosition);
-            }
-            editor.setText(updatedContent);
-            EditText editText = editor;
-            int i = caretPosition + 1;
-            caretPosition = i;
-            int length = i > updatedContent.length() ? updatedContent.length() : caretPosition;
-            caretPosition = length;
-            editText.setSelection(length);
-            editor.requestFocus();
+        if (!(view instanceof Button)) {
+            return;
         }
+        Button button = (Button) view;
+        String fieldContent = editor.getText().toString();
+        caretPosition = editor.getSelectionStart();
+
+        if (fieldContent.startsWith(getResources().getString(R.string.invalid_syntax))) {
+            deleteAction(null);
+            caretPosition = editor.getSelectionStart();
+        }
+
+        String updatedContent;
+        if (caretPosition == fieldContent.length()) {
+            updatedContent = ((!fieldContent.equals("0") || button.getText().toString().equals("."))
+                    ? fieldContent : "") + button.getText();
+        } else {
+            updatedContent = fieldContent.substring(0, caretPosition) + button.getText()
+                    + fieldContent.substring(caretPosition);
+        }
+
+        editor.setText(updatedContent);
+        caretPosition = Math.min(caretPosition + 1, updatedContent.length());
+        editor.setSelection(caretPosition);
+        editor.requestFocus();
     }
 
     public void computeCalculation(View view) {
@@ -330,17 +302,14 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
             Expression result = firstResult.compute();
             if (result != null) {
                 calculatedItems.add(0, new CalcItem(editorText, result.getExact()));
-                CalculatorHistoryAdapter calculatorHistoryAdapter = historyAdapter;
-                if (calculatorHistoryAdapter != null) {
-                    calculatorHistoryAdapter.notifyDataSetChanged();
+                if (historyAdapter != null) {
+                    historyAdapter.notifyDataSetChanged();
                 }
             }
             editor.setText(result == null ? getResources().getString(R.string.invalid_syntax) : result.getExact());
             previousInvalidExpression = editorText;
-            EditText editText = editor;
-            int length = editText.getText().length();
-            caretPosition = length;
-            editText.setSelection(length);
+            caretPosition = editor.getText().length();
+            editor.setSelection(caretPosition);
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -353,13 +322,11 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
     @Override
     public void onDestroy() {
         super.onDestroy();
-        View view = quickLaunchView;
-        if (view != null) {
-            window.removeView(view);
+        if (quickLaunchView != null) {
+            window.removeView(quickLaunchView);
         }
-        View view2 = parentLayout;
-        if (view2 != null) {
-            window.removeView(view2);
+        if (parentLayout != null) {
+            window.removeView(parentLayout);
         }
     }
 

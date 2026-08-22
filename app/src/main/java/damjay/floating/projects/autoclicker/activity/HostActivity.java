@@ -80,9 +80,8 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
 
     private void cancel() {
         closed = true;
-        BluetoothServerThread bluetoothServerThread = serverThread;
-        if (bluetoothServerThread != null) {
-            bluetoothServerThread.cancel();
+        if (serverThread != null) {
+            serverThread.cancel();
         }
         finish();
     }
@@ -90,7 +89,6 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
     @Override
     public void onResult(int resultCode, Object artifact) {
         runOnUiThread(() -> {
-            AlertDialog alertDialog = alertDialog;
             if (alertDialog != null) {
                 alertDialog.dismiss();
                 alertDialog = null;

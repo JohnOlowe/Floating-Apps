@@ -66,9 +66,8 @@ public class GuestActivity extends AppCompatActivity implements AdapterView.OnIt
     }
 
     private void onComplete(BluetoothSocket connectedSocket) {
-        AlertDialog alertDialog = waitingDialog;
-        if (alertDialog != null) {
-            alertDialog.dismiss();
+        if (waitingDialog != null) {
+            waitingDialog.dismiss();
             waitingDialog = null;
         }
         if (connectedSocket == null) {

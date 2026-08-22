@@ -96,10 +96,9 @@ public class CombinedChapterBibleSource {
     }
 
     private void loadChapter(int bookIndex, int chapterIndex) throws IOException {
-        int i = currentBookIndex;
-        if (i != bookIndex || currentChapterIndex != chapterIndex) {
-            if (i != bookIndex || combinedChapterIndex[bookIndex][chapterIndex << 2] != currentFileIndex) {
-                if (i != bookIndex) {
+        if (currentBookIndex != bookIndex || currentChapterIndex != chapterIndex) {
+            if (currentBookIndex != bookIndex || combinedChapterIndex[bookIndex][chapterIndex << 2] != currentFileIndex) {
+                if (currentBookIndex != bookIndex) {
                     loadBookIndex(bookIndex);
                 }
                 currentFileIndex = combinedChapterIndex[bookIndex][chapterIndex << 2];

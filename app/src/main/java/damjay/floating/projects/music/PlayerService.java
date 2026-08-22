@@ -50,9 +50,8 @@ public class PlayerService extends Service {
         playerLayout = LayoutInflater.from(this).inflate(R.layout.service_player, (ViewGroup) null);
         initializeViews();
         setOnClickListeners();
-        View view = playerLayout;
-        ViewsUtils.addTouchListener(view,
-                ViewsUtils.getViewTouchListener(this, view, windowManager, layoutParams), true, true,
+        ViewsUtils.addTouchListener(playerLayout,
+                ViewsUtils.getViewTouchListener(this, playerLayout, windowManager, layoutParams), true, true,
                 ListView.class, null);
     }
 
@@ -64,11 +63,9 @@ public class PlayerService extends Service {
         ListView listView = (ListView) playerLayout.findViewById(R.id.music_list);
         musicFiles = listView;
         listView.setAdapter((ListAdapter) new MusicListAdapter(this, chosenDirectories, historyFiles));
-        WindowManager windowManager = windowManager;
-        View view = playerLayout;
         WindowManager.LayoutParams floatingLayoutParams = ViewsUtils.getFloatingLayoutParams(true);
         layoutParams = floatingLayoutParams;
-        windowManager.addView(view, floatingLayoutParams);
+        windowManager.addView(playerLayout, floatingLayoutParams);
         expandedPlayer.setVisibility(View.GONE);
         collapsedPlayer.setVisibility(View.VISIBLE);
     }
@@ -122,7 +119,6 @@ public class PlayerService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        WindowManager windowManager = windowManager;
         if (windowManager != null) {
             windowManager.removeView(playerLayout);
         }

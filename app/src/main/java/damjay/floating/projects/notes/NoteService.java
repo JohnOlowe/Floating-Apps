@@ -39,7 +39,6 @@ public class NoteService extends Service {
         view = LayoutInflater.from(this).inflate(R.layout.service_note, (ViewGroup) null);
         initializeViews();
         setOnClickListeners();
-        View view = view;
         ViewsUtils.addTouchListener(view,
                 ViewsUtils.getViewTouchListener(this, view, windowManager, layoutParams), true, true,
                 Button.class, ImageView.class, LinearLayout.class, RelativeLayout.class);
@@ -52,8 +51,6 @@ public class NoteService extends Service {
         toggleFocus = view.findViewById(R.id.toggle_focus);
         textField = (EditText) view.findViewById(R.id.copy_text_field);
         copyButton = (Button) view.findViewById(R.id.copy_button);
-        WindowManager windowManager = windowManager;
-        View view = view;
         WindowManager.LayoutParams floatingLayoutParams = ViewsUtils.getFloatingLayoutParams(true);
         layoutParams = floatingLayoutParams;
         windowManager.addView(view, floatingLayoutParams);

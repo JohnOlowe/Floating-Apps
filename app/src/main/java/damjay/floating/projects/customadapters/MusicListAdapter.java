@@ -58,17 +58,15 @@ public class MusicListAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        ArrayList<MusicFile> arrayList = musicList;
-        if (arrayList != null) {
-            return arrayList.size();
+        if (musicList != null) {
+            return musicList.size();
         }
         return 0;
     }
 
     @Override
     public Object getItem(int position) {
-        ArrayList<MusicFile> arrayList = musicList;
-        if (arrayList == null || arrayList.size() <= position) {
+        if (musicList == null || musicList.size() <= position) {
             return null;
         }
         return musicList.get(position);

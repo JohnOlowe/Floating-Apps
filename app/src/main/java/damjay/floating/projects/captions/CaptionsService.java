@@ -50,7 +50,6 @@ public class CaptionsService extends Service {
         captionsTextView.setGravity(1);
         initializeFloatingParameters();
         initializeSettingViews();
-        CaptionsReader captionsReader = captionsReader;
         if (captionsReader != null) {
             captionsReader.startDisplaying();
             WindowManager.LayoutParams captionsTextParams = ViewsUtils.getFloatingLayoutParams(
@@ -104,9 +103,8 @@ public class CaptionsService extends Service {
                 (EditText) captionsSettingsView.findViewById(R.id.green_rgb_field),
                 (EditText) captionsSettingsView.findViewById(R.id.blue_rgb_field), captionsTextView);
         windowManager.addView(captionsView, layoutParams);
-        View view = captionsView;
-        ViewsUtils.addTouchListener(view,
-                ViewsUtils.getViewTouchListener(this, view, windowManager, layoutParams), true, true,
+        ViewsUtils.addTouchListener(captionsView,
+                ViewsUtils.getViewTouchListener(this, captionsView, windowManager, layoutParams), true, true,
                 EditText.class, SeekBar.class, CheckBox.class, null);
         hideSettingsView();
     }
@@ -298,7 +296,6 @@ public class CaptionsService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        WindowManager windowManager = windowManager;
         if (windowManager != null) {
             windowManager.removeView(captionsView);
             if (captionsReader.isDisplaying()) {

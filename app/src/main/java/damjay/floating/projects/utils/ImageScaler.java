@@ -20,9 +20,8 @@ public class ImageScaler {
     }
 
     public void decreaseScale() {
-        float f = scale;
-        if (f - 0.1f >= defaultMinScale) {
-            scale = f - 0.1f;
+        if (scale - 0.1f >= defaultMinScale) {
+            scale = scale - 0.1f;
         }
     }
 
@@ -35,19 +34,15 @@ public class ImageScaler {
     }
 
     public Bitmap getFastScaled(Bitmap bitmap) {
-        float f = scale;
-        float f2 = defaultMinScale;
-        if (f < f2) {
-            scale = f2;
+        if (scale < defaultMinScale) {
+            scale = defaultMinScale;
         }
         return Bitmap.createScaledBitmap(bitmap, (int) (bitmap.getWidth() * scale), (int) (bitmap.getHeight() * scale), false);
     }
 
     public Bitmap getScaled(Bitmap bitmap) {
-        float f = scale;
-        float f2 = defaultMinScale;
-        if (f < f2) {
-            scale = f2;
+        if (scale < defaultMinScale) {
+            scale = defaultMinScale;
         }
         return Bitmap.createScaledBitmap(bitmap, (int) (bitmap.getWidth() * scale), (int) (bitmap.getHeight() * scale), true);
     }

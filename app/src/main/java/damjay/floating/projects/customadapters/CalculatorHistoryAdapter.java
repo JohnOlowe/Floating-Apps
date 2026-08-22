@@ -32,17 +32,15 @@ public class CalculatorHistoryAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        ArrayList<CalculatorService.CalcItem> arrayList = list;
-        if (arrayList != null) {
-            return arrayList.size();
+        if (list != null) {
+            return list.size();
         }
         return 0;
     }
 
     @Override
     public Object getItem(int position) {
-        ArrayList<CalculatorService.CalcItem> arrayList = list;
-        if (arrayList == null || arrayList.size() <= position) {
+        if (list == null || list.size() <= position) {
             return null;
         }
         return list.get(position);
