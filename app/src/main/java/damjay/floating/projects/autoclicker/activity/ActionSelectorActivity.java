@@ -72,7 +72,7 @@ public class ActionSelectorActivity extends AppCompatActivity {
             alertDialog.dismiss();
             alertDialog = null;
         }
-        Intent intent = new Intent("android.settings.ACCESSIBILITY_SETTINGS");
+        Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivityForResult(intent, SERVICE_ACCESSIBILITY);
     }

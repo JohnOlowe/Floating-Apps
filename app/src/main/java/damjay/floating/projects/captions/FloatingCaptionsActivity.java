@@ -2,6 +2,7 @@ package damjay.floating.projects.captions;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.provider.Settings;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -126,13 +127,13 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
                                     (dialog, id) -> {
                                         try {
                                             Intent intent = new Intent(
-                                                    "android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
+                                                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                                             intent.setData(Uri.parse(String.format(
                                                     "package:%s", getApplicationContext().getPackageName())));
                                             startActivityForResult(intent, FloatingPDFActivity.FILE_REQUEST_PERMISSION);
                                         } catch (Throwable th) {
                                             Intent intent2 = new Intent();
-                                            intent2.setAction("android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION");
+                                            intent2.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
                                             startActivityForResult(intent2, FloatingPDFActivity.FILE_REQUEST_PERMISSION);
                                         }
                                         closeAlertDialog();
@@ -195,9 +196,9 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
                             (dialog, id) -> {
                                 Intent intent;
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                    intent = new Intent("android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
+                                    intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                                 } else {
-                                    intent = new Intent("android.settings.APPLICATION_SETTINGS");
+                                    intent = new Intent(Settings.ACTION_APPLICATION_SETTINGS);
                                 }
                                 Uri uri = Uri.fromParts("package", getPackageName(), null);
                                 intent.setData(uri);

@@ -64,7 +64,7 @@ public class ModeSelectorActivity extends AppCompatActivity {
                         .setPositiveButton(R.string.ok,
                                 (dialog, id) -> {
                                     dialog.dismiss();
-                                    Intent intent = new Intent("android.bluetooth.adapter.action.REQUEST_ENABLE");
+                                    Intent intent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
                                     startActivityForResult(intent, ENABLE_BLUETOOTH);
                                 })
                         .setNegativeButton(R.string.cancel, (dialog, id) -> finish())

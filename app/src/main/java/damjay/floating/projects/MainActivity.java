@@ -62,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
                             .setPositiveButton(R.string.settings,
                                     (dialog, id) -> {
                                         Intent intent = new Intent();
-                                        intent.setAction("android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS");
+                                        intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
                                         intent.setData(Uri.parse("package:" + getPackageName()));
                                         closeAlertDialog();
                                         startActivity(intent);
@@ -97,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
                                         Toast.makeText(this, R.string.activate_display_over_app_message,
                                                      Toast.LENGTH_LONG)
                                                 .show();
-                                        Intent intent = new Intent("android.settings.action.MANAGE_OVERLAY_PERMISSION",
+                                        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                                 Uri.parse("package:" + getPackageName()));
                                         startActivityForResult(intent, FLOAT_PERMISSION_REQUEST);
                                     })

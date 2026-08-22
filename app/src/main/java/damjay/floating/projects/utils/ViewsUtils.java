@@ -1,10 +1,12 @@
 package damjay.floating.projects.utils;
 
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.net.Uri;
+import android.provider.Settings;
 import android.os.Build;
 import android.os.Environment;
 import android.util.DisplayMetrics;
@@ -93,7 +95,7 @@ public class ViewsUtils {
     }
 
     public static void openAppInfo(Activity activity, String packageName, int requestCode) {
-        Intent intent = new Intent("android.settings.APPLICATION_DETAILS_SETTINGS");
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
         Uri uri = Uri.fromParts("package", packageName, null);
         intent.setData(uri);
         if (requestCode == -911) {
@@ -187,7 +189,7 @@ public class ViewsUtils {
             activity.startActivity(intent);
             return;
         }
-        activity.startActivity(new Intent("android.intent.action.VIEW_DOWNLOADS"));
+        activity.startActivity(new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS));
     }
 
     public static boolean isSamsung() {
