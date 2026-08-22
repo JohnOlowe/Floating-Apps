@@ -153,10 +153,9 @@ public class CaptionsService extends Service {
     }
 
     private void showSettingsView() {
-        CaptionsReader captionsReader;
         collapsedCaptionsView.setVisibility(View.GONE);
         captionsSettingsView.setVisibility(View.VISIBLE);
-        if (settingsShouldPauseCaptions && (captionsReader = captionsReader) != null) {
+        if (settingsShouldPauseCaptions && captionsReader != null) {
             captionsReader.pause();
         }
         if (captionsReader != null) {
@@ -168,10 +167,9 @@ public class CaptionsService extends Service {
     }
 
     private void hideSettingsView() {
-        CaptionsReader captionsReader;
         collapsedCaptionsView.setVisibility(View.VISIBLE);
         captionsSettingsView.setVisibility(View.GONE);
-        if (settingsShouldPauseCaptions && (captionsReader = captionsReader) != null) {
+        if (settingsShouldPauseCaptions && captionsReader != null) {
             captionsReader.play();
         }
         layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
