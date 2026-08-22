@@ -24,6 +24,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import damjay.floating.projects.R;
 import damjay.floating.projects.customadapters.HistorySimpleAdapter;
+import damjay.floating.projects.FileSearchActivity;
 import damjay.floating.projects.files.FileBrowserActivity;
 import damjay.floating.projects.utils.FormatUtils;
 import damjay.floating.projects.utils.IOUtils;
@@ -97,11 +98,26 @@ public class FloatingPDFActivity extends AppCompatActivity {
         return false;
     }
 
+    private FileBrowserActivity.FileCallback getDefaultCallback() {
+        return new FileBrowserActivity.FileCallback() {
+            @Override
+            public void fileCallback(String filePath) {
+                FloatingPDFActivity.returnedPath = filePath;
+            }
+
+            @Override
+            public String extensionAllowed() {
+                return PDF_EXTENSION;
+            }
+        };
+    }
+
     private void initializeViews() {
         try {
             filePath = findViewById(R.id.file_path);
             Button loadFileButton = findViewById(R.id.selectFile);
             Button selectFiles = findViewById(R.id.browseFile);
+            Button searchFiles = findViewById(R.id.searchFile);
             populateList();
 
             loadFileButton.setOnClickListener(v -> {
@@ -114,8 +130,12 @@ public class FloatingPDFActivity extends AppCompatActivity {
                     });
             selectFiles.setOnClickListener(v -> {
                         FileBrowserActivity.currentInput = filePath.getText().toString();
-                        Intent intent = new Intent(FloatingPDFActivity.this, FileBrowserActivity.class);
-                        startActivity(intent);
+                        FileBrowserActivity.callback = getDefaultCallback();
+                        startActivity(new Intent(FloatingPDFActivity.this, FileBrowserActivity.class));
+                    });
+            searchFiles.setOnClickListener(v -> {
+                        FileSearchActivity.callback = getDefaultCallback();
+                        startActivity(new Intent(FloatingPDFActivity.this, FileSearchActivity.class));
                     });
         } catch (Throwable report) {
             report.printStackTrace();
