@@ -1,13 +1,11 @@
 package damjay.floating.projects.captions;
 
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-import android.view.View;
 import android.widget.EditText;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -39,62 +37,55 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
 
     private void initializeViews() {
         this.filePathField = (TextView) findViewById(R.id.caption_file_path);
-        findViewById(R.id.start_captions).setOnClickListener((view) -> this.m193xa2c536f2(view));
-        findViewById(R.id.search_files).setOnClickListener((view) -> this.m194xa8c90251(view));
-        findViewById(R.id.browse_files).setOnClickListener((view) -> this.m195xaecccdb0(view));
+        findViewById(R.id.start_captions).setOnClickListener((v) -> {
+            File captionsFile;
+            String contentCaptions;
+            String filePath = this.filePathField.getText().toString().trim();
+            if (filePath.isEmpty()
+                    || (contentCaptions = getContentCaptions((captionsFile = new File(filePath)))) == null) {
+                return;
+            }
+            CaptionsService.contentCaptions = contentCaptions;
+            CaptionsService.captionsFileName = captionsFile.getName();
+            Intent intent = new Intent(this, CaptionsService.class);
+            startService(intent);
+        });
+        findViewById(R.id.search_files).setOnClickListener((v) -> {
+            FileSearchActivity.callback = getCaptionsCallback();
+            Intent intent = new Intent(this, FileSearchActivity.class);
+            startActivity(intent);
+        });
+        findViewById(R.id.browse_files).setOnClickListener((v) -> {
+            FileBrowserActivity.callback = getCaptionsCallback();
+            FileBrowserActivity.currentInput = this.filePathField.getText().toString();
+            Intent intent = new Intent(this, FileBrowserActivity.class);
+            startActivity(intent);
+        });
         TextView sampleText = (TextView) findViewById(R.id.sample_text);
-        CaptionsService.watchSeekBar((SeekBar) findViewById(R.id.captions_size_seek_bar), (TextView) findViewById(R.id.captions_size_text), sampleText);
-        CaptionsService.watchColorFields(this, (EditText) findViewById(R.id.red_rgb_field), (EditText) findViewById(R.id.green_rgb_field), (EditText) findViewById(R.id.blue_rgb_field), sampleText);
-    }
-
-    void m193xa2c536f2(View v) {
-        File captionsFile;
-        String contentCaptions;
-        String filePath = this.filePathField.getText().toString().trim();
-        if (filePath.isEmpty() || (contentCaptions = getContentCaptions((captionsFile = new File(filePath)))) == null) {
-            return;
-        }
-        CaptionsService.contentCaptions = contentCaptions;
-        CaptionsService.captionsFileName = captionsFile.getName();
-        Intent intent = new Intent(this, (Class<?>) CaptionsService.class);
-        startService(intent);
-    }
-
-    void m194xa8c90251(View v) {
-        FileSearchActivity.callback = getCaptionsCallback();
-        Intent intent = new Intent(this, (Class<?>) FileSearchActivity.class);
-        startActivity(intent);
-    }
-
-    void m195xaecccdb0(View v) {
-        FileBrowserActivity.callback = getCaptionsCallback();
-        FileBrowserActivity.currentInput = this.filePathField.getText().toString();
-        Intent intent = new Intent(this, (Class<?>) FileBrowserActivity.class);
-        startActivity(intent);
-    }
-
-    class AnonymousClass1 implements FileBrowserActivity.FileCallback {
-        AnonymousClass1() {
-        }
-
-        @Override
-        public void fileCallback(String filePath) {
-            FloatingCaptionsActivity.this.filePathField.setText(filePath);
-        }
-
-        @Override
-        public String extensionAllowed() {
-            return FloatingCaptionsActivity.EXTENSION_ALLOWED;
-        }
-
-        @Override
-        public String titleOfBrowser() {
-            return FloatingCaptionsActivity.this.getResources().getString(R.string.floating_captions);
-        }
+        CaptionsService.watchSeekBar((SeekBar) findViewById(R.id.captions_size_seek_bar),
+                (TextView) findViewById(R.id.captions_size_text), sampleText);
+        CaptionsService.watchColorFields(this, (EditText) findViewById(R.id.red_rgb_field),
+                (EditText) findViewById(R.id.green_rgb_field), (EditText) findViewById(R.id.blue_rgb_field),
+                sampleText);
     }
 
     private FileBrowserActivity.FileCallback getCaptionsCallback() {
-        return new AnonymousClass1();
+        return new FileBrowserActivity.FileCallback() {
+            @Override
+            public void fileCallback(String filePath) {
+                FloatingCaptionsActivity.this.filePathField.setText(filePath);
+            }
+
+            @Override
+            public String extensionAllowed() {
+                return FloatingCaptionsActivity.EXTENSION_ALLOWED;
+            }
+
+            @Override
+            public String titleOfBrowser() {
+                return FloatingCaptionsActivity.this.getResources().getString(R.string.floating_captions);
+            }
+        };
     }
 
     private String getContentCaptions(File captionsFile) {
@@ -121,44 +112,62 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
     }
 
     private boolean checkPermission() {
-        if (Build.VERSION.SDK_INT >= 30 && !Environment.isExternalStorageManager()) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
             if (this.alertDialog != null) {
                 return false;
             }
-            AlertDialog alertDialogCreate = new AlertDialog.Builder(this).setTitle(R.string.grant_permissions).setMessage(R.string.manage_files_permission_message).setCancelable(false).setPositiveButton(android.R.string.ok, (dialogInterface, i) -> this.m191x33292f76(dialogInterface, i)).setNegativeButton(R.string.exit, FloatingPDFActivity.DIALOG_EXIT_LISTENER).create();
+            AlertDialog alertDialogCreate =
+                    new AlertDialog.Builder(this)
+                            .setTitle(R.string.grant_permissions)
+                            .setMessage(R.string.manage_files_permission_message)
+                            .setCancelable(false)
+                            .setPositiveButton(android.R.string.ok,
+                                    (dialog, id) -> {
+                                        try {
+                                            Intent intent = new Intent(
+                                                    "android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
+                                            intent.setData(Uri.parse(String.format(
+                                                    "package:%s", getApplicationContext().getPackageName())));
+                                            startActivityForResult(intent, 101);
+                                        } catch (Throwable th) {
+                                            Intent intent2 = new Intent();
+                                            intent2.setAction("android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION");
+                                            startActivityForResult(intent2, 101);
+                                        }
+                                        closeAlertDialog();
+                                    })
+                            .setNegativeButton(R.string.exit, FloatingPDFActivity.DIALOG_EXIT_LISTENER)
+                            .create();
             this.alertDialog = alertDialogCreate;
             alertDialogCreate.show();
             return false;
         }
-        if (Build.VERSION.SDK_INT >= 23 && Build.VERSION.SDK_INT < 30 && checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE") != 0) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.R
+                && checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE") != 0) {
             if (this.alertDialog != null) {
                 return false;
             }
-            AlertDialog alertDialogCreate2 = new AlertDialog.Builder(this).setTitle(R.string.grant_permissions).setMessage(R.string.files_permission_message).setCancelable(false).setPositiveButton(android.R.string.ok, (dialogInterface, i) -> this.m192x392cfad5(dialogInterface, i)).setNegativeButton(R.string.exit, FloatingPDFActivity.DIALOG_EXIT_LISTENER).create();
+            AlertDialog alertDialogCreate2 =
+                    new AlertDialog.Builder(this)
+                            .setTitle(R.string.grant_permissions)
+                            .setMessage(R.string.files_permission_message)
+                            .setCancelable(false)
+                            .setPositiveButton(android.R.string.ok,
+                                    (dialog, id) -> {
+                                        ActivityCompat.requestPermissions(this,
+                                                new String[] {"android.permission.READ_EXTERNAL_STORAGE",
+                                                        "android.permission.WRITE_EXTERNAL_STORAGE"},
+                                                101);
+                                        closeAlertDialog();
+                                    })
+                            .setNegativeButton(R.string.exit, FloatingPDFActivity.DIALOG_EXIT_LISTENER)
+                            .create();
             this.alertDialog = alertDialogCreate2;
             alertDialogCreate2.show();
             return false;
         }
         closeAlertDialog();
         return true;
-    }
-
-    void m191x33292f76(DialogInterface dialog, int id) {
-        try {
-            Intent intent = new Intent("android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
-            intent.setData(Uri.parse(String.format("package:%s", getApplicationContext().getPackageName())));
-            startActivityForResult(intent, 101);
-        } catch (Throwable th) {
-            Intent intent2 = new Intent();
-            intent2.setAction("android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION");
-            startActivityForResult(intent2, 101);
-        }
-        closeAlertDialog();
-    }
-
-    void m192x392cfad5(DialogInterface dialog, int id) {
-        ActivityCompat.requestPermissions(this, new String[]{"android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE"}, 101);
-        closeAlertDialog();
     }
 
     private void closeAlertDialog() {
@@ -178,25 +187,25 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
         if (grantResults[0] == 0) {
             closeAlertDialog();
         } else {
-            new AlertDialog.Builder(this).setMessage(R.string.permission_denied_grant_manually).setCancelable(false).setPositiveButton(R.string.settings, (dialogInterface, i) -> this.m196x4aea71e0(dialogInterface, i)).setNegativeButton(R.string.exit, (dialogInterface, i) -> this.m197x50ee3d3f(dialogInterface, i)).show();
+            new AlertDialog.Builder(this)
+                    .setMessage(R.string.permission_denied_grant_manually)
+                    .setCancelable(false)
+                    .setPositiveButton(R.string.settings,
+                            (dialog, id) -> {
+                                Intent intent;
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                    intent = new Intent("android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
+                                } else {
+                                    intent = new Intent("android.settings.APPLICATION_SETTINGS");
+                                }
+                                Uri uri = Uri.fromParts("package", getPackageName(), null);
+                                intent.setData(uri);
+                                startActivity(intent);
+                                closeAlertDialog();
+                            })
+                    .setNegativeButton(R.string.exit, (dialog, id) -> finish())
+                    .show();
         }
-    }
-
-    void m196x4aea71e0(DialogInterface dialog, int id) {
-        Intent intent;
-        if (Build.VERSION.SDK_INT >= 30) {
-            intent = new Intent("android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
-        } else {
-            intent = new Intent("android.settings.APPLICATION_SETTINGS");
-        }
-        Uri uri = Uri.fromParts("package", getPackageName(), null);
-        intent.setData(uri);
-        startActivity(intent);
-        closeAlertDialog();
-    }
-
-    void m197x50ee3d3f(DialogInterface dialog, int id) {
-        finish();
     }
 
     @Override

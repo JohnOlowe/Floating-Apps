@@ -58,7 +58,8 @@ public class FileListAdapter extends BaseAdapter {
             File file = externalFilesDirs[i];
             String filePath = file.getPath();
             int driveNo2 = driveNo + 1;
-            storageMedia.add(new FileItem(new File(filePath.substring(0, filePath.indexOf("Android"))), driveNo == 0 ? "Phone Storage" : "SDCard" + (driveNo2 - 1)));
+            storageMedia.add(new FileItem(new File(filePath.substring(0, filePath.indexOf("Android"))),
+                    driveNo == 0 ? "Phone Storage" : "SDCard" + (driveNo2 - 1)));
             i++;
             driveNo = driveNo2;
         }
@@ -138,11 +139,14 @@ public class FileListAdapter extends BaseAdapter {
         FileItem item = this.fileItems.get(position);
         FileItem.ViewLayout layout = item.getLayout();
         layout.setName(view.findViewById(R.id.fileName)).setText(item.getFileName());
-        layout.setInfo(view.findViewById(R.id.fileInfo)).setText((item.isDirectory() ? "" : FormatUtils.formatSize(item.getFileSize()) + ", ") + FormatUtils.formatDate(item.getLastModified()));
+        layout.setInfo(view.findViewById(R.id.fileInfo))
+                .setText((item.isDirectory() ? "" : FormatUtils.formatSize(item.getFileSize()) + ", ")
+                        + FormatUtils.formatDate(item.getLastModified()));
         ImageView icon = layout.setIcon(view.findViewById(R.id.file_icon));
         int resource = item.isDirectory() ? R.drawable.folder : R.drawable.file_icon;
-        if (Build.VERSION.SDK_INT >= 21) {
-            icon.setImageDrawable(ResourcesCompat.getDrawable(this.context.getResources(), resource, this.context.getTheme()));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            icon.setImageDrawable(
+                    ResourcesCompat.getDrawable(this.context.getResources(), resource, this.context.getTheme()));
         } else {
             icon.setImageResource(resource);
         }

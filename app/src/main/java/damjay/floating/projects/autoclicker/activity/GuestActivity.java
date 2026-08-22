@@ -3,7 +3,6 @@ package damjay.floating.projects.autoclicker.activity;
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -51,7 +50,8 @@ public class GuestActivity extends AppCompatActivity implements AdapterView.OnIt
             BluetoothDevice device = (BluetoothDevice) tag;
             BluetoothSocket socket = null;
             try {
-                socket = device.createRfcommSocketToServiceRecord(UUID.fromString(getResources().getString(R.string.clicker_uuid)));
+                socket = device.createRfcommSocketToServiceRecord(
+                        UUID.fromString(getResources().getString(R.string.clicker_uuid)));
             } catch (Throwable t) {
                 t.printStackTrace();
             }
@@ -72,10 +72,14 @@ public class GuestActivity extends AppCompatActivity implements AdapterView.OnIt
             this.waitingDialog = null;
         }
         if (connectedSocket == null) {
-            new AlertDialog.Builder(this).setMessage(R.string.bluetooth_error_occurred).setCancelable(true).create().show();
+            new AlertDialog.Builder(this)
+                    .setMessage(R.string.bluetooth_error_occurred)
+                    .setCancelable(true)
+                    .create()
+                    .show();
             return;
         }
-        Intent intent = new Intent(this, (Class<?>) ActionSelectorActivity.class);
+        Intent intent = new Intent(this, ActionSelectorActivity.class);
         ActionSelectorActivity.bluetoothSocket = connectedSocket;
         startActivity(intent);
     }
@@ -84,14 +88,17 @@ public class GuestActivity extends AppCompatActivity implements AdapterView.OnIt
         View view = getLayoutInflater().inflate(R.layout.loading_view, (ViewGroup) null);
         TextView loadingText = (TextView) view.findViewById(R.id.loading_text);
         loadingText.setText(R.string.waiting_for_connection);
-        AlertDialog alertDialogCreate = new AlertDialog.Builder(this).setView(view).setNegativeButton(R.string.cancel, (dialogInterface, i) -> this.m142x32aea527(dialogInterface, i)).setCancelable(false).create();
+        AlertDialog alertDialogCreate = new AlertDialog.Builder(this)
+                                                .setView(view)
+                                                .setNegativeButton(R.string.cancel,
+                                                        (dialog, id) -> {
+                                                            dialog.dismiss();
+                                                            cancel();
+                                                        })
+                                                .setCancelable(false)
+                                                .create();
         this.waitingDialog = alertDialogCreate;
         alertDialogCreate.show();
-    }
-
-    void m142x32aea527(DialogInterface dialog, int id) {
-        dialog.dismiss();
-        cancel();
     }
 
     private void cancel() {
@@ -114,10 +121,6 @@ public class GuestActivity extends AppCompatActivity implements AdapterView.OnIt
             }
         }
         boolean connectedFlag = connected;
-        runOnUiThread(() -> this.m141xc51c7e0e(connectedFlag));
-    }
-
-    void m141xc51c7e0e(boolean connectedFlag) {
-        onComplete(connectedFlag ? this.bluetoothSocket : null);
+        runOnUiThread(() -> onComplete(connectedFlag ? this.bluetoothSocket : null));
     }
 }

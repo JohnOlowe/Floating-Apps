@@ -4,7 +4,6 @@ import android.app.AlertDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothSocket;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
@@ -31,13 +30,17 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
         if (startListening()) {
             startWaiting();
         } else {
-            new AlertDialog.Builder(this).setMessage(R.string.bluetooth_error_occurred).setPositiveButton(R.string.finish, (dialogInterface, i) -> this.m144x29b3e007(dialogInterface, i)).setCancelable(false).create().show();
+            new AlertDialog.Builder(this)
+                    .setMessage(R.string.bluetooth_error_occurred)
+                    .setPositiveButton(R.string.finish,
+                            (dialog, id) -> {
+                                dialog.dismiss();
+                                finish();
+                            })
+                    .setCancelable(false)
+                    .create()
+                    .show();
         }
-    }
-
-    void m144x29b3e007(DialogInterface dialog, int id) {
-        dialog.dismiss();
-        finish();
     }
 
     private boolean startListening() {
@@ -48,7 +51,9 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
             t.printStackTrace();
         }
         if (this.adapter != null) {
-            BluetoothServerThread bluetoothServerThread = new BluetoothServerThread(this, this.adapter, getResources().getString(R.string.app_name), UUID.fromString(getResources().getString(R.string.clicker_uuid)));
+            BluetoothServerThread bluetoothServerThread =
+                    new BluetoothServerThread(this, this.adapter, getResources().getString(R.string.app_name),
+                            UUID.fromString(getResources().getString(R.string.clicker_uuid)));
             this.serverThread = bluetoothServerThread;
             bluetoothServerThread.start();
             return true;
@@ -60,14 +65,17 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
         View view = getLayoutInflater().inflate(R.layout.loading_view, (ViewGroup) null);
         TextView loadingText = (TextView) view.findViewById(R.id.loading_text);
         loadingText.setText(R.string.waiting_for_connection);
-        AlertDialog alertDialogCreate = new AlertDialog.Builder(this).setView(view).setNegativeButton(R.string.cancel, (dialogInterface, i) -> this.m146x3579f416(dialogInterface, i)).setCancelable(false).create();
+        AlertDialog alertDialogCreate = new AlertDialog.Builder(this)
+                                                .setView(view)
+                                                .setNegativeButton(R.string.cancel,
+                                                        (dialog, id) -> {
+                                                            dialog.dismiss();
+                                                            cancel();
+                                                        })
+                                                .setCancelable(false)
+                                                .create();
         this.alertDialog = alertDialogCreate;
         alertDialogCreate.show();
-    }
-
-    void m146x3579f416(DialogInterface dialog, int id) {
-        dialog.dismiss();
-        cancel();
     }
 
     private void cancel() {
@@ -81,37 +89,39 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
 
     @Override
     public void onResult(int resultCode, Object artifact) {
-        runOnUiThread(() -> this.m145xe4e11344(resultCode, artifact));
+        runOnUiThread(() -> {
+            AlertDialog alertDialog = this.alertDialog;
+            if (alertDialog != null) {
+                alertDialog.dismiss();
+                this.alertDialog = null;
+            }
+            if (resultCode == 1) {
+                if (artifact != null && (artifact instanceof BluetoothSocket)) {
+                    this.socket = (BluetoothSocket) artifact;
+                    startSelectorActivity();
+                    return;
+                }
+                return;
+            }
+            if (this.closed) {
+                return;
+            }
+            new AlertDialog.Builder(this)
+                    .setMessage(R.string.bluetooth_error_occurred)
+                    .setPositiveButton(R.string.finish,
+                            (dialog, id) -> {
+                                dialog.dismiss();
+                                finish();
+                            })
+                    .setCancelable(false)
+                    .create()
+                    .show();
+        });
     }
 
     private void startSelectorActivity() {
-        Intent intent = new Intent(this, (Class<?>) ActionSelectorActivity.class);
+        Intent intent = new Intent(this, ActionSelectorActivity.class);
         ActionSelectorActivity.bluetoothSocket = this.socket;
         startActivity(intent);
-    }
-
-    public void m145xe4e11344(int resultCode, Object artifact) {
-        AlertDialog alertDialog = this.alertDialog;
-        if (alertDialog != null) {
-            alertDialog.dismiss();
-            this.alertDialog = null;
-        }
-        if (resultCode == 1) {
-            if (artifact != null && (artifact instanceof BluetoothSocket)) {
-                this.socket = (BluetoothSocket) artifact;
-                startSelectorActivity();
-                return;
-            }
-            return;
-        }
-        if (this.closed) {
-            return;
-        }
-        new AlertDialog.Builder(this).setMessage(R.string.bluetooth_error_occurred).setPositiveButton(R.string.finish, (dialogInterface, i) -> this.m143x55484234(dialogInterface, i)).setCancelable(false).create().show();
-    }
-
-    void m143x55484234(DialogInterface dialog, int id) {
-        dialog.dismiss();
-        finish();
     }
 }

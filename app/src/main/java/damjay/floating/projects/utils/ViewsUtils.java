@@ -21,41 +21,42 @@ public class ViewsUtils {
     public static Class<?> mainClass;
     public static Context mainContext;
 
-    public static View.OnTouchListener getViewTouchListener(Context context, View parentLayout, WindowManager window, WindowManager.LayoutParams params) {
-        return (view, motionEvent) -> ViewsUtils.lambda$getViewTouchListener$0(context, parentLayout, params, window, view, motionEvent);
-    }
-
-    static boolean lambda$getViewTouchListener$0(Context context, View parentLayout, WindowManager.LayoutParams params, WindowManager window, View view, MotionEvent event) {
-        TouchState touchState = TouchState.getInstance();
-        TouchState.moveTolerance = ViewConfiguration.get(context).getScaledTouchSlop();
-        int maxParamsX = Resources.getSystem().getDisplayMetrics().widthPixels - parentLayout.getMeasuredWidth();
-        int maxParamsY = Resources.getSystem().getDisplayMetrics().heightPixels - parentLayout.getMeasuredHeight();
-        switch (event.getAction()) {
-            case 0:
-                touchState.setInitialPosition(event.getRawX(), event.getRawY());
-                touchState.setOriginalPosition(params.x, params.y);
-                return true;
-            case 1:
-                if (!touchState.hasMoved()) {
-                    return view.performClick();
-                }
-                return false;
-            case 2:
-                touchState.setFinalPosition(event.getRawX(), event.getRawY());
-                if (touchState.hasMoved()) {
-                    params.x = Math.min(maxParamsX, touchState.updatedPositionX());
-                    params.y = Math.min(maxParamsY, touchState.updatedPositionY());
-                    window.updateViewLayout(parentLayout, params);
+    public static View.OnTouchListener getViewTouchListener(
+            Context context, View parentLayout, WindowManager window, WindowManager.LayoutParams params) {
+        return (view, event) -> {
+            TouchState touchState = TouchState.getInstance();
+            TouchState.moveTolerance = ViewConfiguration.get(context).getScaledTouchSlop();
+            int maxParamsX = Resources.getSystem().getDisplayMetrics().widthPixels - parentLayout.getMeasuredWidth();
+            int maxParamsY = Resources.getSystem().getDisplayMetrics().heightPixels - parentLayout.getMeasuredHeight();
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    touchState.setInitialPosition(event.getRawX(), event.getRawY());
+                    touchState.setOriginalPosition(params.x, params.y);
                     return true;
-                }
-                return false;
-            default:
-                return false;
-        }
+                case MotionEvent.ACTION_UP:
+                    if (!touchState.hasMoved()) {
+                        return view.performClick();
+                    }
+                    return false;
+                case MotionEvent.ACTION_MOVE:
+                    touchState.setFinalPosition(event.getRawX(), event.getRawY());
+                    if (touchState.hasMoved()) {
+                        params.x = Math.min(maxParamsX, touchState.updatedPositionX());
+                        params.y = Math.min(maxParamsY, touchState.updatedPositionY());
+                        window.updateViewLayout(parentLayout, params);
+                        return true;
+                    }
+                    return false;
+                default:
+                    return false;
+            }
+        };
     }
 
-    public static void addTouchListener(View parentView, View.OnTouchListener listener, boolean applyToChildren, boolean recursive, Class... allowedClasses) {
-        boolean checkAbsent = allowedClasses != null && allowedClasses.length > 0 && allowedClasses[allowedClasses.length - 1] == null;
+    public static void addTouchListener(View parentView, View.OnTouchListener listener, boolean applyToChildren,
+            boolean recursive, Class... allowedClasses) {
+        boolean checkAbsent = allowedClasses != null && allowedClasses.length > 0
+                && allowedClasses[allowedClasses.length - 1] == null;
         if ((parentView instanceof ViewGroup) && (applyToChildren || recursive)) {
             ViewGroup viewGroup = (ViewGroup) parentView;
             for (int i = 0; i < viewGroup.getChildCount(); i++) {
@@ -103,12 +104,14 @@ public class ViewsUtils {
     }
 
     public static void launchApp(Context context, Class<?> mainActivity) {
-        Intent intent = mainActivity.getName().contains("MainActivity") ? new Intent("android.intent.category.LAUNCHER") : new Intent();
+        Intent intent = mainActivity.getName().contains("MainActivity") ? new Intent("android.intent.category.LAUNCHER")
+                                                                        : new Intent();
         Class<?> cls = mainClass;
         String classPackage = cls == null ? mainActivity.getPackage().getName() : cls.getPackage().getName();
         String fullClassName = mainActivity.getCanonicalName();
         intent.setClassName(classPackage, fullClassName);
-        intent.setFlags(872415232);
+        intent.setFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         context.startActivity(intent);
     }
 
@@ -143,9 +146,12 @@ public class ViewsUtils {
     }
 
     public static WindowManager.LayoutParams getFloatingLayoutParams(int x, int y) {
-        int type = Build.VERSION.SDK_INT >= 26 ? 2038 : 2002;
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(-2, -2, type, 8, -3);
-        params.gravity = 8388659;
+        int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                                                                  : WindowManager.LayoutParams.TYPE_PHONE;
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT, type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                android.graphics.PixelFormat.TRANSLUCENT);
+        params.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
         params.x = x;
         params.y = y;
         return params;
@@ -158,17 +164,19 @@ public class ViewsUtils {
     public static WindowManager.LayoutParams getFloatingLayoutParams(boolean focused) {
         WindowManager.LayoutParams params = getFloatingLayoutParams();
         if (focused) {
-            params.flags = 32;
+            params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
         }
         return params;
     }
 
     public static int spToPx(int sp, Context context) {
-        return (int) TypedValue.applyDimension(2, sp, context.getResources().getDisplayMetrics());
+        return (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP, sp, context.getResources().getDisplayMetrics());
     }
 
     public static int dpToPx(int dp, Context context) {
-        return (int) TypedValue.applyDimension(1, dp, context.getResources().getDisplayMetrics());
+        return (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, dp, context.getResources().getDisplayMetrics());
     }
 
     public static void openDownloads(Activity activity) {

@@ -40,7 +40,9 @@ public class NoteService extends Service {
         initializeViews();
         setOnClickListeners();
         View view = this.view;
-        ViewsUtils.addTouchListener(view, ViewsUtils.getViewTouchListener(this, view, this.windowManager, this.layoutParams), true, true, Button.class, ImageView.class, LinearLayout.class, RelativeLayout.class);
+        ViewsUtils.addTouchListener(view,
+                ViewsUtils.getViewTouchListener(this, view, this.windowManager, this.layoutParams), true, true,
+                Button.class, ImageView.class, LinearLayout.class, RelativeLayout.class);
     }
 
     private void initializeViews() {
@@ -55,64 +57,48 @@ public class NoteService extends Service {
         WindowManager.LayoutParams floatingLayoutParams = ViewsUtils.getFloatingLayoutParams(true);
         this.layoutParams = floatingLayoutParams;
         windowManager.addView(view, floatingLayoutParams);
-        this.expandedField.setVisibility(8);
-        this.collapsedField.setVisibility(0);
+        this.expandedField.setVisibility(View.GONE);
+        this.collapsedField.setVisibility(View.VISIBLE);
     }
 
     private void setOnClickListeners() {
-        this.view.findViewById(R.id.launch_app).setOnClickListener((view) -> this.m217x419fe28d(view));
-        this.view.findViewById(R.id.minimize_field).setOnClickListener((view) -> this.m218x48c4bec(view));
-        this.view.findViewById(R.id.close_field).setOnClickListener((view) -> this.m219xc778b54b(view));
+        this.view.findViewById(R.id.launch_app).setOnClickListener(v -> ViewsUtils.launchApp(this, MainActivity.class));
+        this.view.findViewById(R.id.minimize_field).setOnClickListener((v) -> {
+            this.expandedField.setVisibility(View.GONE);
+            this.collapsedField.setVisibility(View.VISIBLE);
+            this.layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+            this.windowManager.updateViewLayout(this.view, this.layoutParams);
+        });
+        this.view.findViewById(R.id.close_field).setOnClickListener(v -> stopSelf());
         this.view.findViewById(R.id.minimize_field).callOnClick();
-        this.collapsedField.setOnClickListener((view) -> this.m220x8a651eaa(view));
-        this.toggleFocus.setOnClickListener((view) -> this.m221x4d518809(view));
-        this.copyButton.setOnClickListener((view) -> this.m222x103df168(view));
-    }
-
-    void m217x419fe28d(View v) {
-        ViewsUtils.launchApp(this, MainActivity.class);
-    }
-
-    void m218x48c4bec(View v) {
-        this.expandedField.setVisibility(8);
-        this.collapsedField.setVisibility(0);
-        this.layoutParams.flags = 8;
-        this.windowManager.updateViewLayout(this.view, this.layoutParams);
-    }
-
-    void m219xc778b54b(View v) {
-        stopSelf();
-    }
-
-    void m220x8a651eaa(View v) {
-        this.expandedField.setVisibility(0);
-        this.collapsedField.setVisibility(8);
-        this.layoutParams.flags = 32;
-        ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_on);
-        this.windowManager.updateViewLayout(this.view, this.layoutParams);
-    }
-
-    void m221x4d518809(View v) {
-        if (this.layoutParams.flags == 8) {
-            this.layoutParams.flags = 32;
+        this.collapsedField.setOnClickListener((v) -> {
+            this.expandedField.setVisibility(View.VISIBLE);
+            this.collapsedField.setVisibility(View.GONE);
+            this.layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
             ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_on);
-        } else {
-            this.layoutParams.flags = 8;
-            ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_off);
-        }
-        this.windowManager.updateViewLayout(this.view, this.layoutParams);
-    }
-
-    void m222x103df168(View v) {
-        String text = this.textField.getText().toString();
-        if (text.trim().isEmpty()) {
-            return;
-        }
-        ClipboardManager clipboard = (ClipboardManager) getSystemService("clipboard");
-        ClipData clip = ClipData.newPlainText(null, text);
-        clipboard.setPrimaryClip(clip);
-        this.textField.setText("");
-        this.toggleFocus.callOnClick();
+            this.windowManager.updateViewLayout(this.view, this.layoutParams);
+        });
+        this.toggleFocus.setOnClickListener((v) -> {
+            if (this.layoutParams.flags == WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) {
+                this.layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+                ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_on);
+            } else {
+                this.layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+                ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_off);
+            }
+            this.windowManager.updateViewLayout(this.view, this.layoutParams);
+        });
+        this.copyButton.setOnClickListener((v) -> {
+            String text = this.textField.getText().toString();
+            if (text.trim().isEmpty()) {
+                return;
+            }
+            ClipboardManager clipboard = (ClipboardManager) getSystemService("clipboard");
+            ClipData clip = ClipData.newPlainText(null, text);
+            clipboard.setPrimaryClip(clip);
+            this.textField.setText("");
+            this.toggleFocus.callOnClick();
+        });
     }
 
     @Override

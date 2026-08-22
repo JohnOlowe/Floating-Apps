@@ -1,7 +1,6 @@
 package damjay.floating.projects;
 
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -28,36 +27,53 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        findViewById(R.id.floating_pdf).setOnClickListener(Build.VERSION.SDK_INT < 21 ? (view) -> this.m114lambda$onCreate$0$damjayfloatingprojectsMainActivity(view) : getActivityClickListener(FloatingPDFActivity.class));
+        findViewById(R.id.floating_pdf)
+                .setOnClickListener(Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP
+                        ? v
+                        -> Toast.makeText(this, R.string.pdf_not_supported, Toast.LENGTH_LONG).show()
+                        : getActivityClickListener(FloatingPDFActivity.class));
         findViewById(R.id.floating_calculator).setOnClickListener(getServiceClickListener(CalculatorService.class));
         findViewById(R.id.floating_bible).setOnClickListener(getServiceClickListener(BibleService.class));
         findViewById(R.id.floating_timer).setOnClickListener(getServiceClickListener(TimerService.class));
         findViewById(R.id.floating_clicker).setOnClickListener(getActivityClickListener(ModeSelectorActivity.class));
         findViewById(R.id.floating_music).setOnClickListener(getServiceClickListener(PlayerService.class));
         findViewById(R.id.floating_copyTextField).setOnClickListener(getServiceClickListener(NoteService.class));
-        findViewById(R.id.floating_browser).setOnClickListener((view) -> this.m115lambda$onCreate$1$damjayfloatingprojectsMainActivity(view));
-        findViewById(R.id.floating_captions).setOnClickListener(getActivityClickListener(FloatingCaptionsActivity.class));
+        findViewById(R.id.floating_browser)
+                .setOnClickListener(
+                        v -> Toast.makeText(this, R.string.floating_browser_coming, Toast.LENGTH_LONG).show());
+        findViewById(R.id.floating_captions)
+                .setOnClickListener(getActivityClickListener(FloatingCaptionsActivity.class));
         ViewsUtils.mainClass = MainActivity.class;
         checkBatteryOptimization();
     }
 
-    void m114lambda$onCreate$0$damjayfloatingprojectsMainActivity(View v) {
-        Toast.makeText(this, R.string.pdf_not_supported, 1).show();
-    }
-
-    void m115lambda$onCreate$1$damjayfloatingprojectsMainActivity(View v) {
-        Toast.makeText(this, R.string.floating_browser_coming, 1).show();
-    }
-
     private void checkBatteryOptimization() {
-        if (Build.VERSION.SDK_INT < 23) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             return;
         }
-        if (!((PowerManager) getSystemService("power")).isIgnoringBatteryOptimizations(MainActivity.class.getPackage().getName())) {
+        if (!((PowerManager) getSystemService("power"))
+                        .isIgnoringBatteryOptimizations(MainActivity.class.getPackage().getName())) {
             if (this.alertDialog != null) {
                 return;
             }
-            AlertDialog alertDialogCreate = new AlertDialog.Builder(this).setMessage(R.string.ignore_battery_optimization).setPositiveButton(R.string.settings, (dialogInterface, i) -> this.m108xc32fde28(dialogInterface, i)).setNegativeButton(R.string.cancel, (dialogInterface, i) -> this.m109x8c30d569(dialogInterface, i)).setCancelable(false).create();
+            AlertDialog alertDialogCreate =
+                    new AlertDialog.Builder(this)
+                            .setMessage(R.string.ignore_battery_optimization)
+                            .setPositiveButton(R.string.settings,
+                                    (dialog, id) -> {
+                                        Intent intent = new Intent();
+                                        intent.setAction("android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS");
+                                        intent.setData(Uri.parse("package:" + getPackageName()));
+                                        closeAlertDialog();
+                                        startActivity(intent);
+                                    })
+                            .setNegativeButton(R.string.cancel,
+                                    (dialog, id) -> {
+                                        closeAlertDialog();
+                                        checkPermissions();
+                                    })
+                            .setCancelable(false)
+                            .create();
             this.alertDialog = alertDialogCreate;
             alertDialogCreate.show();
             return;
@@ -65,25 +81,28 @@ public class MainActivity extends AppCompatActivity {
         checkPermissions();
     }
 
-    void m108xc32fde28(DialogInterface dialog, int id) {
-        Intent intent = new Intent();
-        intent.setAction("android.settings.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS");
-        intent.setData(Uri.parse("package:" + getPackageName()));
-        closeAlertDialog();
-        startActivity(intent);
-    }
-
-    void m109x8c30d569(DialogInterface dialog, int id) {
-        closeAlertDialog();
-        checkPermissions();
-    }
-
     private boolean checkPermissions() {
-        if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             if (this.alertDialog != null) {
                 return false;
             }
-            AlertDialog alertDialogCreate = new AlertDialog.Builder(this).setTitle(R.string.grant_permissions).setMessage(R.string.display_permission_message).setCancelable(false).setPositiveButton(R.string.settings, (dialogInterface, i) -> this.m110lambda$checkPermissions$4$damjayfloatingprojectsMainActivity(dialogInterface, i)).setNegativeButton(R.string.exit, (dialogInterface, i) -> this.m111lambda$checkPermissions$5$damjayfloatingprojectsMainActivity(dialogInterface, i)).create();
+            AlertDialog alertDialogCreate =
+                    new AlertDialog.Builder(this)
+                            .setTitle(R.string.grant_permissions)
+                            .setMessage(R.string.display_permission_message)
+                            .setCancelable(false)
+                            .setPositiveButton(R.string.settings,
+                                    (dialog, id) -> {
+                                        closeAlertDialog();
+                                        Toast.makeText(this, R.string.activate_display_over_app_message,
+                                                     Toast.LENGTH_LONG)
+                                                .show();
+                                        Intent intent = new Intent("android.settings.action.MANAGE_OVERLAY_PERMISSION",
+                                                Uri.parse("package:" + getPackageName()));
+                                        startActivityForResult(intent, 100);
+                                    })
+                            .setNegativeButton(R.string.exit, (dialog, id) -> finish())
+                            .create();
             this.alertDialog = alertDialogCreate;
             alertDialogCreate.show();
             return false;
@@ -92,33 +111,18 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    void m110lambda$checkPermissions$4$damjayfloatingprojectsMainActivity(DialogInterface dialog, int id) {
-        closeAlertDialog();
-        Toast.makeText(this, R.string.activate_display_over_app_message, 1).show();
-        Intent intent = new Intent("android.settings.action.MANAGE_OVERLAY_PERMISSION", Uri.parse("package:" + getPackageName()));
-        startActivityForResult(intent, 100);
-    }
-
-    void m111lambda$checkPermissions$5$damjayfloatingprojectsMainActivity(DialogInterface dialog, int id) {
-        finish();
-    }
-
     private View.OnClickListener getActivityClickListener(Class<?> clazz) {
-        return (view) -> this.m112x3a107a11(clazz, view);
-    }
-
-    void m112x3a107a11(Class clazz, View view) {
-        Intent intent = new Intent(this, (Class<?>) clazz);
-        startActivity(intent);
+        return (view) -> {
+            Intent intent = new Intent(this, clazz);
+            startActivity(intent);
+        };
     }
 
     private View.OnClickListener getServiceClickListener(Class<?> clazz) {
-        return (view) -> this.m113x2f0c517e(clazz, view);
-    }
-
-    void m113x2f0c517e(Class clazz, View view) {
-        Intent intent = new Intent(this, (Class<?>) clazz);
-        startService(intent);
+        return (view) -> {
+            Intent intent = new Intent(this, clazz);
+            startService(intent);
+        };
     }
 
     @Override

@@ -2,7 +2,6 @@ package damjay.floating.projects.music;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -33,64 +32,60 @@ public class FolderChooserActivity extends AppCompatActivity {
         this.addDirectory = (Button) findViewById(R.id.add_chosen_directories);
         this.savePrefs = (Button) findViewById(R.id.save_music_prefs);
         this.fullPath = new HashSet<>();
-        this.addDirectory.setOnClickListener((view) -> this.m210xcc511004(view));
-        this.savePrefs.setOnClickListener((view) -> this.m211xe66c8ea3(view));
-    }
-
-    void m210xcc511004(View v) {
-        boolean notAccepted = false;
-        String filePath = this.directoriesInput.getText().toString().trim();
-        if (filePath.isEmpty()) {
-            return;
-        }
-        File folder = new File(filePath);
-        if (folder.exists() && folder.isDirectory()) {
-            this.fullPath.add(filePath);
-        } else {
-            if (filePath.startsWith("/")) {
-                filePath = filePath.substring(1).trim();
+        this.addDirectory.setOnClickListener((v) -> {
+            boolean notAccepted = false;
+            String filePath = this.directoriesInput.getText().toString().trim();
+            if (filePath.isEmpty()) {
+                return;
             }
-            File folder2 = new File("/storage/emulated/0/", filePath);
-            if (folder2.exists() && folder2.isDirectory()) {
-                this.fullPath.add("/storage/emulated/0/" + filePath);
+            File folder = new File(filePath);
+            if (folder.exists() && folder.isDirectory()) {
+                this.fullPath.add(filePath);
             } else {
-                notAccepted = true;
-                Toast.makeText(this, R.string.directory_not_exist, 1).show();
-            }
-        }
-        if (!notAccepted) {
-            boolean firstFile = true;
-            StringBuilder builder = null;
-            for (String dir : this.fullPath) {
-                if (firstFile) {
-                    firstFile = false;
-                    builder = new StringBuilder(new File(dir).getName());
+                if (filePath.startsWith("/")) {
+                    filePath = filePath.substring(1).trim();
+                }
+                File folder2 = new File("/storage/emulated/0/", filePath);
+                if (folder2.exists() && folder2.isDirectory()) {
+                    this.fullPath.add("/storage/emulated/0/" + filePath);
                 } else {
-                    builder.append(", ").append(new File(dir).getName());
+                    notAccepted = true;
+                    Toast.makeText(this, R.string.directory_not_exist, Toast.LENGTH_LONG).show();
                 }
             }
-            if (builder != null) {
-                this.directoriesAdded.setText(builder.toString());
+            if (!notAccepted) {
+                boolean firstFile = true;
+                StringBuilder builder = null;
+                for (String dir : this.fullPath) {
+                    if (firstFile) {
+                        firstFile = false;
+                        builder = new StringBuilder(new File(dir).getName());
+                    } else {
+                        builder.append(", ").append(new File(dir).getName());
+                    }
+                }
+                if (builder != null) {
+                    this.directoriesAdded.setText(builder.toString());
+                }
             }
-        }
-    }
-
-    void m211xe66c8ea3(View v) {
-        File fileSafe = new File(getCacheDir(), PlayerService.CHOSEN_FOLDERS_FILE);
-        String text = getDirectoriesText();
-        if (text == null) {
-            return;
-        }
-        try {
-            FileOutputStream writer = new FileOutputStream(fileSafe);
-            writer.write(text.getBytes());
-            writer.close();
-            Intent intent = new Intent();
-            intent.setClass(this, PlayerService.class);
-            startService(intent);
-        } catch (Throwable th) {
-            Toast.makeText(this, R.string.error_occurred, 0).show();
-        }
+        });
+        this.savePrefs.setOnClickListener((v) -> {
+            File fileSafe = new File(getCacheDir(), PlayerService.CHOSEN_FOLDERS_FILE);
+            String text = getDirectoriesText();
+            if (text == null) {
+                return;
+            }
+            try {
+                FileOutputStream writer = new FileOutputStream(fileSafe);
+                writer.write(text.getBytes());
+                writer.close();
+                Intent intent = new Intent();
+                intent.setClass(this, PlayerService.class);
+                startService(intent);
+            } catch (Throwable th) {
+                Toast.makeText(this, R.string.error_occurred, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 
     private String getDirectoriesText() {

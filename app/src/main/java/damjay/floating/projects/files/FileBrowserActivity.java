@@ -4,7 +4,6 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ListAdapter;
 import android.widget.ListView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -26,34 +25,29 @@ public class FileBrowserActivity extends AppCompatActivity {
         this.fileList = (ListView) findViewById(R.id.fileList);
         View upButton = findViewById(R.id.traverseUp);
         this.fileList.setAdapter((ListAdapter) new FileListAdapter(this, validateInput()));
-        this.fileList.setOnItemClickListener((adapterView, view, i, j) -> this.m208xd51a401d(adapterView, view, i, j));
-        upButton.setOnClickListener((view) -> this.m209x2f2da7c(view));
-    }
-
-    void m208xd51a401d(AdapterView a, View v, int position, long id) {
-        FileItem item = (FileItem) this.fileList.getItemAtPosition(position);
-        if (item.isDirectory()) {
-            FileListAdapter listAdapter = (FileListAdapter) this.fileList.getAdapter();
-            listAdapter.updatePath(item.getFile());
+        this.fileList.setOnItemClickListener((a, v, position, id) -> {
+            FileItem item = (FileItem) this.fileList.getItemAtPosition(position);
             if (item.isDirectory()) {
-                this.fileList.setAdapter((ListAdapter) listAdapter);
+                FileListAdapter listAdapter = (FileListAdapter) this.fileList.getAdapter();
+                listAdapter.updatePath(item.getFile());
+                if (item.isDirectory()) {
+                    this.fileList.setAdapter((ListAdapter) listAdapter);
+                    return;
+                }
                 return;
             }
-            return;
-        }
-        if (item.getFileName().toLowerCase().endsWith("." + callback.extensionAllowed())) {
-            showPDF(item.getFile());
-        } else {
-            new AlertDialog.Builder(this).setMessage(getResources().getString(R.string.incorrect_format_message, callback.extensionAllowed().toUpperCase())).setPositiveButton(android.R.string.yes, (dialogInterface, i) -> this.m207xa741a5be(item, dialogInterface, i)).setNegativeButton(android.R.string.no, (DialogInterface.OnClickListener) null).show();
-        }
-    }
-
-    void m207xa741a5be(FileItem item, DialogInterface dialog, int id1) {
-        showPDF(item.getFile());
-    }
-
-    void m209x2f2da7c(View view) {
-        onBackPressed();
+            if (item.getFileName().toLowerCase().endsWith("." + callback.extensionAllowed())) {
+                showPDF(item.getFile());
+            } else {
+                new AlertDialog.Builder(this)
+                        .setMessage(getResources().getString(
+                                R.string.incorrect_format_message, callback.extensionAllowed().toUpperCase()))
+                        .setPositiveButton(android.R.string.yes, (dialog, id1) -> showPDF(item.getFile()))
+                        .setNegativeButton(android.R.string.no, (DialogInterface.OnClickListener) null)
+                        .show();
+            }
+        });
+        upButton.setOnClickListener(view -> onBackPressed());
     }
 
     private File validateInput() {
@@ -111,12 +105,8 @@ public class FileBrowserActivity extends AppCompatActivity {
 
         void fileCallback(String str);
 
-        String titleOfBrowser();
-
-        public final class CC {
-            public static String $default$titleOfBrowser(FileCallback _this) {
-                return "Floating " + _this.extensionAllowed().toUpperCase();
-            }
+        default String titleOfBrowser() {
+            return "Floating " + extensionAllowed().toUpperCase();
         }
     }
 }

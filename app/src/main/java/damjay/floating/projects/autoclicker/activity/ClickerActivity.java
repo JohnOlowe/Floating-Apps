@@ -2,7 +2,6 @@ package damjay.floating.projects.autoclicker.activity;
 
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothSocket;
-import android.content.DialogInterface;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.View;
@@ -13,7 +12,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import damjay.floating.projects.R;
 import damjay.floating.projects.bluetooth.BluetoothOperations;
 
-public class ClickerActivity extends AppCompatActivity implements BluetoothOperations.BluetoothOperationsCallback, View.OnClickListener {
+public class ClickerActivity
+        extends AppCompatActivity implements BluetoothOperations.BluetoothOperationsCallback, View.OnClickListener {
     public static final byte CLICKER_ADD_POINT = -1;
     public static final byte CLICKER_DELETE_POINT = -2;
     public static BluetoothSocket bluetoothSocket;
@@ -37,24 +37,17 @@ public class ClickerActivity extends AppCompatActivity implements BluetoothOpera
             BluetoothOperations bluetoothOperations = new BluetoothOperations(bluetoothSocket2);
             btOperation = bluetoothOperations;
             bluetoothOperations.startReading(this);
-            this.addButton.setOnClickListener((view) -> this.m137xcb7a9d75(view));
-            this.removeButton.setOnClickListener((view) -> this.m138xbf0a21b6(view));
+            this.addButton.setOnClickListener(v -> sendToDevice((byte) -1, this));
+            this.removeButton.setOnClickListener(v -> sendToDevice((byte) -2, this));
             this.removeButton.setEnabled(false);
             return;
         }
-        new AlertDialog.Builder(this).setMessage(R.string.bluetooth_error_occurred).setNegativeButton(R.string.finish, (dialogInterface, i) -> this.m136xd7eb1934(dialogInterface, i)).setCancelable(false).create().show();
-    }
-
-    void m136xd7eb1934(DialogInterface dialog, int id) {
-        finish();
-    }
-
-    void m137xcb7a9d75(View v) {
-        sendToDevice((byte) -1, this);
-    }
-
-    void m138xbf0a21b6(View v) {
-        sendToDevice((byte) -2, this);
+        new AlertDialog.Builder(this)
+                .setMessage(R.string.bluetooth_error_occurred)
+                .setNegativeButton(R.string.finish, (dialog, id) -> finish())
+                .setCancelable(false)
+                .create()
+                .show();
     }
 
     public void sendToDevice(byte value, BluetoothOperations.BluetoothOperationsCallback callback) {
@@ -65,7 +58,7 @@ public class ClickerActivity extends AppCompatActivity implements BluetoothOpera
             this.pendingRemoveButton = value == -2 || this.pendingRemoveButton;
             return;
         }
-        Toast.makeText(this, R.string.null_socket, 0).show();
+        Toast.makeText(this, R.string.null_socket, Toast.LENGTH_SHORT).show();
     }
 
     private void addNewButton() {
@@ -129,7 +122,8 @@ public class ClickerActivity extends AppCompatActivity implements BluetoothOpera
 
     @Override
     public void onClick(View view) {
-        btOperation.write(Byte.parseByte(((Button) view).getText().toString()), (BluetoothOperations.BluetoothOperationsCallback) this);
+        btOperation.write(Byte.parseByte(((Button) view).getText().toString()),
+                (BluetoothOperations.BluetoothOperationsCallback) this);
     }
 
     @Override
@@ -155,7 +149,13 @@ public class ClickerActivity extends AppCompatActivity implements BluetoothOpera
                 break;
             case 10:
                 btOperation.close();
-                new AlertDialog.Builder(this).setTitle(R.string.device_disconnected).setMessage(R.string.device_disconnected_message).setCancelable(false).setNeutralButton(R.string.exit, (dialogInterface, i) -> this.m140xa3044e86(dialogInterface, i)).create().show();
+                new AlertDialog.Builder(this)
+                        .setTitle(R.string.device_disconnected)
+                        .setMessage(R.string.device_disconnected_message)
+                        .setCancelable(false)
+                        .setNeutralButton(R.string.exit, (dialog, id) -> finish())
+                        .create()
+                        .show();
                 break;
             default:
                 System.out.println("Unrecognized type: " + ((int) type));
@@ -163,17 +163,15 @@ public class ClickerActivity extends AppCompatActivity implements BluetoothOpera
         }
     }
 
-    void m140xa3044e86(DialogInterface dialog, int id) {
-        finish();
-    }
-
     @Override
     public void onError(Throwable t) {
-        new AlertDialog.Builder(this).setMessage(getResources().getString(R.string.bluetooth_error_occurred) + (t == null ? "" : getResources().getString(R.string.reason, t.getMessage()))).setNegativeButton(R.string.finish, (dialogInterface, i) -> this.m139x19f30dcc(dialogInterface, i)).setCancelable(false).create().show();
-    }
-
-    void m139x19f30dcc(DialogInterface dialog, int id) {
-        finish();
+        new AlertDialog.Builder(this)
+                .setMessage(getResources().getString(R.string.bluetooth_error_occurred)
+                        + (t == null ? "" : getResources().getString(R.string.reason, t.getMessage())))
+                .setNegativeButton(R.string.finish, (dialog, id) -> finish())
+                .setCancelable(false)
+                .create()
+                .show();
     }
 
     @Override

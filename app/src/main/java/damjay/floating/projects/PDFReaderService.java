@@ -10,7 +10,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
-import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,7 +21,6 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 import androidx.core.content.FileProvider;
 import damjay.floating.projects.utils.ImageScaler;
@@ -71,7 +69,7 @@ public class PDFReaderService extends Service {
             windowManager.addView(this.pdfLayout, this.params);
             View collapsedView = this.pdfLayout.findViewById(R.id.collapsed);
             View expandedView = this.pdfLayout.findViewById(R.id.expanded);
-            expandedView.setVisibility(8);
+            expandedView.setVisibility(View.GONE);
             View launchApp = this.pdfLayout.findViewById(R.id.launchApp);
             this.closeButton = (ImageButton) this.pdfLayout.findViewById(R.id.collapseButton);
             this.minimizeButton = this.pdfLayout.findViewById(R.id.minimizePDF);
@@ -87,96 +85,73 @@ public class PDFReaderService extends Service {
     }
 
     private void setOnClickListener(View collapsedView, View expandedView, View launchApp) {
-        launchApp.setOnClickListener((view) -> this.m127x3241dda7(view));
-        this.closeButton.setOnClickListener((view) -> this.m128x17834c68(view));
-        this.minimizeButton.setOnClickListener(new AnonymousClass1(collapsedView, expandedView));
-        this.expandButton.setOnClickListener((view) -> this.m129xfcc4bb29(collapsedView, expandedView, view));
-        this.toggleFocus.setOnClickListener((view) -> this.m130xe20629ea(view));
-        this.openInApp.setOnClickListener((view) -> this.m131xc74798ab(view));
-    }
-
-    void m127x3241dda7(View v) {
-        ViewsUtils.launchApp(this, MainActivity.class);
-    }
-
-    void m128x17834c68(View v) {
-        stopSelf();
-    }
-
-    class AnonymousClass1 implements View.OnClickListener {
-        final View val$collapsedView;
-        final View val$expandedView;
-
-        AnonymousClass1(View view, View view2) {
-            this.val$collapsedView = view;
-            this.val$expandedView = view2;
-        }
-
-        @Override
-        public void onClick(View view) {
-            this.val$collapsedView.setVisibility(0);
-            this.val$expandedView.setVisibility(8);
-            PDFReaderService.this.params.flags = 8;
-            PDFReaderService.this.windowManager.updateViewLayout(PDFReaderService.this.pdfLayout, PDFReaderService.this.params);
-            if (PDFReaderService.this.lastWrittenPage != PDFReaderService.this.currentPage) {
-                updateSavedPage();
+        launchApp.setOnClickListener(v -> ViewsUtils.launchApp(this, MainActivity.class));
+        this.closeButton.setOnClickListener(v -> stopSelf());
+        this.minimizeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                collapsedView.setVisibility(View.VISIBLE);
+                expandedView.setVisibility(View.GONE);
+                PDFReaderService.this.params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+                PDFReaderService.this.windowManager.updateViewLayout(
+                        PDFReaderService.this.pdfLayout, PDFReaderService.this.params);
+                if (PDFReaderService.this.lastWrittenPage != PDFReaderService.this.currentPage) {
+                    updateSavedPage();
+                }
             }
-        }
 
-        private void updateSavedPage() {
-            try {
-                SavedContent saved = PDFReaderService.this.readHistory();
-                saved.setPage(PDFReaderService.this.currentPage);
-                PDFReaderService.this.saveHistory(saved);
-                PDFReaderService pDFReaderService = PDFReaderService.this;
-                pDFReaderService.lastWrittenPage = pDFReaderService.currentPage;
-            } catch (Throwable t) {
-                t.printStackTrace();
-                Toast.makeText(PDFReaderService.this, R.string.save_page_error, 1).show();
+            private void updateSavedPage() {
+                try {
+                    SavedContent saved = PDFReaderService.this.readHistory();
+                    saved.setPage(PDFReaderService.this.currentPage);
+                    PDFReaderService.this.saveHistory(saved);
+                    PDFReaderService pDFReaderService = PDFReaderService.this;
+                    pDFReaderService.lastWrittenPage = pDFReaderService.currentPage;
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                    Toast.makeText(PDFReaderService.this, R.string.save_page_error, Toast.LENGTH_LONG).show();
+                }
             }
-        }
-    }
-
-    void m129xfcc4bb29(View collapsedView, View expandedView, View view) {
-        collapsedView.setVisibility(8);
-        expandedView.setVisibility(0);
-        this.params.flags = 32;
-        ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_on);
-        this.windowManager.updateViewLayout(this.pdfLayout, this.params);
-        initializePdfPage(new int[0]);
-    }
-
-    void m130xe20629ea(View view) {
-        if (this.params.flags == 8) {
-            this.params.flags = 32;
+        });
+        this.expandButton.setOnClickListener((view) -> {
+            collapsedView.setVisibility(View.GONE);
+            expandedView.setVisibility(View.VISIBLE);
+            this.params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
             ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_on);
-        } else {
-            this.params.flags = 8;
-            ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_off);
-        }
-        this.windowManager.updateViewLayout(this.pdfLayout, this.params);
-    }
-
-    void m131xc74798ab(View view) {
-        Uri pdfUri = FileProvider.getUriForFile(this, "damjay.floating.projects.provider", pdfFile);
-        Intent intent = new Intent();
-        intent.setAction("android.intent.action.VIEW");
-        intent.addFlags(268435456);
-        intent.addFlags(1);
-        intent.setDataAndType(pdfUri, "application/pdf");
-        Intent chooserIntent = Intent.createChooser(intent, getResources().getString(R.string.choose_app_to_open));
-        chooserIntent.addFlags(268435456);
-        List<ResolveInfo> resolveInfoList = getPackageManager().queryIntentActivities(intent, 65536);
-        for (ResolveInfo resolveInfo : resolveInfoList) {
-            String packageName = resolveInfo.activityInfo.packageName;
-            grantUriPermission(packageName, pdfUri, 1);
-        }
-        try {
-            startActivity(chooserIntent);
-            this.minimizeButton.callOnClick();
-        } catch (ActivityNotFoundException e) {
-            Toast.makeText(this, getResources().getString(R.string.no_app_to_open_pdf), 1).show();
-        }
+            this.windowManager.updateViewLayout(this.pdfLayout, this.params);
+            initializePdfPage(new int[0]);
+        });
+        this.toggleFocus.setOnClickListener((view) -> {
+            if (this.params.flags == WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) {
+                this.params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+                ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_on);
+            } else {
+                this.params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+                ((ImageView) this.toggleFocus).setImageResource(R.drawable.focus_off);
+            }
+            this.windowManager.updateViewLayout(this.pdfLayout, this.params);
+        });
+        this.openInApp.setOnClickListener((view) -> {
+            Uri pdfUri = FileProvider.getUriForFile(this, "damjay.floating.projects.provider", pdfFile);
+            Intent intent = new Intent();
+            intent.setAction("android.intent.action.VIEW");
+            intent.addFlags(268435456);
+            intent.addFlags(1);
+            intent.setDataAndType(pdfUri, "application/pdf");
+            Intent chooserIntent = Intent.createChooser(intent, getResources().getString(R.string.choose_app_to_open));
+            chooserIntent.addFlags(268435456);
+            List<ResolveInfo> resolveInfoList = getPackageManager().queryIntentActivities(intent, 65536);
+            for (ResolveInfo resolveInfo : resolveInfoList) {
+                String packageName = resolveInfo.activityInfo.packageName;
+                grantUriPermission(packageName, pdfUri, 1);
+            }
+            try {
+                startActivity(chooserIntent);
+                this.minimizeButton.callOnClick();
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, getResources().getString(R.string.no_app_to_open_pdf), Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void assignNavButtons() {
@@ -191,67 +166,63 @@ public class PDFReaderService extends Service {
         if (this.pageField == null) {
             this.pageField = (EditText) this.pdfLayout.findViewById(R.id.page_number);
         }
-        this.pageField.setOnEditorActionListener((textView, i, keyEvent) -> this.m124x1f0538de(textView, i, keyEvent));
-    }
-
-    boolean m124x1f0538de(TextView view, int actionId, KeyEvent event) {
-        if (actionId == 2) {
-            String text = this.pageField.getText().toString();
-            if (!text.isEmpty()) {
-                int pageNumber = Integer.parseInt(text) - 1;
-                if (pageNumber < 0 || pageNumber > this.pageCount) {
-                    Toast.makeText(this, R.string.invalid_page_number, 0).show();
-                } else {
-                    this.currentPage = pageNumber;
-                    initializePdfPage(new int[0]);
+        this.pageField.setOnEditorActionListener((view, actionId, event) -> {
+            if (actionId == 2) {
+                String text = this.pageField.getText().toString();
+                if (!text.isEmpty()) {
+                    int pageNumber = Integer.parseInt(text) - 1;
+                    if (pageNumber < 0 || pageNumber > this.pageCount) {
+                        Toast.makeText(this, R.string.invalid_page_number, Toast.LENGTH_SHORT).show();
+                    } else {
+                        this.currentPage = pageNumber;
+                        initializePdfPage(new int[0]);
+                    }
                 }
             }
-        }
-        return false;
+            return false;
+        });
     }
 
     private View.OnClickListener getNavListener(boolean next) {
-        return (view) -> this.m125x2e73b73(next, view);
-    }
-
-    void m125x2e73b73(boolean next, View view) {
-        int i = this.pageCount;
-        if (i > 0) {
-            int i2 = this.currentPage + (next ? 1 : -1);
-            this.currentPage = i2;
-            if (i2 >= i || i2 < 0) {
-                this.currentPage = next ? 0 : i - 1;
+        return (view) -> {
+            int i = this.pageCount;
+            if (i > 0) {
+                int i2 = this.currentPage + (next ? 1 : -1);
+                this.currentPage = i2;
+                if (i2 >= i || i2 < 0) {
+                    this.currentPage = next ? 0 : i - 1;
+                }
             }
-        }
-        initializePdfPage(new int[0]);
+            initializePdfPage(new int[0]);
+        };
     }
 
     private View.OnClickListener getZoomListener(boolean zoomIn) {
-        return (view) -> this.m126x80c42836(zoomIn, view);
-    }
-
-    void m126x80c42836(boolean zoomIn, View view) {
-        ImageScaler imageScaler = this.zoomView;
-        if (imageScaler != null) {
-            if (zoomIn) {
-                imageScaler.increaseScale();
-            } else {
-                imageScaler.decreaseScale();
+        return (view) -> {
+            ImageScaler imageScaler = this.zoomView;
+            if (imageScaler != null) {
+                if (zoomIn) {
+                    imageScaler.increaseScale();
+                } else {
+                    imageScaler.decreaseScale();
+                }
+                initializePdfPage(1);
             }
-            initializePdfPage(1);
-        }
+        };
     }
 
     private void setTouchListener(WindowManager.LayoutParams params, View collapsedView, View expandedView) {
-        View.OnTouchListener touchListener = ViewsUtils.getViewTouchListener(this, this.pdfLayout, this.windowManager, params);
-        ViewsUtils.addTouchListener(expandedView, touchListener, true, true, ImageButton.class, Button.class, RelativeLayout.class, LinearLayout.class);
+        View.OnTouchListener touchListener =
+                ViewsUtils.getViewTouchListener(this, this.pdfLayout, this.windowManager, params);
+        ViewsUtils.addTouchListener(expandedView, touchListener, true, true, ImageButton.class, Button.class,
+                RelativeLayout.class, LinearLayout.class);
         ViewsUtils.addTouchListener(collapsedView, touchListener, true, true, new Class[0]);
     }
 
     private void initializePdfPage(int... zoom) {
         ImageView imageView;
         if (this.inputPdf == null && !initializeInputPdf()) {
-            Toast.makeText(this, R.string.null_pdf_error, 0).show();
+            Toast.makeText(this, R.string.null_pdf_error, Toast.LENGTH_SHORT).show();
             return;
         }
         Bitmap bitmap = this.pageBitmap;
@@ -277,7 +248,8 @@ public class PDFReaderService extends Service {
         if (i3 < i2) {
             PdfRenderer.Page pageOpenPage = this.inputPdf.openPage(i3);
             this.page = pageOpenPage;
-            this.pageBitmap = Bitmap.createBitmap(pageOpenPage.getWidth(), this.page.getHeight(), Bitmap.Config.ARGB_8888);
+            this.pageBitmap =
+                    Bitmap.createBitmap(pageOpenPage.getWidth(), this.page.getHeight(), Bitmap.Config.ARGB_8888);
             if (this.zoomView == null) {
                 this.zoomView = new ImageScaler();
             }
@@ -289,36 +261,30 @@ public class PDFReaderService extends Service {
                 this.pageField = (EditText) this.pdfLayout.findViewById(R.id.page_number);
             }
             View view = this.pdfLayout.findViewById(R.id.imageScrollView);
-            view.getViewTreeObserver().addOnGlobalLayoutListener(new AnonymousClass2(view, zoom));
+            view.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    view.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                    ViewGroup.LayoutParams params = view.getLayoutParams();
+                    params.height = (PDFReaderService.this.pageBitmap.getHeight() * view.getMeasuredWidth())
+                            / PDFReaderService.this.pageBitmap.getWidth();
+                    if (PDFReaderService.this.zoomView != null && zoom.length == 0) {
+                        PDFReaderService.this.zoomView.setDefaultMinScale(
+                                params.height / PDFReaderService.this.pageBitmap.getHeight());
+                        if (PDFReaderService.this.currentPage == 0) {
+                            PDFReaderService.this.zoomView.setScale(
+                                    PDFReaderService.this.zoomView.getDefaultMinScale());
+                        }
+                        PDFReaderService.this.pageImageView.setImageBitmap(
+                                PDFReaderService.this.zoomView.getScaled(PDFReaderService.this.pageBitmap));
+                    }
+                }
+            });
             this.pageImageView.setImageBitmap(this.zoomView.getScaled(this.pageBitmap));
             this.pageField.setText("" + (this.currentPage + 1));
             return;
         }
-        Toast.makeText(this, R.string.pdf_page_error, 0).show();
-    }
-
-    class AnonymousClass2 implements ViewTreeObserver.OnGlobalLayoutListener {
-        final View val$view;
-        final int[] val$zoom;
-
-        AnonymousClass2(View view, int[] iArr) {
-            this.val$view = view;
-            this.val$zoom = iArr;
-        }
-
-        @Override
-        public void onGlobalLayout() {
-            this.val$view.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-            ViewGroup.LayoutParams params = this.val$view.getLayoutParams();
-            params.height = (PDFReaderService.this.pageBitmap.getHeight() * this.val$view.getMeasuredWidth()) / PDFReaderService.this.pageBitmap.getWidth();
-            if (PDFReaderService.this.zoomView != null && this.val$zoom.length == 0) {
-                PDFReaderService.this.zoomView.setDefaultMinScale(params.height / PDFReaderService.this.pageBitmap.getHeight());
-                if (PDFReaderService.this.currentPage == 0) {
-                    PDFReaderService.this.zoomView.setScale(PDFReaderService.this.zoomView.getDefaultMinScale());
-                }
-                PDFReaderService.this.pageImageView.setImageBitmap(PDFReaderService.this.zoomView.getScaled(PDFReaderService.this.pageBitmap));
-            }
-        }
+        Toast.makeText(this, R.string.pdf_page_error, Toast.LENGTH_SHORT).show();
     }
 
     private boolean initializeInputPdf() {
@@ -378,9 +344,12 @@ public class PDFReaderService extends Service {
     }
 
     private WindowManager.LayoutParams getLayoutParams() {
-        int type = Build.VERSION.SDK_INT >= 26 ? 2038 : 2002;
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(-2, -2, type, 8, -3);
-        params.gravity = 8388659;
+        int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                                                                  : WindowManager.LayoutParams.TYPE_PHONE;
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT, type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                android.graphics.PixelFormat.TRANSLUCENT);
+        params.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
         params.x = 0;
         params.y = 100;
         return params;

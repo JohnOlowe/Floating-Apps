@@ -19,7 +19,8 @@ import java.io.File;
 import java.util.ArrayList;
 
 public class FileSearchAdapter extends BaseAdapter {
-    public static final String[] COMMON_PATH = {"Documents/", "Xender/", "Download/", "Movies/", "Android/media/com.whatsapp/WhatsApp/Media/Whatsapp Documents/"};
+    public static final String[] COMMON_PATH = {"Documents/", "Xender/", "Download/", "Movies/",
+            "Android/media/com.whatsapp/WhatsApp/Media/Whatsapp Documents/"};
     public static String SUPPORTED_EXT = FloatingPDFActivity.PDF_EXTENSION;
     private final FileBrowserActivity.FileCallback callback;
     private final Context context;
@@ -46,29 +47,25 @@ public class FileSearchAdapter extends BaseAdapter {
 
     private void loadDocumentFiles() {
         Handler handler = new Handler();
-        new Thread(() -> this.m202x86510b5c(handler)).start();
-    }
-
-    void m202x86510b5c(Handler handler) {
-        if (this.documentFiles != null) {
-            return;
-        }
-        for (File storageMediaFile : this.storageMedia) {
-            if (this.documentFiles == null) {
-                this.documentFiles = new ArrayList<>();
+        new Thread(() -> {
+            if (this.documentFiles != null) {
+                return;
             }
-            getDocumentFiles(getCommonDirectoryFiles(storageMediaFile), this.documentFiles, true);
-            getDocumentFiles(storageMediaFile.listFiles(), this.documentFiles, false);
-        }
-        handler.post(() -> this.m201x759b3e9b());
-    }
-
-    void m201x759b3e9b() {
-        String str = this.pendingKeyword;
-        if (str == null) {
-            str = "";
-        }
-        reloadSearchResults(str);
+            for (File storageMediaFile : this.storageMedia) {
+                if (this.documentFiles == null) {
+                    this.documentFiles = new ArrayList<>();
+                }
+                getDocumentFiles(getCommonDirectoryFiles(storageMediaFile), this.documentFiles, true);
+                getDocumentFiles(storageMediaFile.listFiles(), this.documentFiles, false);
+            }
+            handler.post(() -> {
+                String str = this.pendingKeyword;
+                if (str == null) {
+                    str = "";
+                }
+                reloadSearchResults(str);
+            });
+        }).start();
     }
 
     public void reloadSearchResults(String keyword) {
@@ -164,10 +161,13 @@ public class FileSearchAdapter extends BaseAdapter {
         FileItem item = this.matchingFiles.get(position).getFileItem();
         FileItem.ViewLayout layout = item.getLayout();
         layout.setName(convertView.findViewById(R.id.fileName)).setText(item.getFileName());
-        layout.setInfo(convertView.findViewById(R.id.fileInfo)).setText(FormatUtils.formatSize(item.getFileSize()) + ", " + FormatUtils.formatDate(item.getLastModified()));
+        layout.setInfo(convertView.findViewById(R.id.fileInfo))
+                .setText(FormatUtils.formatSize(item.getFileSize()) + ", "
+                        + FormatUtils.formatDate(item.getLastModified()));
         ImageView icon = layout.setIcon(convertView.findViewById(R.id.file_icon));
-        if (Build.VERSION.SDK_INT >= 21) {
-            icon.setImageDrawable(ResourcesCompat.getDrawable(this.context.getResources(), R.drawable.pdf_logo, this.context.getTheme()));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            icon.setImageDrawable(ResourcesCompat.getDrawable(
+                    this.context.getResources(), R.drawable.pdf_logo, this.context.getTheme()));
         } else {
             icon.setImageResource(R.drawable.pdf_logo);
         }

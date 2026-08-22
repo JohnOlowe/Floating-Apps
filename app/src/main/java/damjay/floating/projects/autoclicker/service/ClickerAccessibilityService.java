@@ -16,7 +16,8 @@ import damjay.floating.projects.bluetooth.BluetoothOperations;
 import damjay.floating.projects.utils.ViewsUtils;
 import java.util.ArrayList;
 
-public class ClickerAccessibilityService extends AccessibilityService implements BluetoothOperations.BluetoothOperationsCallback {
+public class ClickerAccessibilityService
+        extends AccessibilityService implements BluetoothOperations.BluetoothOperationsCallback {
     public static BluetoothSocket bluetoothSocket;
     private BluetoothOperations btOperation;
     private View clickerLayout;
@@ -46,23 +47,12 @@ public class ClickerAccessibilityService extends AccessibilityService implements
     }
 
     private void addClickListeners() {
-        this.clickerLayout.findViewById(R.id.addClicker).setOnClickListener((view) -> this.m158xd53026d3(view));
-        this.clickerLayout.findViewById(R.id.removeClicker).setOnClickListener((view) -> this.m159xefa11ff2(view));
-        this.clickerLayout.findViewById(R.id.closeClicker).setOnClickListener((view) -> this.m160xa121911(view));
+        this.clickerLayout.findViewById(R.id.addClicker).setOnClickListener(v -> sendToDevice((byte) -1, this));
+        this.clickerLayout.findViewById(R.id.removeClicker).setOnClickListener(v -> sendToDevice((byte) -2, this));
+        this.clickerLayout.findViewById(R.id.closeClicker).setOnClickListener(v -> notifyAndStop());
         View view = this.clickerLayout;
-        ViewsUtils.addTouchListener(view, ViewsUtils.getViewTouchListener(this, view, this.windowManager, this.clickerParams), true, true, null);
-    }
-
-    void m158xd53026d3(View v) {
-        sendToDevice((byte) -1, this);
-    }
-
-    void m159xefa11ff2(View v) {
-        sendToDevice((byte) -2, this);
-    }
-
-    void m160xa121911(View v) {
-        notifyAndStop();
+        ViewsUtils.addTouchListener(view,
+                ViewsUtils.getViewTouchListener(this, view, this.windowManager, this.clickerParams), true, true, null);
     }
 
     public void sendToDevice(byte value, BluetoothOperations.BluetoothOperationsCallback callback) {
@@ -94,25 +84,30 @@ public class ClickerAccessibilityService extends AccessibilityService implements
                 pointParams = ViewsUtils.getFloatingLayoutParams(x2, y2);
             } else {
                 ArrayList<View> arrayList2 = this.clickPoints;
-                WindowManager.LayoutParams firstPointParams = (WindowManager.LayoutParams) arrayList2.get(arrayList2.size() - 1).getTag();
+                WindowManager.LayoutParams firstPointParams =
+                        (WindowManager.LayoutParams) arrayList2.get(arrayList2.size() - 1).getTag();
                 if (firstPointParams.x > (deviceMetrics.widthPixels * 3) / 4) {
                     if (firstPointParams.y > (deviceMetrics.heightPixels * 3) / 4) {
-                        pointParams = ViewsUtils.getFloatingLayoutParams(deviceMetrics.widthPixels / 8, deviceMetrics.heightPixels / 8);
+                        pointParams = ViewsUtils.getFloatingLayoutParams(
+                                deviceMetrics.widthPixels / 8, deviceMetrics.heightPixels / 8);
                     } else {
                         int i = deviceMetrics.widthPixels / 4;
                         int i2 = firstPointParams.y;
                         ArrayList<View> arrayList3 = this.clickPoints;
-                        pointParams = ViewsUtils.getFloatingLayoutParams(i, i2 + arrayList3.get(arrayList3.size() - 1).getMeasuredHeight());
+                        pointParams = ViewsUtils.getFloatingLayoutParams(
+                                i, i2 + arrayList3.get(arrayList3.size() - 1).getMeasuredHeight());
                     }
                 } else {
                     int i3 = firstPointParams.x;
                     ArrayList<View> arrayList4 = this.clickPoints;
-                    pointParams = ViewsUtils.getFloatingLayoutParams(i3 + arrayList4.get(arrayList4.size() - 1).getMeasuredWidth(), firstPointParams.y);
+                    pointParams = ViewsUtils.getFloatingLayoutParams(
+                            i3 + arrayList4.get(arrayList4.size() - 1).getMeasuredWidth(), firstPointParams.y);
                 }
             }
         }
         clickPoint.setTag(pointParams);
-        clickPoint.setOnTouchListener(ViewsUtils.getViewTouchListener(this, clickPoint, this.windowManager, pointParams));
+        clickPoint.setOnTouchListener(
+                ViewsUtils.getViewTouchListener(this, clickPoint, this.windowManager, pointParams));
         this.clickPoints.add(clickPoint);
         this.windowManager.addView(clickPoint, pointParams);
     }
@@ -146,7 +141,8 @@ public class ClickerAccessibilityService extends AccessibilityService implements
                 } else if (byteValue == -2) {
                     removeLastButton();
                 } else if (this.clickPoints.size() > byteValue) {
-                    WindowManager.LayoutParams params = (WindowManager.LayoutParams) this.clickPoints.get(byteValue).getTag();
+                    WindowManager.LayoutParams params =
+                            (WindowManager.LayoutParams) this.clickPoints.get(byteValue).getTag();
                     clickPoint(params.x, params.y);
                 }
                 break;
@@ -186,10 +182,8 @@ public class ClickerAccessibilityService extends AccessibilityService implements
     }
 
     @Override
-    public void onAccessibilityEvent(AccessibilityEvent event) {
-    }
+    public void onAccessibilityEvent(AccessibilityEvent event) {}
 
     @Override
-    public void onInterrupt() {
-    }
+    public void onInterrupt() {}
 }

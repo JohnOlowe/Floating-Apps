@@ -23,11 +23,9 @@ public class CaptionsReader implements Runnable {
         this.captionsCallback = captionsCallback;
     }
 
-    public void fastBackward() {
-    }
+    public void fastBackward() {}
 
-    public void fastForward() {
-    }
+    public void fastForward() {}
 
     public void gotoPreviousCaption() {
         int i;
@@ -35,7 +33,8 @@ public class CaptionsReader implements Runnable {
             return;
         }
         CaptionElement prevCaptionElement = CaptionElement.getCaptionAtIndex(Math.max(1, i - 1));
-        this.startTime = prevCaptionElement != null ? System.currentTimeMillis() - prevCaptionElement.startTime : this.startTime;
+        this.startTime =
+                prevCaptionElement != null ? System.currentTimeMillis() - prevCaptionElement.startTime : this.startTime;
         if (!isPlaying()) {
             play();
         }
@@ -44,7 +43,8 @@ public class CaptionsReader implements Runnable {
     public void gotoNextCaption() {
         if (this.isDisplaying) {
             CaptionElement nextCaptionElement = CaptionElement.getCaptionAtIndex(this.currentCaptionIndex + 1);
-            this.startTime = nextCaptionElement != null ? System.currentTimeMillis() - nextCaptionElement.startTime : this.startTime;
+            this.startTime = nextCaptionElement != null ? System.currentTimeMillis() - nextCaptionElement.startTime
+                                                        : this.startTime;
             if (!isPlaying()) {
                 play();
             }
@@ -96,7 +96,7 @@ public class CaptionsReader implements Runnable {
                 String newText = getCaptions(currentTime);
                 if (!newText.equals(previousText)) {
                     previousText = newText;
-                    this.handler.post(() -> this.m176lambda$run$0$damjayfloatingprojectscaptionsCaptionsReader(newText));
+                    this.handler.post(() -> this.captionsCallback.displayCaption(newText));
                 }
                 try {
                     Thread.sleep(50L);
@@ -104,10 +104,6 @@ public class CaptionsReader implements Runnable {
                 }
             }
         }
-    }
-
-    void m176lambda$run$0$damjayfloatingprojectscaptionsCaptionsReader(String newText) {
-        this.captionsCallback.displayCaption(newText);
     }
 
     static class CaptionElement {
@@ -150,7 +146,8 @@ public class CaptionsReader implements Runnable {
             StringBuilder captionDisplayText = new StringBuilder();
             for (String str : captionLines) {
                 String captionLine = stripExtra(str);
-                if (captionLine.length() == 2 && counter == 1 && ("" + captionLine.charAt(1)).equals(String.valueOf(counter))) {
+                if (captionLine.length() == 2 && counter == 1
+                        && ("" + captionLine.charAt(1)).equals(String.valueOf(counter))) {
                     captionLine = captionLine.substring(1);
                 }
                 if (readMode == 2 && captionLine.equals(String.valueOf(counter))) {
@@ -233,7 +230,6 @@ public class CaptionsReader implements Runnable {
                 }
                 double d = Integer.parseInt(component);
                 double dPow = Math.pow(60.0d, (startTimeComponents.length - i) - 1);
-                Double.isNaN(d);
                 parsedStartTime += (long) (d * dPow);
             }
             int i2 = startTimeComponents.length;
@@ -251,8 +247,8 @@ public class CaptionsReader implements Runnable {
         }
 
         private static boolean isExtraCharacter(char character) {
-            return character == '\n' || character == '\r' || character == ' '
-                    || character == 187 || character == 191 || character == 239;
+            return character == '\n' || character == '\r' || character == ' ' || character == 187 || character == 191
+                    || character == 239;
         }
     }
 }
