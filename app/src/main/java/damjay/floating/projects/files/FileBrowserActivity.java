@@ -24,11 +24,7 @@ public class FileBrowserActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_file_browser);
 
-        if (callback != null) {
-            getSupportActionBar().setTitle(callback.titleOfBrowser());
-        } else {
-            getSupportActionBar().setTitle(R.string.floating_pdf);
-        }
+        getSupportActionBar().setTitle(R.string.floating_pdf);
 
         fileList = findViewById(R.id.fileList);
         View upButton = findViewById(R.id.traverseUp);
@@ -44,14 +40,17 @@ public class FileBrowserActivity extends AppCompatActivity {
                         listAdapter.updatePath(item.getFile());
                         if (item.isDirectory()) fileList.setAdapter(listAdapter);
                     } else {
-                        String ext = callback != null ? callback.extensionAllowed() : "pdf";
-                        if (item.getFileName().toLowerCase().endsWith("." + ext)) {
+                        if (item.getFileName().toLowerCase().endsWith(".pdf")) {
                             showPDF(item.getFile());
                         } else {
                             new AlertDialog.Builder(FileBrowserActivity.this)
-                                .setMessage(getResources().getString(
-                                    R.string.incorrect_format_message, ext.toUpperCase()))
-                                .setPositiveButton(android.R.string.yes, (dialog, which) -> showPDF(item.getFile()))
+                                .setMessage(R.string.incorrect_format_message)
+                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        showPDF(item.getFile()); 
+                                    }
+                                })
                                 .setNegativeButton(android.R.string.no, null)
                                 .show();
                         }
