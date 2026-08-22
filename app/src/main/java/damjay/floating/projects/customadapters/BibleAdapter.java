@@ -6,16 +6,20 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
-import damjay.floating.projects.R;
-import damjay.floating.projects.bible.CombinedChapterBibleSource;
+
 import java.io.IOException;
 import java.util.ArrayList;
 
+import damjay.floating.projects.R;
+import damjay.floating.projects.bible.CombinedChapterBibleSource;
+
 public class BibleAdapter extends BaseAdapter {
-    private CombinedChapterBibleSource bibleSource;
     private final Context context;
-    private int curBookIndex;
+    private CombinedChapterBibleSource bibleSource;
+
     private final ArrayList<String> versesList = new ArrayList<>();
+
+    private int curBookIndex;
 
     public BibleAdapter(Context context) {
         this.context = context;
@@ -34,21 +38,25 @@ public class BibleAdapter extends BaseAdapter {
         }
         try {
             loadVerses(curBookIndex, chapterIndex);
-        } catch (Throwable t2) {
-            t2.printStackTrace();
+        } catch (Throwable t) {
+            t.printStackTrace();
         }
     }
 
     private void loadVerses(int bookIndex, int chapterIndex) throws IOException {
         versesList.clear();
-        if (bibleSource == null) {
-            return;
-        }
+        if (bibleSource == null) return;
         char[] verses = bibleSource.getChapter(bookIndex, chapterIndex);
         int[] verseIndices = bibleSource.getChapterIndex(bookIndex, chapterIndex);
+
         for (int i = 0; i < verseIndices.length / 2; i++) {
-            versesList.add(new String(verses, verseIndices[i << 1], verseIndices[(i << 1) + 1] - verseIndices[i << 1]));
+            versesList.add(
+                    new String(
+                            verses,
+                            verseIndices[i << 1],
+                            verseIndices[(i << 1) + 1] - verseIndices[i << 1]));
         }
+        // System.out.println("From loadVerses(): " + versesList.get(0));
     }
 
     public int getCurrentBookIndex() {
@@ -65,15 +73,12 @@ public class BibleAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        if (bibleSource == null) {
-            return 0;
-        }
-        return versesList.size();
+        return bibleSource == null ? 0 : versesList.size();
     }
 
     @Override
     public Object getItem(int position) {
-        return versesList.size() > position ? versesList.get(position) : Integer.valueOf(position);
+        return versesList.size() > position ? versesList.get(position) : position;
     }
 
     @Override
@@ -86,12 +91,10 @@ public class BibleAdapter extends BaseAdapter {
         if (view == null) {
             view = LayoutInflater.from(context).inflate(R.layout.bible_verse, vg, false);
         }
-        TextView verseNumber = (TextView) view.findViewById(R.id.bibleVerseIndex);
-        TextView verseContent = (TextView) view.findViewById(R.id.bibleVerseContent);
-        verseNumber.setText((position + 1) + "");
-        if (versesList.size() > position) {
-            verseContent.setText(versesList.get(position));
-        }
+        TextView verseNumber = view.findViewById(R.id.bibleVerseIndex);
+        TextView verseContent = view.findViewById(R.id.bibleVerseContent);
+        verseNumber.setText(position + 1 + "");
+        if (versesList.size() > position) verseContent.setText(versesList.get(position));
         if (position == 1) {
             System.out.println(verseContent.getText());
         }

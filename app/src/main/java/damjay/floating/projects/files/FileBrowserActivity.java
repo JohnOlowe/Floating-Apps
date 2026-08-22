@@ -4,65 +4,74 @@ import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.ListAdapter;
+import android.widget.AdapterView;
 import android.widget.ListView;
 import androidx.appcompat.app.AppCompatActivity;
+import damjay.floating.projects.FloatingPDFActivity;
 import damjay.floating.projects.R;
 import damjay.floating.projects.customadapters.FileListAdapter;
+import damjay.floating.projects.files.FileItem;
 import java.io.File;
 import java.io.IOException;
 
 public class FileBrowserActivity extends AppCompatActivity {
-    public static FileCallback callback;
-    public static String currentInput;
     ListView fileList;
+    public static String currentInput;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_file_browser);
-        getSupportActionBar().setTitle(callback.titleOfBrowser());
-        fileList = (ListView) findViewById(R.id.fileList);
+
+        getSupportActionBar().setTitle(R.string.floating_pdf);
+
+        fileList = findViewById(R.id.fileList);
         View upButton = findViewById(R.id.traverseUp);
-        fileList.setAdapter((ListAdapter) new FileListAdapter(this, validateInput()));
-        fileList.setOnItemClickListener((a, v, position, id) -> {
-            FileItem item = (FileItem) fileList.getItemAtPosition(position);
-            if (item.isDirectory()) {
-                FileListAdapter listAdapter = (FileListAdapter) fileList.getAdapter();
-                listAdapter.updatePath(item.getFile());
-                if (item.isDirectory()) {
-                    fileList.setAdapter((ListAdapter) listAdapter);
-                    return;
+
+        fileList.setAdapter(new FileListAdapter(this, validateInput()));
+
+        fileList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> a, View v, int position, long id) {
+                    final FileItem item = (FileItem) fileList.getItemAtPosition(position);
+                    if (item.isDirectory()) {
+                        FileListAdapter listAdapter = (FileListAdapter) fileList.getAdapter();
+                        listAdapter.updatePath(item.getFile());
+                        if (item.isDirectory()) fileList.setAdapter(listAdapter);
+                    } else {
+                        if (item.getFileName().toLowerCase().endsWith(".pdf")) {
+                            showPDF(item.getFile());
+                        } else {
+                            new AlertDialog.Builder(FileBrowserActivity.this)
+                                .setMessage(R.string.incorrect_format_message)
+                                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int id) {
+                                        showPDF(item.getFile()); 
+                                    }
+                                })
+                                .setNegativeButton(android.R.string.no, null)
+                                .show();
+                        }
+                    }
                 }
-                return;
-            }
-            if (item.getFileName().toLowerCase().endsWith("." + callback.extensionAllowed())) {
-                showPDF(item.getFile());
-            } else {
-                new AlertDialog.Builder(this)
-                        .setMessage(getResources().getString(
-                                R.string.incorrect_format_message, callback.extensionAllowed().toUpperCase()))
-                        .setPositiveButton(android.R.string.yes, (dialog, id1) -> showPDF(item.getFile()))
-                        .setNegativeButton(android.R.string.no, (DialogInterface.OnClickListener) null)
-                        .show();
-            }
-        });
-        upButton.setOnClickListener(view -> onBackPressed());
+
+            });
+        upButton.setOnClickListener(new View.OnClickListener(){
+                @Override
+                public void onClick(View view) {
+                    onBackPressed();
+                }   
+            });
     }
 
     private File validateInput() {
-        String str = currentInput;
-        if (str == null || str.trim().isEmpty()) {
+        if (currentInput == null || currentInput.trim().length() == 0)
             return null;
-        }
         File file = new File(currentInput);
-        if (file.isFile()) {
-            file = file.getParentFile();
-        }
-        if (file == null || file.listFiles() == null) {
-            return null;
-        }
-        return file;
+        if (file.isFile()) file = file.getParentFile();
+        if (file.listFiles() != null) return file;
+        return null;
     }
 
     @Override
@@ -72,41 +81,25 @@ public class FileBrowserActivity extends AppCompatActivity {
         try {
             if (listAdapter.folder == null) {
                 super.onBackPressed();
-                callback = null;
                 return;
             }
-            if (listAdapter.getCount() == 0) {
+            if (listAdapter.getCount() == 0)
                 parent = listAdapter.folder.getParentFile();
-            } else {
+            else
                 parent = ((FileItem) fileList.getItemAtPosition(0)).getFile().getParentFile().getParentFile();
-            }
-            if (parent != null) {
-                listAdapter.updatePath(parent);
-                fileList.setAdapter((ListAdapter) listAdapter);
-            }
-        } catch (Throwable th) {
+        } catch (Throwable t) {
+        }
+        if (parent != null) {
+            listAdapter.updatePath(parent);
+            fileList.setAdapter(listAdapter);
         }
     }
 
     public void showPDF(File file) {
         try {
-            FileCallback fileCallback = callback;
-            if (fileCallback != null) {
-                fileCallback.fileCallback(file.getCanonicalPath());
-                callback = null;
-            }
-        } catch (IOException e) {
-        }
+            FloatingPDFActivity.returnedPath = file.getCanonicalPath();
+        } catch (IOException e) {}
         super.onBackPressed();
     }
 
-    public interface FileCallback {
-        String extensionAllowed();
-
-        void fileCallback(String str);
-
-        default String titleOfBrowser() {
-            return "Floating " + extensionAllowed().toUpperCase();
-        }
-    }
 }

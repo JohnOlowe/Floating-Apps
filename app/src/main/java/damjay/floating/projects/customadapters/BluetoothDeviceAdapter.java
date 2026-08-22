@@ -1,52 +1,58 @@
 package damjay.floating.projects.customadapters;
 
-import android.R;
-import android.bluetooth.BluetoothAdapter;
-import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothAdapter;
 import android.content.Context;
 import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ListView;
+import android.bluetooth.BluetoothDevice;
+import android.view.ViewGroup;
+import android.view.View;
+import android.widget.BaseAdapter;
 import android.widget.TextView;
+import java.sql.Array;
 import java.util.ArrayList;
 import java.util.Set;
 
 public class BluetoothDeviceAdapter extends BaseAdapter {
+    private Context context;
+    private ListView bluetoothDevicesList;
+    
     private ArrayList<BluetoothDevice> bluetoothDevices;
-    private final Context context;
-
+    
     public BluetoothDeviceAdapter(Context context, ListView bluetoothList) {
         this.context = context;
+        this.bluetoothDevicesList = bluetoothList;
+        
         startSearching();
     }
 
     private void startSearching() {
-        BluetoothAdapter adapter;
-        Set<BluetoothDevice> bluetoothDevices;
-        BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService("bluetooth");
-        if (bluetoothManager != null && (adapter = bluetoothManager.getAdapter()) != null && adapter.isEnabled() && (bluetoothDevices = adapter.getBondedDevices()) != null) {
-            bluetoothDevices = new ArrayList<>(bluetoothDevices);
+        BluetoothManager bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
+        if (bluetoothManager != null) {
+            BluetoothAdapter adapter = bluetoothManager.getAdapter();
+            if (adapter != null) {
+                if (adapter.isEnabled()) {
+                    Set<BluetoothDevice> bluetoothDevices = adapter.getBondedDevices();
+                    if (bluetoothDevices != null) {
+                        this.bluetoothDevices = new ArrayList<>(bluetoothDevices);
+                    }
+                }
+            }
         }
     }
 
     @Override
     public int getCount() {
-        if (bluetoothDevices == null) {
-            return 0;
-        }
-        return bluetoothDevices.size();
+        return bluetoothDevices == null ? 0 : bluetoothDevices.size();
     }
+    
 
     @Override
     public Object getItem(int position) {
-        if (bluetoothDevices == null || bluetoothDevices.size() <= position) {
-            return null;
-        }
-        return bluetoothDevices.get(position);
+        return bluetoothDevices != null && bluetoothDevices.size() > position ? bluetoothDevices.get(position) : null;
     }
+    
 
     @Override
     public long getItemId(int position) {
@@ -57,18 +63,19 @@ public class BluetoothDeviceAdapter extends BaseAdapter {
     public View getView(int position, View view, ViewGroup viewGroup) {
         boolean deviceAvailable = bluetoothDevices != null && bluetoothDevices.size() > position;
         if (view == null) {
-            view = LayoutInflater.from(context).inflate(R.layout.simple_list_item_2, viewGroup, false);
+            view = LayoutInflater.from(context).inflate(android.R.layout.simple_list_item_2, viewGroup, false);
             if (deviceAvailable) {
                 view.setTag(bluetoothDevices.get(position));
             }
         }
         if (deviceAvailable) {
             BluetoothDevice device = bluetoothDevices.get(position);
-            TextView text1 = (TextView) view.findViewById(R.id.text1);
-            TextView text2 = (TextView) view.findViewById(R.id.text2);
+            TextView text1 = view.findViewById(android.R.id.text1);
+            TextView text2 = view.findViewById(android.R.id.text2);
             text1.setText(device.getName());
             text2.setText(device.getAddress());
         }
         return view;
     }
+    
 }

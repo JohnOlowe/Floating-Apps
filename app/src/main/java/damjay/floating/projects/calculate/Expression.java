@@ -5,6 +5,7 @@ public class Expression {
     private String type;
 
     protected Expression() {
+        
     }
 
     public void setType(String type) {
@@ -14,7 +15,7 @@ public class Expression {
     public String getType() {
         return type;
     }
-
+    
     public static Expression createExact(String input, String type) {
         Expression expr = new Expression();
         expr.setExact(input, type);
@@ -25,12 +26,14 @@ public class Expression {
         this.exact = exact;
         this.type = type;
     }
-
+    
     public String getExact() {
         return exact;
     }
 
+    @Override
     public String toString() {
         return "type=" + type + ", value=" + exact;
     }
+
 }

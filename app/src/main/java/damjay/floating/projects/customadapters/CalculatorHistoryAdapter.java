@@ -16,11 +16,9 @@ public class CalculatorHistoryAdapter extends BaseAdapter {
     private final ArrayList<CalculatorService.CalcItem> list;
 
     public interface HistoryListener {
-        void deleteHistory(int i);
-
-        void insertContent(int i);
-
-        void replaceContent(int i);
+        void deleteHistory(int position);
+        void insertContent(int position);
+        void replaceContent(int position);
     }
 
     public CalculatorHistoryAdapter(CalculatorService calcService, HistoryListener historyListener,
@@ -32,18 +30,12 @@ public class CalculatorHistoryAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        if (list != null) {
-            return list.size();
-        }
-        return 0;
+        return list != null ? list.size() : 0;
     }
 
     @Override
     public Object getItem(int position) {
-        if (list == null || list.size() <= position) {
-            return null;
-        }
-        return list.get(position);
+        return list != null && list.size() > position ? list.get(position) : null;
     }
 
     @Override
@@ -56,9 +48,10 @@ public class CalculatorHistoryAdapter extends BaseAdapter {
         if (view == null) {
             view = LayoutInflater.from(calcService).inflate(R.layout.calculator_history, vg, false);
         }
-        view.setOnLongClickListener((v) -> {
+
+        view.setOnLongClickListener(v -> {
             PopupMenu menu = new PopupMenu(calcService, v);
-            menu.setOnMenuItemClickListener((item) -> {
+            menu.setOnMenuItemClickListener(item -> {
                 if (item.getItemId() == R.id.replace_content) {
                     historyListener.replaceContent(position);
                     return true;
@@ -84,10 +77,12 @@ public class CalculatorHistoryAdapter extends BaseAdapter {
             menu.show();
             return true;
         });
+
         view.setOnClickListener(v -> calcService.replaceContent(position));
-        TextView expressionView = (TextView) view.findViewById(R.id.calc_history_expression);
+
+        TextView expressionView = view.findViewById(R.id.calc_history_expression);
         expressionView.setText(list.get(position).getExpression());
-        TextView solutionView = (TextView) view.findViewById(R.id.calc_history_solution);
+        TextView solutionView = view.findViewById(R.id.calc_history_solution);
         solutionView.setText(list.get(position).getAnswer());
         return view;
     }

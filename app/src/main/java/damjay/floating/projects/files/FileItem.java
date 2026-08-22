@@ -1,33 +1,32 @@
 package damjay.floating.projects.files;
 
 import android.view.View;
-import android.widget.ImageView;
 import android.widget.TextView;
 import java.io.File;
+import android.widget.ImageView;
 
 public class FileItem {
-    private String directoryName;
     private File file;
+
     private String fileName;
     private long fileSize;
-    private String formattedSize;
-    private String fullPath;
     private boolean isDirectory;
+
+    private String formattedSize;
+
     private ViewLayout layout;
 
-    private FileItem(String fileName, String directoryName, String fullPath, long fileSize, boolean isDirectory) {
+    private FileItem(String fileName, long fileSize, boolean isDirectory) {
         this.fileName = fileName;
-        this.directoryName = directoryName;
         this.fileSize = fileSize;
-        this.fullPath = fullPath;
         this.isDirectory = isDirectory;
     }
 
     public FileItem(File file) {
-        this(file.getName(), file.getParent(), file.getPath(), file.length(), file.isDirectory());
+        this(file.getName(), file.length(), file.isDirectory());
         this.file = file;
     }
-
+    
     public FileItem(File file, String name) {
         this(file);
         fileName = name;
@@ -51,22 +50,6 @@ public class FileItem {
 
     public String getFileName() {
         return fileName;
-    }
-
-    public String getDirectoryName() {
-        return directoryName;
-    }
-
-    public void setDirectoryName(String directoryName) {
-        this.directoryName = directoryName;
-    }
-
-    public String getFullPath() {
-        return fullPath;
-    }
-
-    public void setFullPath(String fullPath) {
-        this.fullPath = fullPath;
     }
 
     public void setFileSize(long fileSize) {
@@ -98,18 +81,18 @@ public class FileItem {
     }
 
     public ViewLayout getLayout() {
-        return layout == null ? new ViewLayout() : layout;
+        if (layout == null) return new ViewLayout();
+        return layout;
     }
 
     public static class ViewLayout {
-        private ImageView icon;
-        private TextView info;
         private TextView name;
+        private TextView info;
+        private ImageView icon;
 
         public ImageView setIcon(View icon) {
-            ImageView imageView = (ImageView) icon;
-            icon = imageView;
-            return imageView;
+            this.icon = (ImageView) icon;
+            return this.icon;
         }
 
         public ImageView getIcon() {
@@ -117,9 +100,8 @@ public class FileItem {
         }
 
         public TextView setName(View name) {
-            TextView textView = (TextView) name;
-            name = textView;
-            return textView;
+            this.name = (TextView) name;
+            return this.name;
         }
 
         public TextView getName() {
@@ -127,13 +109,14 @@ public class FileItem {
         }
 
         public TextView setInfo(View info) {
-            TextView textView = (TextView) info;
-            info = textView;
-            return textView;
+            this.info = (TextView) info;
+            return this.info;
         }
 
         public TextView getInfo() {
             return info;
         }
+
     }
+
 }
