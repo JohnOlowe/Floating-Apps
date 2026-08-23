@@ -1,63 +1,107 @@
 package damjay.floating.projects.music;
 
-import android.content.SharedPreferences;
+import android.content.Intent;
 import android.os.Bundle;
-import android.os.Environment;
-import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.EditText;
-import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
-
 import androidx.appcompat.app.AppCompatActivity;
-
+import damjay.floating.projects.R;
 import java.io.File;
-import java.util.ArrayList;
+import java.io.FileOutputStream;
 import java.util.HashSet;
 
-import damjay.floating.projects.R;
-
 public class FolderChooserActivity extends AppCompatActivity {
-    public static final String PREFS_NAME = "music_prefs";
-    public static final String MUSIC_FOLDERS = "music_folders";
-
-    private final ArrayList<String> folders = new ArrayList<>();
-    private ArrayAdapter<String> adapter;
+    private Button addDirectory;
+    private TextView directoriesAdded;
+    private EditText directoriesInput;
+    private HashSet<String> fullPath;
+    private Button savePrefs;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_folder_chooser);
-        loadFolders();
-        adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, folders);
-        ((ListView) findViewById(R.id.music_folders)).setAdapter(adapter);
-        EditText field = findViewById(R.id.folder_path);
-        field.setText(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).getAbsolutePath());
-        findViewById(R.id.add_music_folder).setOnClickListener(v -> addFolder(field.getText().toString()));
-        findViewById(R.id.save_music_prefs).setOnClickListener(v -> {
-            saveFolders();
-            finish();
+        initializeViews();
+    }
+
+    private void initializeViews() {
+        directoriesAdded = (TextView) findViewById(R.id.directories_added);
+        directoriesInput = (EditText) findViewById(R.id.directories_field);
+        addDirectory = (Button) findViewById(R.id.add_chosen_directories);
+        savePrefs = (Button) findViewById(R.id.save_music_prefs);
+        fullPath = new HashSet<>();
+        addDirectory.setOnClickListener((v) -> {
+            boolean notAccepted = false;
+            String filePath = directoriesInput.getText().toString().trim();
+            if (filePath.isEmpty()) {
+                return;
+            }
+            File folder = new File(filePath);
+            if (folder.exists() && folder.isDirectory()) {
+                fullPath.add(filePath);
+            } else {
+                if (filePath.startsWith("/")) {
+                    filePath = filePath.substring(1).trim();
+                }
+                File folder2 = new File("/storage/emulated/0/", filePath);
+                if (folder2.exists() && folder2.isDirectory()) {
+                    fullPath.add("/storage/emulated/0/" + filePath);
+                } else {
+                    notAccepted = true;
+                    Toast.makeText(this, R.string.directory_not_exist, Toast.LENGTH_LONG).show();
+                }
+            }
+            if (!notAccepted) {
+                boolean firstFile = true;
+                StringBuilder builder = null;
+                for (String dir : fullPath) {
+                    if (firstFile) {
+                        firstFile = false;
+                        builder = new StringBuilder(new File(dir).getName());
+                    } else {
+                        builder.append(", ").append(new File(dir).getName());
+                    }
+                }
+                if (builder != null) {
+                    directoriesAdded.setText(builder.toString());
+                }
+            }
+        });
+        savePrefs.setOnClickListener((v) -> {
+            File fileSafe = new File(getCacheDir(), PlayerService.CHOSEN_FOLDERS_FILE);
+            String text = getDirectoriesText();
+            if (text == null) {
+                return;
+            }
+            try {
+                FileOutputStream writer = new FileOutputStream(fileSafe);
+                writer.write(text.getBytes());
+                writer.close();
+                Intent intent = new Intent();
+                intent.setClass(this, PlayerService.class);
+                startService(intent);
+            } catch (Throwable th) {
+                Toast.makeText(this, R.string.error_occurred, Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
-    private void addFolder(String path) {
-        File file = new File(path);
-        if (!file.exists() || !file.isDirectory()) {
-            Toast.makeText(this, R.string.directory_not_exist, Toast.LENGTH_LONG).show();
-            return;
+    private String getDirectoriesText() {
+        boolean firstFile = true;
+        StringBuilder builder = null;
+        for (String folder : fullPath) {
+            if (firstFile) {
+                firstFile = false;
+                builder = new StringBuilder(folder);
+            } else {
+                builder.append("\n").append(folder);
+            }
         }
-        if (!folders.contains(file.getAbsolutePath())) {
-            folders.add(file.getAbsolutePath());
-            adapter.notifyDataSetChanged();
+        if (builder != null) {
+            return builder.toString();
         }
-    }
-
-    private void loadFolders() {
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
-        folders.addAll(prefs.getStringSet(MUSIC_FOLDERS, new HashSet<>()));
-        if (folders.isEmpty()) folders.add(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).getAbsolutePath());
-    }
-
-    private void saveFolders() {
-        getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putStringSet(MUSIC_FOLDERS, new HashSet<>(folders)).apply();
+        return null;
     }
 }
