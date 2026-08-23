@@ -6,46 +6,43 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.PopupMenu;
 import android.widget.TextView;
+
 import damjay.floating.projects.R;
 import damjay.floating.projects.calculate.CalculatorService;
+
 import java.util.ArrayList;
 
+/**
+ * Adapter for displaying calculator expression history in floating calculator layout.
+ * Supports click (replace), long-press (insert/replace/delete/clear) actions.
+ */
 public class CalculatorHistoryAdapter extends BaseAdapter {
+
     private final CalculatorService calcService;
     private final HistoryListener historyListener;
     private final ArrayList<CalculatorService.CalcItem> list;
 
     public interface HistoryListener {
-        void deleteHistory(int i);
-
-        void insertContent(int i);
-
-        void replaceContent(int i);
+        void deleteHistory(int index);
+        void insertContent(int index);
+        void replaceContent(int index);
     }
 
     public CalculatorHistoryAdapter(CalculatorService calcService, HistoryListener historyListener,
-            ArrayList<CalculatorService.CalcItem> list) {
-        this.list = list;
+                                     ArrayList<CalculatorService.CalcItem> list) {
         this.calcService = calcService;
         this.historyListener = historyListener;
+        this.list = list;
     }
 
     @Override
     public int getCount() {
-        ArrayList<CalculatorService.CalcItem> arrayList = this.list;
-        if (arrayList != null) {
-            return arrayList.size();
-        }
-        return 0;
+        return list == null ? 0 : list.size();
     }
 
     @Override
     public Object getItem(int position) {
-        ArrayList<CalculatorService.CalcItem> arrayList = this.list;
-        if (arrayList == null || arrayList.size() <= position) {
-            return null;
-        }
-        return this.list.get(position);
+        return (list == null || list.size() <= position) ? null : list.get(position);
     }
 
     @Override
@@ -54,43 +51,49 @@ public class CalculatorHistoryAdapter extends BaseAdapter {
     }
 
     @Override
-    public View getView(int position, View view, ViewGroup vg) {
-        if (view == null) {
-            view = LayoutInflater.from(this.calcService).inflate(R.layout.calculator_history, vg, false);
+    public View getView(int position, View convertView, ViewGroup parent) {
+        if (convertView == null) {
+            convertView = LayoutInflater.from(calcService).inflate(
+                    R.layout.calculator_history, parent, false);
         }
-        view.setOnLongClickListener((v) -> {
-            PopupMenu menu = new PopupMenu(this.calcService, v);
-            menu.setOnMenuItemClickListener((item) -> {
-                if (item.getItemId() == R.id.replace_content) {
-                    this.historyListener.replaceContent(position);
-                    return true;
+
+        // Long-press context menu: replace, insert, delete, clear all
+        convertView.setOnLongClickListener(v -> {
+            PopupMenu menu = new PopupMenu(calcService, v);
+            menu.setOnMenuItemClickListener(item -> {
+                switch (item.getItemId()) {
+                    case R.id.replace_content:
+                        historyListener.replaceContent(position);
+                        return true;
+                    case R.id.insert_content:
+                        historyListener.insertContent(position);
+                        return true;
+                    case R.id.delete_history:
+                        historyListener.deleteHistory(position);
+                        return true;
+                    case R.id.clear_history:
+                        int size = list.size();
+                        for (int i = 0; i < size; i++) {
+                            historyListener.deleteHistory(0);
+                        }
+                        return true;
                 }
-                if (item.getItemId() == R.id.insert_content) {
-                    this.historyListener.insertContent(position);
-                    return true;
-                }
-                if (item.getItemId() == R.id.delete_history) {
-                    this.historyListener.deleteHistory(position);
-                    return true;
-                }
-                if (item.getItemId() == R.id.clear_history) {
-                    int originalListSize = this.list.size();
-                    for (int i = 0; i < originalListSize; i++) {
-                        this.historyListener.deleteHistory(0);
-                    }
-                    return true;
-                }
-                return true;
+                return false;
             });
             menu.inflate(R.menu.calc_history_menu);
             menu.show();
             return true;
         });
-        view.setOnClickListener(v -> this.calcService.replaceContent(position));
-        TextView expressionView = (TextView) view.findViewById(R.id.calc_history_expression);
-        expressionView.setText(this.list.get(position).getExpression());
-        TextView solutionView = (TextView) view.findViewById(R.id.calc_history_solution);
-        solutionView.setText(this.list.get(position).getAnswer());
-        return view;
+
+        // Click to replace editor content
+        convertView.setOnClickListener(v -> historyListener.replaceContent(position));
+
+        TextView expressionView = convertView.findViewById(R.id.calc_history_expression);
+        expressionView.setText(list.get(position).getExpression());
+
+        TextView solutionView = convertView.findViewById(R.id.calc_history_solution);
+        solutionView.setText(list.get(position).getAnswer());
+
+        return convertView;
     }
 }
