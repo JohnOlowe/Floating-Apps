@@ -156,6 +156,12 @@ public class PDFReaderService extends Service {
 
         // Open PDF in external app using FileProvider
         openInApp.setOnClickListener(view -> {
+            // Ensure PDF file is available before attempting to open externally
+            if (pdfFile == null || !pdfFile.exists()) {
+                Toast.makeText(PDFReaderService.this, R.string.null_pdf_error, Toast.LENGTH_LONG).show();
+                return;
+            }
+
             Uri pdfUri = FileProvider.getUriForFile(
                     PDFReaderService.this,
                     "damjay.floating.projects.provider",
@@ -164,21 +170,62 @@ public class PDFReaderService extends Service {
             openIntent.setDataAndType(pdfUri, "application/pdf");
             openIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             openIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            Intent chooser = Intent.createChooser(openIntent, getString(R.string.choose_app_to_open));
-            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
             try {
                 java.util.List<android.content.pm.ResolveInfo> resolveInfoList =
                         getPackageManager().queryIntentActivities(openIntent, 0);
-                for (android.content.pm.ResolveInfo resolveInfo : resolveInfoList) {
-                    String packageName = resolveInfo.activityInfo.packageName;
-                    grantUriPermission(packageName, pdfUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                // Filter out this app to prevent self-selection and potential crash
+                java.util.ArrayList<android.content.pm.ResolveInfo> filteredList =
+                        new java.util.ArrayList<>();
+                String currentPackage = getPackageName();
+                for (android.content.pm.ResolveInfo info : resolveInfoList) {
+                    if (info.activityInfo != null
+                            && info.activityInfo.packageName != null
+                            && !currentPackage.equals(info.activityInfo.packageName)) {
+                        filteredList.add(info);
+                    }
                 }
-                startActivity(chooser);
-                minimizeButton.performClick();
-            } catch (android.content.ActivityNotFoundException e) {
+
+                if (filteredList.isEmpty()) {
+                    Toast.makeText(PDFReaderService.this,
+                            R.string.no_app_to_open_pdf, Toast.LENGTH_LONG).show();
+                    return;
+                }
+
+                // Build labels for chooser dialog
+                java.util.ArrayList<String> labels = new java.util.ArrayList<>();
+                java.util.ArrayList<String> packageNames = new java.util.ArrayList<>();
+                for (android.content.pm.ResolveInfo info : filteredList) {
+                    CharSequence label = info.loadLabel(getPackageManager());
+                    labels.add(label != null ? label.toString() : info.activityInfo.name);
+                    packageNames.add(info.activityInfo.packageName);
+                }
+
+                // Show custom app chooser excluding this app
+                new android.app.AlertDialog.Builder(PDFReaderService.this)
+                        .setTitle(R.string.choose_app_to_open)
+                        .setItems(labels.toArray(new String[0]), (dialog, which) -> {
+                            String selectedPackage = packageNames.get(which);
+                            Intent selectedIntent = new Intent(openIntent);
+                            selectedIntent.setPackage(selectedPackage);
+                            selectedIntent.setClassName(selectedPackage,
+                                    filteredList.get(which).activityInfo.name);
+                            grantUriPermission(selectedPackage, pdfUri,
+                                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                            try {
+                                startActivity(selectedIntent);
+                                minimizeButton.performClick();
+                            } catch (android.content.ActivityNotFoundException ex) {
+                                Toast.makeText(PDFReaderService.this,
+                                        R.string.no_app_to_open_pdf, Toast.LENGTH_LONG).show();
+                            }
+                        })
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
+            } catch (Exception e) {
                 Toast.makeText(PDFReaderService.this,
-                        R.string.no_app_to_open_pdf, Toast.LENGTH_LONG).show();
+                        R.string.error_occurred, Toast.LENGTH_LONG).show();
             }
         });
     }
