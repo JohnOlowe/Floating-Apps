@@ -2,21 +2,22 @@ package damjay.floating.projects;
 
 import android.annotation.SuppressLint;
 import android.app.Service;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
 import android.graphics.pdf.PdfRenderer;
+import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
+import android.provider.Settings;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver.OnGlobalLayoutListener;
+import android.view.ViewTreeObserver;
 import android.view.WindowManager;
-import android.view.WindowManager.LayoutParams;
-import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -26,6 +27,7 @@ import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
+import androidx.core.content.FileProvider;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -37,12 +39,18 @@ import java.io.IOException;
 import damjay.floating.projects.utils.ImageScaler;
 import damjay.floating.projects.utils.ViewsUtils;
 
+/**
+ * Floating PDF reader service displaying PDF pages with navigation,
+ * zoom, and open-in-app support. Manages overlay window state and page history.
+ */
 @RequiresApi(21)
 public class PDFReaderService extends Service {
+
     private View pdfLayout;
     private WindowManager windowManager;
-    private LayoutParams params;
+    private WindowManager.LayoutParams params;
 
+    /** Shared PDF file reference for external access */
     public static File pdfFile;
 
     private PdfRenderer inputPdf;
@@ -60,6 +68,7 @@ public class PDFReaderService extends Service {
     private ImageView pageImageView;
     private View minimizeButton;
     private View toggleFocus;
+    private View openInApp;
 
     @Override
     public IBinder onBind(Intent intent) {
@@ -73,7 +82,6 @@ public class PDFReaderService extends Service {
             super.onCreate();
 
             pdfLayout = LayoutInflater.from(this).inflate(R.layout.pdf_reader_layout, null);
-
             params = getLayoutParams();
 
             windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
@@ -88,61 +96,91 @@ public class PDFReaderService extends Service {
             minimizeButton = pdfLayout.findViewById(R.id.minimizePDF);
             toggleFocus = pdfLayout.findViewById(R.id.toggleFocus);
             expandButton = pdfLayout.findViewById(R.id.expand_button);
+            openInApp = pdfLayout.findViewById(R.id.openInApp);
 
             setOnClickListener(collapsedView, expandedView, launchApp);
             setTouchListener(params, collapsedView, expandedView);
-
             assignNavButtons();
-            // initializePdfPage();
+
         } catch (Throwable report) {
             report.printStackTrace();
         }
-
     }
 
     private void setOnClickListener(final View collapsedView, final View expandedView, View launchApp) {
         launchApp.setOnClickListener(v -> ViewsUtils.launchApp(this, MainActivity.class));
-        closeButton.setOnClickListener(v -> stopSelf());
-        
-        minimizeButton.setOnClickListener(
-            new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    collapsedView.setVisibility(View.VISIBLE);
-                    expandedView.setVisibility(View.GONE);
-                    params.flags = LayoutParams.FLAG_NOT_FOCUSABLE;
-                    windowManager.updateViewLayout(pdfLayout, params);
-                    if (lastWrittenPage != currentPage)
-                        updateSavedPage();
-                }
 
-                private void updateSavedPage() {
-                    try {
-                        SavedContent saved = readHistory();
-                        saved.setPage(currentPage);
-                        saveHistory(saved);
-                        // If saved successfully, update the last written page.
-                        lastWrittenPage = currentPage;
-                    } catch (Throwable t) {
-                        t.printStackTrace();
-                        Toast.makeText(PDFReaderService.this, R.string.save_page_error, Toast.LENGTH_LONG).show();
-                    }
+        closeButton.setOnClickListener(v -> stopSelf());
+
+        minimizeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                collapsedView.setVisibility(View.VISIBLE);
+                expandedView.setVisibility(View.GONE);
+                params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+                windowManager.updateViewLayout(pdfLayout, params);
+                if (lastWrittenPage != currentPage) {
+                    updateSavedPage();
                 }
-            });
+            }
+
+            /** Save current page to history file */
+            private void updateSavedPage() {
+                try {
+                    SavedContent saved = readHistory();
+                    saved.setPage(currentPage);
+                    saveHistory(saved);
+                    lastWrittenPage = currentPage;
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                    Toast.makeText(PDFReaderService.this,
+                            R.string.save_page_error, Toast.LENGTH_LONG).show();
+                }
+            }
+        });
 
         expandButton.setOnClickListener(view -> {
             collapsedView.setVisibility(View.GONE);
             expandedView.setVisibility(View.VISIBLE);
-            params.flags = LayoutParams.FLAG_NOT_TOUCH_MODAL;
+            params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
             windowManager.updateViewLayout(pdfLayout, params);
             initializePdfPage();
         });
 
         toggleFocus.setOnClickListener(view -> {
-            params.flags = params.flags == LayoutParams.FLAG_NOT_FOCUSABLE ? LayoutParams.FLAG_NOT_TOUCH_MODAL : LayoutParams.FLAG_NOT_FOCUSABLE;
+            params.flags = (params.flags == WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+                    ? WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                    : WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
             windowManager.updateViewLayout(pdfLayout, params);
         });
 
+        // Open PDF in external app using FileProvider
+        openInApp.setOnClickListener(view -> {
+            Uri pdfUri = FileProvider.getUriForFile(
+                    PDFReaderService.this,
+                    "damjay.floating.projects.provider",
+                    pdfFile);
+            Intent openIntent = new Intent(Intent.ACTION_VIEW);
+            openIntent.setDataAndType(pdfUri, "application/pdf");
+            openIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            openIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            Intent chooser = Intent.createChooser(openIntent, getString(R.string.choose_app_to_open));
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+            try {
+                java.util.List<android.content.pm.ResolveInfo> resolveInfoList =
+                        getPackageManager().queryIntentActivities(openIntent, 0);
+                for (android.content.pm.ResolveInfo resolveInfo : resolveInfoList) {
+                    String packageName = resolveInfo.activityInfo.packageName;
+                    grantUriPermission(packageName, pdfUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                }
+                startActivity(chooser);
+                minimizeButton.performClick();
+            } catch (android.content.ActivityNotFoundException e) {
+                Toast.makeText(PDFReaderService.this,
+                        R.string.no_app_to_open_pdf, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void assignNavButtons() {
@@ -156,16 +194,15 @@ public class PDFReaderService extends Service {
         zoomIn.setOnClickListener(getZoomListener(true));
         zoomOut.setOnClickListener(getZoomListener(false));
 
-        if (pageField == null) {
-            pageField = pdfLayout.findViewById(R.id.page_number);
-        }
+        pageField = pdfLayout.findViewById(R.id.page_number);
         pageField.setOnEditorActionListener((view, actionId, event) -> {
-            if (actionId == EditorInfo.IME_ACTION_GO) {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_GO) {
                 String text = pageField.getText().toString();
                 if (!text.isEmpty()) {
                     int pageNumber = Integer.parseInt(text) - 1;
                     if (pageNumber < 0 || pageNumber > pageCount) {
-                        Toast.makeText(PDFReaderService.this, R.string.invalid_page_number, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(PDFReaderService.this,
+                                R.string.invalid_page_number, Toast.LENGTH_SHORT).show();
                     } else {
                         currentPage = pageNumber;
                         initializePdfPage();
@@ -198,9 +235,12 @@ public class PDFReaderService extends Service {
         };
     }
 
-    private void setTouchListener(WindowManager.LayoutParams params, View collapsedView, View expandedView) {
-        View.OnTouchListener touchListener = ViewsUtils.getViewTouchListener(this, pdfLayout, windowManager, params);
-        ViewsUtils.addTouchListener(expandedView, touchListener, true, true, ImageButton.class, Button.class, RelativeLayout.class, LinearLayout.class);
+    private void setTouchListener(WindowManager.LayoutParams params,
+                                  View collapsedView, View expandedView) {
+        View.OnTouchListener touchListener = ViewsUtils.getViewTouchListener(
+                this, pdfLayout, windowManager, params);
+        ViewsUtils.addTouchListener(expandedView, touchListener, true, true,
+                ImageButton.class, Button.class, RelativeLayout.class, LinearLayout.class);
         ViewsUtils.addTouchListener(collapsedView, touchListener, true, true);
     }
 
@@ -225,7 +265,8 @@ public class PDFReaderService extends Service {
         if (currentPage >= pageCount) currentPage = 0;
         if (currentPage < pageCount) {
             page = inputPdf.openPage(currentPage);
-            pageBitmap = Bitmap.createBitmap(page.getWidth(), page.getHeight(), Bitmap.Config.ARGB_8888);
+            pageBitmap = Bitmap.createBitmap(
+                    page.getWidth(), page.getHeight(), Bitmap.Config.ARGB_8888);
 
             if (zoomView == null) {
                 zoomView = new ImageScaler();
@@ -239,23 +280,24 @@ public class PDFReaderService extends Service {
                 pageField = pdfLayout.findViewById(R.id.page_number);
             }
 
-            final View view = pdfLayout.findViewById(R.id.imageScrollView);
-            view.getViewTreeObserver().addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
-                    @Override
-                    public void onGlobalLayout() {
-                        view.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                        ViewGroup.LayoutParams params = view.getLayoutParams();
-                        params.height = (pageBitmap.getHeight() * view.getMeasuredWidth()) / pageBitmap.getWidth();
+            final View scrollView = pdfLayout.findViewById(R.id.imageScrollView);
+            scrollView.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    scrollView.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                    ViewGroup.LayoutParams layoutParams = scrollView.getLayoutParams();
+                    layoutParams.height = (pageBitmap.getHeight() * scrollView.getMeasuredWidth()) / pageBitmap.getWidth();
 
-                        if (zoomView != null && zoom.length == 0) {
-                            zoomView.setDefaultMinScale((float) params.height / (float)pageBitmap.getHeight());
-                            if (currentPage == 0) zoomView.setScale(zoomView.getDefaultMinScale());
-                            pageImageView.setImageBitmap(zoomView.getScaled(pageBitmap));
-                        }
+                    if (zoomView != null && zoom.length == 0) {
+                        zoomView.setDefaultMinScale(
+                                (float) layoutParams.height / (float) pageBitmap.getHeight());
+                        if (currentPage == 0) zoomView.setScale(zoomView.getDefaultMinScale());
+                        pageImageView.setImageBitmap(zoomView.getScaled(pageBitmap));
                     }
-                });
+                }
+            });
             pageImageView.setImageBitmap(zoomView.getScaled(pageBitmap));
-            pageField.setText("" + (currentPage + 1));
+            pageField.setText(String.valueOf(currentPage + 1));
         } else {
             Toast.makeText(this, R.string.pdf_page_error, Toast.LENGTH_SHORT).show();
         }
@@ -267,14 +309,16 @@ public class PDFReaderService extends Service {
                 SavedContent savedContent = readHistory();
                 pdfFile = new File(getCacheDir(), savedContent.getFileName());
                 currentPage = savedContent.getPage();
-                if (!pdfFile.exists()) System.out.println("The file \"" + savedContent.getFileName() + "\" does not exist.");
+                if (!pdfFile.exists()) {
+                    System.out.println("File \"" + savedContent.getFileName() + "\" does not exist.");
+                }
             } catch (Throwable t) {
                 t.printStackTrace();
             }
         }
-
         try {
-            ParcelFileDescriptor descriptor = ParcelFileDescriptor.open(pdfFile, ParcelFileDescriptor.MODE_READ_ONLY);
+            ParcelFileDescriptor descriptor = ParcelFileDescriptor.open(
+                    pdfFile, ParcelFileDescriptor.MODE_READ_ONLY);
             inputPdf = new PdfRenderer(descriptor);
             return true;
         } catch (Throwable t) {
@@ -299,7 +343,6 @@ public class PDFReaderService extends Service {
 
     private SavedContent readHistory() throws IOException {
         StringBuilder name = new StringBuilder();
-
         File history = new File(getCacheDir(), FloatingPDFActivity.HISTORY_FILE);
         FileInputStream historyStream = new FileInputStream(history);
         DataInputStream historyDataStream = new DataInputStream(historyStream);
@@ -307,29 +350,24 @@ public class PDFReaderService extends Service {
         byte[] buffer = new byte[1024];
         int read;
 
-        // The current page
         int page = historyDataStream.readShort();
-
         while ((read = historyDataStream.read(buffer)) > 0) {
             name.append(new String(buffer, 0, read));
         }
-        // Close the stream
         historyStream.close();
-
-        System.out.println("The PDF file name is \"" + name + "\", and we on page " + page + ".");
-
         return new SavedContent(name.toString(), page);
     }
 
     private WindowManager.LayoutParams getLayoutParams() {
-        int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? LayoutParams.TYPE_APPLICATION_OVERLAY : LayoutParams.TYPE_PHONE;
-        LayoutParams params = new LayoutParams(
-            LayoutParams.WRAP_CONTENT,
-            LayoutParams.WRAP_CONTENT,
-            type,
-            LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT);
-
+        int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                : WindowManager.LayoutParams.TYPE_PHONE;
+        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                type,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                PixelFormat.TRANSLUCENT);
         params.gravity = Gravity.TOP | Gravity.START;
         params.x = 0;
         params.y = 100;
@@ -353,10 +391,10 @@ public class PDFReaderService extends Service {
         }
     }
 
+    /** Simple data holder for saved PDF state */
     static class SavedContent {
         private String fileName;
         private int page;
-
 
         public SavedContent(String fileName, int page) {
             this.fileName = fileName;
@@ -379,5 +417,4 @@ public class PDFReaderService extends Service {
             return page;
         }
     }
-
 }
