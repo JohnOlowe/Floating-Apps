@@ -25,8 +25,8 @@ public class FileSearchActivity extends AppCompatActivity {
 
     private void setListeners() {
         EditText searchField = (EditText) findViewById(R.id.search_field);
-        this.searchListView = (ListView) findViewById(R.id.search_list_view);
-        this.searchAdapter = new FileSearchAdapter(this, callback);
+        searchListView = (ListView) findViewById(R.id.search_list_view);
+        searchAdapter = new FileSearchAdapter(this, callback);
         searchField.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int start, int before, int count) {}
@@ -39,10 +39,10 @@ public class FileSearchActivity extends AppCompatActivity {
             @Override
             public void afterTextChanged(Editable editable) {}
         });
-        this.searchListView.setAdapter((ListAdapter) this.searchAdapter);
-        this.searchListView.setOnItemClickListener((parent, view, position, id) -> {
+        searchListView.setAdapter((ListAdapter) searchAdapter);
+        searchListView.setOnItemClickListener((parent, view, position, id) -> {
             FileItem item =
-                    ((FileSearchAdapter.DocumentFile) this.searchListView.getItemAtPosition(position)).getFileItem();
+                    ((FileSearchAdapter.DocumentFile) searchListView.getItemAtPosition(position)).getFileItem();
             FileBrowserActivity.FileCallback fileCallback = callback;
             if (fileCallback != null) {
                 fileCallback.fileCallback(item.getFullPath());

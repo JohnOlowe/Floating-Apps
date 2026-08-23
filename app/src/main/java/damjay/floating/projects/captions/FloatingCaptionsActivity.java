@@ -2,6 +2,8 @@ package damjay.floating.projects.captions;
 
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.provider.Settings;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -36,11 +38,11 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
     }
 
     private void initializeViews() {
-        this.filePathField = (TextView) findViewById(R.id.caption_file_path);
+        filePathField = (TextView) findViewById(R.id.caption_file_path);
         findViewById(R.id.start_captions).setOnClickListener((v) -> {
             File captionsFile;
             String contentCaptions;
-            String filePath = this.filePathField.getText().toString().trim();
+            String filePath = filePathField.getText().toString().trim();
             if (filePath.isEmpty()
                     || (contentCaptions = getContentCaptions((captionsFile = new File(filePath)))) == null) {
                 return;
@@ -57,7 +59,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
         });
         findViewById(R.id.browse_files).setOnClickListener((v) -> {
             FileBrowserActivity.callback = getCaptionsCallback();
-            FileBrowserActivity.currentInput = this.filePathField.getText().toString();
+            FileBrowserActivity.currentInput = filePathField.getText().toString();
             Intent intent = new Intent(this, FileBrowserActivity.class);
             startActivity(intent);
         });
@@ -91,7 +93,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
     private String getContentCaptions(File captionsFile) {
         try {
             long fileLength = captionsFile.length();
-            if (fileLength <= 1048576 && fileLength > 0) {
+            if (fileLength <= 1024 * 1024 && fileLength > 0) {
                 byte[] captionsBytes = new byte[(int) fileLength];
                 FileInputStream captionsStream = new FileInputStream(captionsFile);
                 int read = captionsStream.read(captionsBytes, 0, captionsBytes.length);
@@ -113,7 +115,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
 
     private boolean checkPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-            if (this.alertDialog != null) {
+            if (alertDialog != null) {
                 return false;
             }
             AlertDialog alertDialogCreate =
@@ -125,26 +127,26 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
                                     (dialog, id) -> {
                                         try {
                                             Intent intent = new Intent(
-                                                    "android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
+                                                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                                             intent.setData(Uri.parse(String.format(
                                                     "package:%s", getApplicationContext().getPackageName())));
-                                            startActivityForResult(intent, 101);
+                                            startActivityForResult(intent, FloatingPDFActivity.FILE_REQUEST_PERMISSION);
                                         } catch (Throwable th) {
                                             Intent intent2 = new Intent();
-                                            intent2.setAction("android.settings.MANAGE_ALL_FILES_ACCESS_PERMISSION");
-                                            startActivityForResult(intent2, 101);
+                                            intent2.setAction(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                                            startActivityForResult(intent2, FloatingPDFActivity.FILE_REQUEST_PERMISSION);
                                         }
                                         closeAlertDialog();
                                     })
                             .setNegativeButton(R.string.exit, FloatingPDFActivity.DIALOG_EXIT_LISTENER)
                             .create();
-            this.alertDialog = alertDialogCreate;
+            alertDialog = alertDialogCreate;
             alertDialogCreate.show();
             return false;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && Build.VERSION.SDK_INT < Build.VERSION_CODES.R
-                && checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE") != 0) {
-            if (this.alertDialog != null) {
+                && checkSelfPermission("android.permission.READ_EXTERNAL_STORAGE") != PackageManager.PERMISSION_GRANTED) {
+            if (alertDialog != null) {
                 return false;
             }
             AlertDialog alertDialogCreate2 =
@@ -162,7 +164,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
                                     })
                             .setNegativeButton(R.string.exit, FloatingPDFActivity.DIALOG_EXIT_LISTENER)
                             .create();
-            this.alertDialog = alertDialogCreate2;
+            alertDialog = alertDialogCreate2;
             alertDialogCreate2.show();
             return false;
         }
@@ -171,20 +173,19 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
     }
 
     private void closeAlertDialog() {
-        AlertDialog alertDialog = this.alertDialog;
         if (alertDialog != null) {
             alertDialog.dismiss();
-            this.alertDialog = null;
+            alertDialog = null;
         }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode != 101) {
+        if (requestCode != FloatingPDFActivity.FILE_REQUEST_PERMISSION) {
             return;
         }
-        if (grantResults[0] == 0) {
+        if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
             closeAlertDialog();
         } else {
             new AlertDialog.Builder(this)
@@ -194,9 +195,9 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
                             (dialog, id) -> {
                                 Intent intent;
                                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                                    intent = new Intent("android.settings.MANAGE_APP_ALL_FILES_ACCESS_PERMISSION");
+                                    intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                                 } else {
-                                    intent = new Intent("android.settings.APPLICATION_SETTINGS");
+                                    intent = new Intent(Settings.ACTION_APPLICATION_SETTINGS);
                                 }
                                 Uri uri = Uri.fromParts("package", getPackageName(), null);
                                 intent.setData(uri);
@@ -211,7 +212,7 @@ public class FloatingCaptionsActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (resultCode == -1 || checkPermission()) {
+        if (resultCode == RESULT_OK || checkPermission()) {
             closeAlertDialog();
         }
     }

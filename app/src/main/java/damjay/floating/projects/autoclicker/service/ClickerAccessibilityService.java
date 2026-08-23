@@ -52,7 +52,7 @@ public class ClickerAccessibilityService
         this.clickerLayout.findViewById(R.id.closeClicker).setOnClickListener(v -> notifyAndStop());
         View view = this.clickerLayout;
         ViewsUtils.addTouchListener(view,
-                ViewsUtils.getViewTouchListener(this, view, this.windowManager, this.clickerParams), true, true, null);
+                ViewsUtils.getViewTouchListener(this, view, this.windowManager, this.clickerParams), true, true, (Class[]) null);
     }
 
     public void sendToDevice(byte value, BluetoothOperations.BluetoothOperationsCallback callback) {

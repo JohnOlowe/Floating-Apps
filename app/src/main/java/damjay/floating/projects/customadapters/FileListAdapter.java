@@ -15,6 +15,7 @@ import damjay.floating.projects.files.FileItem;
 import damjay.floating.projects.utils.FormatUtils;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 
 public class FileListAdapter extends BaseAdapter {
@@ -95,6 +96,12 @@ public class FileListAdapter extends BaseAdapter {
         if (files == null) {
             return;
         }
+        // Sort files alphabetically, directories first
+        Arrays.sort(files, (a, b) -> {
+            if (a.isDirectory() && !b.isDirectory()) return -1;
+            if (!a.isDirectory() && b.isDirectory()) return 1;
+            return a.getName().compareToIgnoreCase(b.getName());
+        });
         for (File file2 : files) {
             if (file2.isDirectory()) {
                 this.fileItems.add(folders, new FileItem(file2));
