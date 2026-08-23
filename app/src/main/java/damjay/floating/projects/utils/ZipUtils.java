@@ -1,27 +1,38 @@
 package damjay.floating.projects.utils;
 
 import java.io.File;
-import java.io.InputStream;
 import java.io.FileOutputStream;
-import java.util.zip.ZipFile;
+import java.io.InputStream;
 import java.util.Enumeration;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
+/**
+ * Utility for extracting zip archives to output directories.
+ */
 public class ZipUtils {
 
-    public static boolean extractZip(File file, File outputDir) {
-        try(ZipFile zipFile = new ZipFile(file)) {
-            Enumeration<ZipEntry> zipEntries = (Enumeration<ZipEntry>) zipFile.entries();
-            while (zipEntries.hasMoreElements()) {
-                ZipEntry curEntry = zipEntries.nextElement();
-                String path = curEntry.getName();
-                File outputFile = new File(outputDir, path);
-                if (curEntry.isDirectory()) {
+    /** Extract contents of zip file to output directory */
+    public static boolean extractZip(File zipFile, File outputDir) {
+        try (ZipFile archive = new ZipFile(zipFile)) {
+            Enumeration<? extends ZipEntry> entries = archive.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                String entryPath = entry.getName();
+                File outputFile = new File(outputDir, entryPath);
+                if (entry.isDirectory()) {
                     outputFile.mkdirs();
                 } else {
-                    outputFile.getParentFile().mkdirs();
-                    InputStream stream = zipFile.getInputStream(curEntry);
-                    if (!FileUtils.copyStream(stream, new FileOutputStream(outputFile))) return false;
+                    File parentDir = outputFile.getParentFile();
+                    if (parentDir != null && !parentDir.exists()) {
+                        parentDir.mkdirs();
+                    }
+                    try (InputStream input = archive.getInputStream(entry);
+                         FileOutputStream output = new FileOutputStream(outputFile)) {
+                        if (!FileUtils.copyStream(input, output)) {
+                            return false;
+                        }
+                    }
                 }
             }
         } catch (Throwable t) {
