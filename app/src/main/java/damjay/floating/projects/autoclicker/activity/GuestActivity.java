@@ -44,7 +44,7 @@ public class GuestActivity extends AppCompatActivity implements AdapterView.OnIt
     }
 
     @Override
-    public void onItemClick(AdapterView<?> adapter, View childView, int position, long id) throws IOException {
+    public void onItemClick(AdapterView<?> adapter, View childView, int position, long id) {
         Object tag = childView.getTag();
         if (tag instanceof BluetoothDevice) {
             BluetoothDevice device = (BluetoothDevice) tag;

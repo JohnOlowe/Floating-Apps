@@ -26,6 +26,7 @@ import damjay.floating.projects.utils.ViewsUtils;
 public class CaptionsService extends Service {
     public static String captionsFileName;
     public static String contentCaptions;
+    private CaptionsReader captionsReader;
     private View captionsSettingsView;
     private TextView captionsTextView;
     private View captionsView;
@@ -206,7 +207,7 @@ public class CaptionsService extends Service {
                 int color = Math.max(0, Math.min(255, Integer.parseInt(s2.toString())));
                 if (!isEmpty && !String.valueOf(color).equals(s2.toString())) {
                     red.setText(String.valueOf(color));
-                    editText.setSelection(editText.getText().toString().length());
+                    red.setSelection(red.getText().toString().length());
                 }
                 int rgb = (color << 16) | ViewCompat.MEASURED_STATE_MASK
                         | (Integer.parseInt(green.getText().toString()) << 8)
@@ -228,7 +229,7 @@ public class CaptionsService extends Service {
                 int color = Math.max(0, Math.min(255, Integer.parseInt(s2.toString())));
                 if (!isEmpty && !String.valueOf(color).equals(s2.toString())) {
                     green.setText(String.valueOf(color));
-                    editText.setSelection(editText.getText().toString().length());
+                    green.setSelection(green.getText().toString().length());
                 }
                 int rgb = (Integer.parseInt(red.getText().toString()) << 16) | ViewCompat.MEASURED_STATE_MASK
                         | (color << 8) | Integer.parseInt(blue.getText().toString());
@@ -249,7 +250,7 @@ public class CaptionsService extends Service {
                 int color = Math.max(0, Math.min(255, Integer.parseInt(s2.toString())));
                 if (!isEmpty && !String.valueOf(color).equals(s2.toString())) {
                     blue.setText(String.valueOf(color));
-                    editText.setSelection(editText.getText().toString().length());
+                    blue.setSelection(blue.getText().toString().length());
                 }
                 int rgb = (Integer.parseInt(red.getText().toString()) << 16) | ViewCompat.MEASURED_STATE_MASK
                         | (Integer.parseInt(green.getText().toString()) << 8) | color;

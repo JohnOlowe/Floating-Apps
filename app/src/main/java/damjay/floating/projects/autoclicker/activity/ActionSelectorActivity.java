@@ -45,7 +45,7 @@ public class ActionSelectorActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    private boolean checkIfEnabled() throws Settings.SettingNotFoundException {
+    private boolean checkIfEnabled() {
         int accessEnabled = 0;
         try {
             accessEnabled = Settings.Secure.getInt(getContentResolver(), "accessibility_enabled");

@@ -25,7 +25,7 @@ public class BluetoothServerThread extends Thread {
     }
 
     @Override
-    public void run() throws IOException {
+    public void run() {
         if (this.serverSocket == null) {
             return;
         }
