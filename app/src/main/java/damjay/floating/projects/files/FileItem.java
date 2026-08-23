@@ -1,35 +1,45 @@
 package damjay.floating.projects.files;
 
 import android.view.View;
-import android.widget.TextView;
-import java.io.File;
 import android.widget.ImageView;
+import android.widget.TextView;
 
+import java.io.File;
+
+/**
+ * Data model for file and directory items in floating file browsers.
+ * Tracks file metadata, directory paths, and view layout components.
+ */
 public class FileItem {
-    private File file;
 
+    private String directoryName;
+    private File file;
     private String fileName;
     private long fileSize;
-    private boolean isDirectory;
-
     private String formattedSize;
-
+    private String fullPath;
+    private boolean isDirectory;
     private ViewLayout layout;
 
-    private FileItem(String fileName, long fileSize, boolean isDirectory) {
+    private FileItem(String fileName, String directoryName, String fullPath,
+                    long fileSize, boolean isDirectory) {
         this.fileName = fileName;
+        this.directoryName = directoryName;
         this.fileSize = fileSize;
+        this.fullPath = fullPath;
         this.isDirectory = isDirectory;
     }
 
+    /** Create from file system path */
     public FileItem(File file) {
-        this(file.getName(), file.length(), file.isDirectory());
+        this(file.getName(), file.getParent(), file.getPath(), file.length(), file.isDirectory());
         this.file = file;
     }
-    
+
+    /** Create with custom display name */
     public FileItem(File file, String name) {
         this(file);
-        fileName = name;
+        this.fileName = name;
     }
 
     public void setFile(File file) {
@@ -40,12 +50,8 @@ public class FileItem {
         return file;
     }
 
-    public String getFullPath() {
-        return file == null ? fileName : file.getAbsolutePath();
-    }
-
     public long getLastModified() {
-        return file.lastModified();
+        return file != null ? file.lastModified() : 0;
     }
 
     public void setFileName(String fileName) {
@@ -54,6 +60,22 @@ public class FileItem {
 
     public String getFileName() {
         return fileName;
+    }
+
+    public String getDirectoryName() {
+        return directoryName;
+    }
+
+    public void setDirectoryName(String directoryName) {
+        this.directoryName = directoryName;
+    }
+
+    public String getFullPath() {
+        return fullPath;
+    }
+
+    public void setFullPath(String fullPath) {
+        this.fullPath = fullPath;
     }
 
     public void setFileSize(long fileSize) {
@@ -85,18 +107,19 @@ public class FileItem {
     }
 
     public ViewLayout getLayout() {
-        if (layout == null) return new ViewLayout();
-        return layout;
+        return layout == null ? new ViewLayout() : layout;
     }
 
+    /** View layout helper for file item display components */
     public static class ViewLayout {
-        private TextView name;
-        private TextView info;
         private ImageView icon;
+        private TextView info;
+        private TextView name;
 
         public ImageView setIcon(View icon) {
-            this.icon = (ImageView) icon;
-            return this.icon;
+            ImageView imageView = (ImageView) icon;
+            this.icon = imageView;
+            return imageView;
         }
 
         public ImageView getIcon() {
@@ -104,8 +127,9 @@ public class FileItem {
         }
 
         public TextView setName(View name) {
-            this.name = (TextView) name;
-            return this.name;
+            TextView textView = (TextView) name;
+            this.name = textView;
+            return textView;
         }
 
         public TextView getName() {
@@ -113,14 +137,13 @@ public class FileItem {
         }
 
         public TextView setInfo(View info) {
-            this.info = (TextView) info;
-            return this.info;
+            TextView textView = (TextView) info;
+            this.info = textView;
+            return textView;
         }
 
         public TextView getInfo() {
             return info;
         }
-
     }
-
 }
