@@ -171,9 +171,9 @@ public class PDFReaderService extends Service {
             openIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             openIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-            // Query without flags to ensure all matching apps are found
+            // Query with MIME type only (no URI) so all PDF apps match regardless of declared scheme
             Intent queryIntent = new Intent(Intent.ACTION_VIEW);
-            queryIntent.setDataAndType(pdfUri, "application/pdf");
+            queryIntent.setType("application/pdf");
             queryIntent.addCategory(Intent.CATEGORY_DEFAULT);
 
             try {
