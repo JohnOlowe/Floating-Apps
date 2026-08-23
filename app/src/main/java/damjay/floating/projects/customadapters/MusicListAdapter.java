@@ -1,75 +1,63 @@
 package damjay.floating.projects.customadapters;
 
-import android.R;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
+
 import java.io.File;
 import java.util.ArrayList;
 
 public class MusicListAdapter extends BaseAdapter {
-    public static final String[] AUDIO_FILE_EXTENSIONS = {"mp3", "aac"};
-    private Context context;
-    private ArrayList<MusicFile> musicList = new ArrayList<>();
+    public static final String[] AUDIO_FILE_EXTENSIONS = {"mp3", "aac", "m4a", "wav", "ogg"};
 
-    public MusicListAdapter(Context context, ArrayList<String> chosenDirectories, ArrayList<String> savedSongHistory) {
+    private final Context context;
+    private final ArrayList<MusicFile> musicList = new ArrayList<>();
+
+    public MusicListAdapter(Context context, ArrayList<String> chosenDirectories, ArrayList<String> savedSongs) {
         this.context = context;
-        initializeMusicList(savedSongHistory, chosenDirectories);
+        initializeMusicList(savedSongs, chosenDirectories);
     }
 
-    private void initializeMusicList(ArrayList<String> savedSongHistory, ArrayList<String> chosenDirectories) {
-        if (savedSongHistory != null && savedSongHistory.size() > 0) {
-            for (String songPath : savedSongHistory) {
-                musicList.add(new MusicFile(songPath));
-            }
-            return;
+    private void initializeMusicList(ArrayList<String> savedSongs, ArrayList<String> chosenDirectories) {
+        if (savedSongs != null && savedSongs.size() > 0) {
+            for (String path : savedSongs) musicList.add(new MusicFile(path));
+        } else if (chosenDirectories != null) {
+            for (String path : chosenDirectories) checkAudioFiles(new File(path));
         }
-        for (String directory : chosenDirectories) {
-            checkAudioFiles(new File(directory));
-        }
-        System.out.println("Music list is now " + musicList);
-        System.out.println("Saved song history is " + savedSongHistory);
-        System.out.println("Chosen directories is " + chosenDirectories);
     }
 
-    private void checkAudioFiles(File parent) {
-        File[] childFiles = parent.listFiles();
-        if (childFiles == null) {
-            return;
-        }
-        for (File file : childFiles) {
-            if (!file.isDirectory()) {
-                String fileName = file.getName();
-                String fileExtension = fileName.substring(fileName.lastIndexOf('.', fileName.length() - 1) + 1).toLowerCase();
-                for (String audioExtension : AUDIO_FILE_EXTENSIONS) {
-                    if (audioExtension.equals(fileExtension)) {
-                        musicList.add(new MusicFile(file));
-                        break;
-                    }
-                }
-            } else {
+    private void checkAudioFiles(File folder) {
+        File[] files = folder.listFiles();
+        if (files == null) return;
+        for (File file : files) {
+            if (file.isDirectory()) {
                 checkAudioFiles(file);
+            } else if (isAudioFile(file)) {
+                musicList.add(new MusicFile(file));
             }
         }
+    }
+
+    private boolean isAudioFile(File file) {
+        String name = file.getName();
+        int dot = name.lastIndexOf('.');
+        if (dot < 0) return false;
+        String ext = name.substring(dot + 1).toLowerCase();
+        for (String audioExt : AUDIO_FILE_EXTENSIONS) if (audioExt.equals(ext)) return true;
+        return false;
     }
 
     @Override
     public int getCount() {
-        if (musicList != null) {
-            return musicList.size();
-        }
-        return 0;
+        return musicList.size();
     }
 
     @Override
     public Object getItem(int position) {
-        if (musicList == null || musicList.size() <= position) {
-            return null;
-        }
-        return musicList.get(position);
+        return position < musicList.size() ? musicList.get(position) : null;
     }
 
     @Override
@@ -78,53 +66,35 @@ public class MusicListAdapter extends BaseAdapter {
     }
 
     @Override
-    public View getView(int position, View view, ViewGroup viewGroup) {
-        if (view == null) {
-            view = LayoutInflater.from(context).inflate(R.layout.simple_list_item_2, viewGroup, false);
-            view.setTag(musicList.get(position));
-        }
-        MusicFile musicFile = musicList.get(position);
-        TextView text1 = (TextView) view.findViewById(R.id.text1);
-        TextView text2 = (TextView) view.findViewById(R.id.text2);
-        text1.setText(musicFile.getFileName());
-        text2.setText(musicFile.getFullPath());
-        return view;
+    public View getView(int position, View convertView, ViewGroup parent) {
+        if (convertView == null) convertView = LayoutInflater.from(context).inflate(android.R.layout.simple_list_item_2, parent, false);
+        MusicFile file = musicList.get(position);
+        ((TextView) convertView.findViewById(android.R.id.text1)).setText(file.getFileName());
+        ((TextView) convertView.findViewById(android.R.id.text2)).setText(file.getFullPath());
+        return convertView;
     }
 
-    static class MusicFile {
-        private String directoryName;
-        private String fileName;
-        private String fullPath;
+    public static class MusicFile {
+        private final File file;
 
-        MusicFile(File file) {
-            this(file.getPath());
+        public MusicFile(File file) {
+            this.file = file;
         }
 
-        MusicFile(String path) {
-            fileName = path.substring(path.lastIndexOf('/') + 1);
-            String parentPath = path.substring(0, path.lastIndexOf('/'));
-            fullPath = parentPath;
-            if (parentPath.equals("/storage/emulated/0")) {
-                directoryName = "Internal Storage Root";
-            } else {
-                directoryName = parentPath.substring(parentPath.lastIndexOf('/') + 1);
-            }
+        public MusicFile(String path) {
+            this(new File(path));
         }
 
-        public String getFullPath() {
-            return fullPath;
-        }
-
-        public String getDirectoryName() {
-            return directoryName;
+        public File getFile() {
+            return file;
         }
 
         public String getFileName() {
-            return fileName;
+            return file.getName();
         }
 
-        public String toString() {
-            return "fileName=" + fileName + ", fullPath=" + fullPath;
+        public String getFullPath() {
+            return file.getAbsolutePath();
         }
     }
 }

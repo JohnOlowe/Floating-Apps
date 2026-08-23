@@ -4,15 +4,17 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.widget.EditText;
-import android.widget.ListAdapter;
 import android.widget.ListView;
+
 import androidx.appcompat.app.AppCompatActivity;
+
 import damjay.floating.projects.customadapters.FileSearchAdapter;
 import damjay.floating.projects.files.FileBrowserActivity;
 import damjay.floating.projects.files.FileItem;
 
 public class FileSearchActivity extends AppCompatActivity {
     public static FileBrowserActivity.FileCallback callback;
+
     private FileSearchAdapter searchAdapter;
     private ListView searchListView;
 
@@ -24,28 +26,26 @@ public class FileSearchActivity extends AppCompatActivity {
     }
 
     private void setListeners() {
-        EditText searchField = (EditText) findViewById(R.id.search_field);
-        searchListView = (ListView) findViewById(R.id.search_list_view);
+        EditText searchField = findViewById(R.id.search_field);
+        searchListView = findViewById(R.id.search_list_view);
         searchAdapter = new FileSearchAdapter(this, callback);
         searchField.addTextChangedListener(new TextWatcher() {
             @Override
-            public void beforeTextChanged(CharSequence charSequence, int start, int before, int count) {}
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
             @Override
-            public void onTextChanged(CharSequence charSequence, int start, int count, int after) {
-                FileSearchActivity.this.searchAdapter.reloadSearchResults(searchField.getText().toString());
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                searchAdapter.reloadSearchResults(s.toString());
             }
 
             @Override
-            public void afterTextChanged(Editable editable) {}
+            public void afterTextChanged(Editable s) {}
         });
-        searchListView.setAdapter((ListAdapter) searchAdapter);
+        searchListView.setAdapter(searchAdapter);
         searchListView.setOnItemClickListener((parent, view, position, id) -> {
-            FileItem item =
-                    ((FileSearchAdapter.DocumentFile) searchListView.getItemAtPosition(position)).getFileItem();
-            FileBrowserActivity.FileCallback fileCallback = callback;
-            if (fileCallback != null) {
-                fileCallback.fileCallback(item.getFullPath());
+            FileItem item = ((FileSearchAdapter.DocumentFile) searchListView.getItemAtPosition(position)).getFileItem();
+            if (callback != null) {
+                callback.fileCallback(item.getFullPath());
                 callback = null;
             }
             onBackPressed();

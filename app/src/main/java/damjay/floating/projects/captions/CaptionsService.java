@@ -1,301 +1,132 @@
 package damjay.floating.projects.captions;
 
+import android.annotation.SuppressLint;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
-import android.content.res.Resources;
-import android.os.Build;
+import android.graphics.Color;
 import android.os.IBinder;
 import android.text.Editable;
-import android.text.Html;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.widget.CheckBox;
 import android.widget.EditText;
-import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import androidx.core.view.ViewCompat;
+
 import damjay.floating.projects.MainActivity;
 import damjay.floating.projects.R;
 import damjay.floating.projects.utils.ViewsUtils;
 
 public class CaptionsService extends Service {
-    public static String captionsFileName;
-    public static String contentCaptions;
-    private CaptionsReader captionsReader;
-    private View captionsSettingsView;
-    private TextView captionsTextView;
-    private View captionsView;
-    private View collapsedCaptionsView;
-    private WindowManager.LayoutParams layoutParams;
-    private boolean settingsShouldPauseCaptions = true;
+    public static final String EXTRA_CAPTIONS = "captions";
+    public static final String EXTRA_FILE_NAME = "fileName";
+    public static final String EXTRA_TEXT_SIZE = "textSize";
+    public static final String EXTRA_TEXT_COLOR = "textColor";
+
+    private View view;
+    private View collapsed;
+    private View settings;
+    private TextView captionsText;
     private WindowManager windowManager;
+    private WindowManager.LayoutParams layoutParams;
+    private CaptionsReader captionsReader;
 
     @Override
     public IBinder onBind(Intent intent) {
         return null;
     }
 
+    @SuppressLint("InflateParams")
     @Override
-    public void onCreate() {
-        super.onCreate();
-        captionsView = LayoutInflater.from(this).inflate(R.layout.service_captions, (ViewGroup) null);
-        TextView textView = new TextView(this);
-        captionsTextView = textView;
-        textView.setLayoutParams(new ViewGroup.LayoutParams(Resources.getSystem().getDisplayMetrics().widthPixels, -2));
-        captionsTextView.setGravity(1);
-        initializeFloatingParameters();
-        initializeSettingViews();
-        if (captionsReader != null) {
-            captionsReader.startDisplaying();
-            WindowManager.LayoutParams captionsTextParams = ViewsUtils.getFloatingLayoutParams(
-                    0, (Resources.getSystem().getDisplayMetrics().heightPixels * 5) / 6);
-            WindowManager.LayoutParams originalCaptionsTextParams =
-                    ViewsUtils.getFloatingLayoutParams(captionsTextParams.x, captionsTextParams.y);
-            windowManager.addView(captionsTextView, originalCaptionsTextParams);
-            captionsTextView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
-                if (!captionsTextView.getText().toString().isEmpty()) {
-                    originalCaptionsTextParams.x = (Resources.getSystem().getDisplayMetrics().widthPixels
-                                                           - captionsTextView.getMeasuredWidth())
-                            / 2;
-                }
-                originalCaptionsTextParams.y = captionsTextParams.y - captionsTextView.getMeasuredHeight();
-                windowManager.updateViewLayout(captionsTextView, originalCaptionsTextParams);
-            });
-            View.OnTouchListener captionsTextTouchListener = ViewsUtils.getViewTouchListener(
-                    this, captionsTextView, windowManager, captionsTextParams);
-            captionsTextView.setOnTouchListener((view, event) -> {
-                boolean result = captionsTextTouchListener.onTouch(view, event);
-                if (!captionsTextView.getText().toString().isEmpty()) {
-                    originalCaptionsTextParams.x = (Resources.getSystem().getDisplayMetrics().widthPixels
-                                                           - captionsTextView.getMeasuredWidth())
-                            / 2;
-                }
-                originalCaptionsTextParams.y = captionsTextParams.y - captionsTextView.getMeasuredHeight();
-                windowManager.updateViewLayout(captionsTextView, originalCaptionsTextParams);
-                return result;
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (view == null) initializeView();
+        if (intent != null && intent.hasExtra(EXTRA_CAPTIONS)) {
+            String fileName = intent.getStringExtra(EXTRA_FILE_NAME);
+            ((TextView) view.findViewById(R.id.captions_file_name)).setText(fileName == null ? "" : fileName);
+            captionsText.setTextSize(intent.getIntExtra(EXTRA_TEXT_SIZE, 18));
+            captionsText.setTextColor(intent.getIntExtra(EXTRA_TEXT_COLOR, Color.WHITE));
+            captionsReader = new CaptionsReader(intent.getStringExtra(EXTRA_CAPTIONS));
+            captionsReader.start(text -> {
+                captionsText.setText(text);
+                captionsText.setVisibility(text.isEmpty() ? View.GONE : View.VISIBLE);
             });
         }
+        return START_STICKY;
     }
 
-    private void initializeFloatingParameters() {
-        windowManager = (WindowManager) getSystemService("window");
-        layoutParams = ViewsUtils.getFloatingLayoutParams(false);
+    private void initializeView() {
+        view = LayoutInflater.from(this).inflate(R.layout.service_captions, null);
+        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        layoutParams = ViewsUtils.getFloatingLayoutParams();
+        windowManager.addView(view, layoutParams);
+        collapsed = view.findViewById(R.id.collapsed_captions_settings);
+        settings = view.findViewById(R.id.captions_settings);
+        captionsText = view.findViewById(R.id.captions_text);
+
+        view.findViewById(R.id.launch_app).setOnClickListener(v -> ViewsUtils.launchApp(this, MainActivity.class));
+        view.findViewById(R.id.close_captions).setOnClickListener(v -> stopSelf());
+        view.findViewById(R.id.minimize_captions_settings).setOnClickListener(v -> minimize());
+        collapsed.setOnClickListener(v -> maximize());
+        watchSeekBar(view.findViewById(R.id.captions_size_seek_bar), view.findViewById(R.id.captions_size_text), captionsText);
+        watchColorFields(this, view.findViewById(R.id.red_rgb_field), view.findViewById(R.id.green_rgb_field), view.findViewById(R.id.blue_rgb_field), captionsText);
+        ViewsUtils.addTouchListener(view, ViewsUtils.getViewTouchListener(this, view, windowManager, layoutParams), true, true, TextView.class, EditText.class, SeekBar.class, null);
+        minimize();
     }
 
-    private void initializeSettingViews() {
-        captionsSettingsView = captionsView.findViewById(R.id.captions_settings);
-        collapsedCaptionsView = captionsView.findViewById(R.id.collapsed_captions_settings);
-        String str = contentCaptions;
-        if (str != null) {
-            captionsReader = new CaptionsReader(str, (text) -> displayCaptionText(text));
-            TextView fileName = (TextView) captionsSettingsView.findViewById(R.id.captions_file_name);
-            fileName.setText(captionsFileName);
-        }
-        setClickListeners();
-        watchSeekBar((SeekBar) captionsSettingsView.findViewById(R.id.captions_size_seek_bar),
-                (TextView) captionsSettingsView.findViewById(R.id.captions_size_text), captionsTextView);
-        watchColorFields(this, (EditText) captionsSettingsView.findViewById(R.id.red_rgb_field),
-                (EditText) captionsSettingsView.findViewById(R.id.green_rgb_field),
-                (EditText) captionsSettingsView.findViewById(R.id.blue_rgb_field), captionsTextView);
-        windowManager.addView(captionsView, layoutParams);
-        ViewsUtils.addTouchListener(captionsView,
-                ViewsUtils.getViewTouchListener(this, captionsView, windowManager, layoutParams), true, true,
-                EditText.class, SeekBar.class, CheckBox.class, null);
-        hideSettingsView();
+    private void minimize() {
+        settings.setVisibility(View.GONE);
+        collapsed.setVisibility(View.VISIBLE);
     }
 
-    private void setClickListeners() {
-        collapsedCaptionsView.setOnClickListener(v -> showSettingsView());
-        ImageView pauseView = (ImageView) captionsSettingsView.findViewById(R.id.pause);
-        pauseView.setOnClickListener((v) -> {
-            if (captionsReader.isPlaying()) {
-                captionsReader.pause();
-            } else {
-                captionsReader.play();
-            }
-            pauseView.setImageResource(captionsReader.isPlaying() ? R.drawable.play : R.drawable.pause);
-        });
-        if (captionsReader != null) {
-            captionsSettingsView.findViewById(R.id.fast_backward)
-                    .setOnClickListener(v -> captionsReader.gotoPreviousCaption());
-            captionsSettingsView.findViewById(R.id.fast_forward)
-                    .setOnClickListener(v -> captionsReader.gotoNextCaption());
-        }
-        CheckBox pauseCheckbox = (CheckBox) captionsSettingsView.findViewById(R.id.pause_while_opening);
-        pauseCheckbox.setOnCheckedChangeListener(
-                (buttonView, isChecked) -> settingsShouldPauseCaptions = isChecked);
-        captionsSettingsView.findViewById(R.id.launch_caption_settings)
-                .setOnClickListener(v -> ViewsUtils.launchApp(this, FloatingCaptionsActivity.class));
-        listenForWindowControls();
+    private void maximize() {
+        settings.setVisibility(View.VISIBLE);
+        collapsed.setVisibility(View.GONE);
     }
 
-    private void listenForWindowControls() {
-        captionsSettingsView.findViewById(R.id.launch_app)
-                .setOnClickListener(v -> ViewsUtils.launchApp(this, MainActivity.class));
-        captionsSettingsView.findViewById(R.id.toggle_focus).setOnClickListener((v) -> {
-            if (layoutParams.flags == WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) {
-                layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
-                ((ImageView) v).setImageResource(R.drawable.focus_on);
-            } else {
-                layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-                ((ImageView) v).setImageResource(R.drawable.focus_off);
-            }
-            windowManager.updateViewLayout(captionsView, layoutParams);
-        });
-        captionsSettingsView.findViewById(R.id.minimize_captions_settings)
-                .setOnClickListener(v -> hideSettingsView());
-        captionsSettingsView.findViewById(R.id.close_captions).setOnClickListener(v -> stopSelf());
-    }
-
-    private void showSettingsView() {
-        collapsedCaptionsView.setVisibility(View.GONE);
-        captionsSettingsView.setVisibility(View.VISIBLE);
-        if (settingsShouldPauseCaptions && captionsReader != null) {
-            captionsReader.pause();
-        }
-        if (captionsReader != null) {
-            ((ImageView) captionsSettingsView.findViewById(R.id.pause))
-                    .setImageResource(captionsReader.isPlaying() ? R.drawable.play : R.drawable.pause);
-        }
-        layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
-        windowManager.updateViewLayout(captionsView, layoutParams);
-    }
-
-    private void hideSettingsView() {
-        collapsedCaptionsView.setVisibility(View.VISIBLE);
-        captionsSettingsView.setVisibility(View.GONE);
-        if (settingsShouldPauseCaptions && captionsReader != null) {
-            captionsReader.play();
-        }
-        layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
-        windowManager.updateViewLayout(captionsView, layoutParams);
-    }
-
-    public static void watchSeekBar(SeekBar seekBar, TextView captionsSizeText, TextView captionsTextView) {
-        captionsSizeText.setText("(" + (seekBar.getProgress() + 10) + ")");
-        captionsTextView.setTextSize(2, seekBar.getProgress() + 10);
+    public static void watchSeekBar(SeekBar seekBar, TextView sizeText, TextView sampleText) {
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                captionsSizeText.setText("(" + (progress + 10) + ")");
-                captionsTextView.setTextSize(2, progress + 10);
+                int size = FloatingCaptionsActivity.MIN_CAPTIONS_TEXT_SIZE + progress;
+                sizeText.setText(String.valueOf(size));
+                sampleText.setTextSize(size);
             }
 
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {}
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
         });
+        seekBar.setProgress(seekBar.getProgress());
     }
 
-    public static void watchColorFields(
-            Context context, EditText red, EditText green, EditText blue, TextView captionsText) {
-        red.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                boolean isEmpty = s.toString().isEmpty();
-                CharSequence s2 = isEmpty ? "0" : s;
-                int color = Math.max(0, Math.min(255, Integer.parseInt(s2.toString())));
-                if (!isEmpty && !String.valueOf(color).equals(s2.toString())) {
-                    red.setText(String.valueOf(color));
-                    red.setSelection(red.getText().toString().length());
-                }
-                int rgb = (color << 16) | ViewCompat.MEASURED_STATE_MASK
-                        | (Integer.parseInt(green.getText().toString()) << 8)
-                        | Integer.parseInt(blue.getText().toString());
-                captionsText.setTextColor(rgb);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {}
-        });
-        green.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                boolean isEmpty = s.toString().isEmpty();
-                CharSequence s2 = isEmpty ? "0" : s;
-                int color = Math.max(0, Math.min(255, Integer.parseInt(s2.toString())));
-                if (!isEmpty && !String.valueOf(color).equals(s2.toString())) {
-                    green.setText(String.valueOf(color));
-                    green.setSelection(green.getText().toString().length());
-                }
-                int rgb = (Integer.parseInt(red.getText().toString()) << 16) | ViewCompat.MEASURED_STATE_MASK
-                        | (color << 8) | Integer.parseInt(blue.getText().toString());
-                captionsText.setTextColor(rgb);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {}
-        });
-        blue.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-                boolean isEmpty = s.toString().isEmpty();
-                CharSequence s2 = isEmpty ? "0" : s;
-                int color = Math.max(0, Math.min(255, Integer.parseInt(s2.toString())));
-                if (!isEmpty && !String.valueOf(color).equals(s2.toString())) {
-                    blue.setText(String.valueOf(color));
-                    blue.setSelection(blue.getText().toString().length());
-                }
-                int rgb = (Integer.parseInt(red.getText().toString()) << 16) | ViewCompat.MEASURED_STATE_MASK
-                        | (Integer.parseInt(green.getText().toString()) << 8) | color;
-                captionsText.setTextColor(rgb);
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {}
-        });
-        View.OnFocusChangeListener onFocusChangeListener = (v, hasFocus) -> {
-            EditText editText = (EditText) v;
-            if (editText.getText().toString().isEmpty()) {
-                editText.setText("0");
-            }
+    public static void watchColorFields(android.content.Context context, EditText red, EditText green, EditText blue, TextView sampleText) {
+        TextWatcher watcher = new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { updateColor(red, green, blue, sampleText); }
+            @Override public void afterTextChanged(Editable s) {}
         };
-        red.setOnFocusChangeListener(onFocusChangeListener);
-        green.setOnFocusChangeListener(onFocusChangeListener);
-        blue.setOnFocusChangeListener(onFocusChangeListener);
-        checkIfNightMode(context, red, green, blue);
+        red.addTextChangedListener(watcher);
+        green.addTextChangedListener(watcher);
+        blue.addTextChangedListener(watcher);
+        updateColor(red, green, blue, sampleText);
     }
 
-    private static void checkIfNightMode(Context context, EditText red, EditText green, EditText blue) {
-        String defaultColor = (context.getResources().getConfiguration().uiMode & 48) == 32 ? "255" : "0";
-        red.setText(defaultColor);
-        green.setText(defaultColor);
-        blue.setText(defaultColor);
+    private static void updateColor(EditText red, EditText green, EditText blue, TextView sampleText) {
+        sampleText.setTextColor(Color.rgb(parseColor(red), parseColor(green), parseColor(blue)));
     }
 
-    public void displayCaptionText(String text) {
-        captionsTextView.setVisibility(text.isEmpty() ? 8 : 0);
-        if (Build.VERSION.SDK_INT >= 24) {
-            captionsTextView.setText(Html.fromHtml(text, 0));
-        } else {
-            captionsTextView.setText(Html.fromHtml(text));
+    private static int parseColor(EditText field) {
+        try {
+            return Math.max(0, Math.min(255, Integer.parseInt(field.getText().toString())));
+        } catch (NumberFormatException e) {
+            return 0;
         }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (windowManager != null) {
-            windowManager.removeView(captionsView);
-            if (captionsReader.isDisplaying()) {
-                windowManager.removeView(captionsTextView);
-            }
-        }
+        if (captionsReader != null) captionsReader.stop();
+        if (windowManager != null && view != null) windowManager.removeView(view);
     }
 }
