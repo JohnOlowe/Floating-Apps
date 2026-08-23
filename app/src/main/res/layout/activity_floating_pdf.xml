@@ -8,6 +8,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="@string/path_hint"
+        android:textColor="@color/copyFromFieldText"
+        android:textColorHint="@color/captions_settings_text"
         android:inputType="text"/>
     <LinearLayout
         android:orientation="horizontal"

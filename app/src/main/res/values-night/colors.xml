@@ -17,11 +17,22 @@
     <color name="biblePaddingBackground">#ffffff</color>
     <color name="bibleTextColor">#ffffff</color>
     
+    <color name="clickerButtonText">#fff</color>
+    
     <!--Chat activity colors-->
     <color name="myChatBackground">#080</color>
     <color name="chatText">#fff</color>
     <color name="otherChatBackground">#000</color>
 
+    <!--Floating Timer colors-->
     <color name="scheduleTimerColor">#fff</color>
-    <color name="timerBackground">#000</color>
+    <color name="timerButtonTextColor">#fff</color>
+    <color name="timerBackground">#000000</color>
+
+    <color name="captions_background">#222222</color>
+    <color name="captions_settings_text">#ffffff</color>
+    <color name="copyFromFieldBackground">#333333</color>
+    <color name="copyFromFieldText">#ffffff</color>
+    <color name="playerBackground">#222222</color>
+    <color name="rounded_edit_text_background">#333333</color>
 </resources>
