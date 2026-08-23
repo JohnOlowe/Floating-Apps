@@ -40,7 +40,7 @@ public class TimerService extends Service implements Runnable {
         setOnClickListeners();
         View view = this.view;
         ViewsUtils.addTouchListener(view,
-                ViewsUtils.getViewTouchListener(this, view, this.windowManager, this.layoutParams), true, true, null);
+                ViewsUtils.getViewTouchListener(this, view, this.windowManager, this.layoutParams), true, true, (Class[]) null);
     }
 
     private void initializeViews() {
@@ -81,7 +81,7 @@ public class TimerService extends Service implements Runnable {
         });
         Button button = (Button) this.view.findViewById(R.id.start_stop_watch);
         this.stopWatchButton = button;
-        button.setOnClickListener((button) -> {
+        button.setOnClickListener((v) -> {
             String currentText = this.stopWatchButton.getText().toString();
             if (currentText.equals(getResources().getString(R.string.start))) {
                 this.stopWatchStartTime = System.currentTimeMillis();
