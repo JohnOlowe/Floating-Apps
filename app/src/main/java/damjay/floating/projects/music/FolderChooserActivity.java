@@ -20,6 +20,8 @@ import java.util.HashSet;
  * Allows users to add directory paths for music playback.
  */
 public class FolderChooserActivity extends AppCompatActivity {
+    public static final String PREFS_NAME = "music_prefs";
+    public static final String MUSIC_FOLDERS = "music_folders";
 
     private Button addDirectory;
     private TextView directoriesAdded;

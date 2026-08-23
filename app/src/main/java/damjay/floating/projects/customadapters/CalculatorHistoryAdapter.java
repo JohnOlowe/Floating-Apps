@@ -61,22 +61,22 @@ public class CalculatorHistoryAdapter extends BaseAdapter {
         convertView.setOnLongClickListener(v -> {
             PopupMenu menu = new PopupMenu(calcService, v);
             menu.setOnMenuItemClickListener(item -> {
-                switch (item.getItemId()) {
-                    case R.id.replace_content:
-                        historyListener.replaceContent(position);
-                        return true;
-                    case R.id.insert_content:
-                        historyListener.insertContent(position);
-                        return true;
-                    case R.id.delete_history:
-                        historyListener.deleteHistory(position);
-                        return true;
-                    case R.id.clear_history:
-                        int size = list.size();
-                        for (int i = 0; i < size; i++) {
-                            historyListener.deleteHistory(0);
-                        }
-                        return true;
+                int itemId = item.getItemId();
+                if (itemId == R.id.replace_content) {
+                    historyListener.replaceContent(position);
+                    return true;
+                } else if (itemId == R.id.insert_content) {
+                    historyListener.insertContent(position);
+                    return true;
+                } else if (itemId == R.id.delete_history) {
+                    historyListener.deleteHistory(position);
+                    return true;
+                } else if (itemId == R.id.clear_history) {
+                    int size = list.size();
+                    for (int i = 0; i < size; i++) {
+                        historyListener.deleteHistory(0);
+                    }
+                    return true;
                 }
                 return false;
             });

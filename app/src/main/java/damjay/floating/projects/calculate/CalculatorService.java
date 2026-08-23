@@ -78,7 +78,7 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
 
         if (historyList == null) {
             historyList = parentLayout.findViewById(R.id.calcHistory);
-            historyAdapter = new CalculatorHistoryAdapter(this, calculatedItems);
+            historyAdapter = new CalculatorHistoryAdapter(this, this, calculatedItems);
             historyList.setAdapter(historyAdapter);
         }
 
@@ -164,7 +164,7 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
         }
         if (historyList == null) {
             historyList = parentLayout.findViewById(R.id.calcHistory);
-            historyAdapter = new CalculatorHistoryAdapter(this, calculatedItems);
+            historyAdapter = new CalculatorHistoryAdapter(this, this, calculatedItems);
             historyList.setAdapter(historyAdapter);
         }
         parentLayout.findViewById(R.id.calcHistory).setVisibility(View.VISIBLE);

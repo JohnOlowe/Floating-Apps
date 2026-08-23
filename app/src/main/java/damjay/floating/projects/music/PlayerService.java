@@ -23,6 +23,8 @@ import damjay.floating.projects.customadapters.MusicListAdapter;
 import damjay.floating.projects.utils.ViewsUtils;
 
 public class PlayerService extends Service {
+    public static final String CHOSEN_FOLDERS_FILE = "music_chosen_folders.hst";
+    public static final String MUSIC_HISTORY_FILE = "music_history.hst";
     private View view;
     private View collapsed;
     private View expanded;

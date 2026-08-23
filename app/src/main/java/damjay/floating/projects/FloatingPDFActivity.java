@@ -51,7 +51,7 @@ public class FloatingPDFActivity extends AppCompatActivity {
 
     /** Request codes for permission handling */
     private static final int FLOAT_PERMISSION_REQUEST = 100;
-    private static final int FILE_REQUEST_PERMISSION = 101;
+    public static final int FILE_REQUEST_PERMISSION = 101;
 
     /** Global listener for dialog exit actions */
     public static DialogInterface.OnClickListener DIALOG_EXIT_LISTENER;

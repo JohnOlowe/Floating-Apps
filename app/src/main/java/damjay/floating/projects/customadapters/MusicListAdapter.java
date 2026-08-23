@@ -19,7 +19,7 @@ import java.util.ArrayList;
 public class MusicListAdapter extends BaseAdapter {
 
     /** Supported audio file extensions */
-    public static final String[] AUDIO_FILE_EXTENSIONS = {"mp3", "aac"};
+    public static final String[] AUDIO_FILE_EXTENSIONS = {"mp3", "aac", "m4a", "wav", "ogg"};
 
     private final Context context;
     private final ArrayList<MusicFile> musicList = new ArrayList<>();
@@ -87,18 +87,18 @@ public class MusicListAdapter extends BaseAdapter {
     @Override
     public View getView(int position, View view, ViewGroup parent) {
         if (view == null) {
-            view = LayoutInflater.from(context).inflate(R.layout.simple_list_item_2, parent, false);
+            view = LayoutInflater.from(context).inflate(android.R.layout.simple_list_item_2, parent, false);
         }
         MusicFile musicFile = musicList.get(position);
-        TextView text1 = view.findViewById(R.id.text1);
-        TextView text2 = view.findViewById(R.id.text2);
+        TextView text1 = view.findViewById(android.R.id.text1);
+        TextView text2 = view.findViewById(android.R.id.text2);
         text1.setText(musicFile.getFileName());
         text2.setText(musicFile.getFullPath());
         return view;
     }
 
     /** Internal representation of a music file */
-    static class MusicFile {
+    public static class MusicFile {
         private final String directoryName;
         private final String fileName;
         private final String fullPath;
