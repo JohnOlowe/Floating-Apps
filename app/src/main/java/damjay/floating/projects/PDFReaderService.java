@@ -171,9 +171,14 @@ public class PDFReaderService extends Service {
             openIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             openIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
+            // Query without flags to ensure all matching apps are found
+            Intent queryIntent = new Intent(Intent.ACTION_VIEW);
+            queryIntent.setDataAndType(pdfUri, "application/pdf");
+            queryIntent.addCategory(Intent.CATEGORY_DEFAULT);
+
             try {
                 java.util.List<android.content.pm.ResolveInfo> resolveInfoList =
-                        getPackageManager().queryIntentActivities(openIntent, 0);
+                        getPackageManager().queryIntentActivities(queryIntent, 0);
 
                 // Filter out this app to prevent self-selection and potential crash
                 java.util.ArrayList<android.content.pm.ResolveInfo> filteredList =
