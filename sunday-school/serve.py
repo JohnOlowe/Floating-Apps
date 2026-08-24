@@ -5,10 +5,22 @@ import http.server, socketserver, os, functools
 PORT = int(os.environ.get("PORT", "8000"))
 DIR = os.path.dirname(os.path.abspath(__file__))
 
-FILES = [
-    ("sunday-school-marriage.pdf", "PDF", "Formatted, print-ready A4 booklet (4 pages)"),
-    ("sunday-school-marriage.md", "Markdown", "Headings, lists and emphasis in Markdown source"),
-    ("sunday-school-marriage.txt", "Plain text", "Clean ASCII, fixed-width \u2014 opens anywhere"),
+LESSONS = [
+    ("Marriage", "Genesis 1 and 2", [
+        ("sunday-school-marriage.pdf", "PDF", "Print-ready A4 booklet (4 pages)"),
+        ("sunday-school-marriage.md", "Markdown", "Headings, lists and emphasis"),
+        ("sunday-school-marriage.txt", "Plain text", "Clean ASCII, opens anywhere"),
+    ]),
+    ("Concerning Spiritual Gifts", "1 Corinthians 12", [
+        ("spiritual-gifts.pdf", "PDF", "Print-ready A4 booklet (3 pages)"),
+        ("spiritual-gifts.md", "Markdown", "Headings, lists and emphasis"),
+        ("spiritual-gifts.txt", "Plain text", "Clean ASCII, opens anywhere"),
+    ]),
+]
+
+CAPTIONS = [
+    ("captions/marriage-caption.md", "Marriage", "Your edited caption, kept as the style reference"),
+    ("captions/spiritual-gifts-caption.md", "Spiritual Gifts", "Caption, alternates, story hooks, house style"),
 ]
 
 IG = [
@@ -46,7 +58,7 @@ def tile(path, num, desc):
 PAGE = """<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Sunday School &middot; Marriage &mdash; Downloads</title>
+<title>Sunday School &mdash; Lesson Notes &amp; Downloads</title>
 <style>
  :root{{--ink:#1a1a1a;--accent:#7a1f2b;--muted:#6b6b6b;--rule:#e3d9cc;--bg:#faf7f2}}
  *{{box-sizing:border-box}}
@@ -90,13 +102,17 @@ PAGE = """<!doctype html>
    .grid{{grid-template-columns:repeat(2,1fr)}}}}
 </style></head><body><div class="wrap">
  <div class="kicker">Sunday School</div>
- <h1>Marriage</h1>
- <div class="sub">What God instituted in the beginning &mdash; a study in Genesis 1 and 2</div>
+ <h1>Lesson Notes</h1>
+ <div class="sub">Teaching notes, captions and social graphics</div>
  <hr>
- {cards}
+ {lessons}
+
+ <h2>Instagram captions</h2>
+ <div class="h2sub">Ready to paste, in your house style</div>
+ {captions}
 
  <h2>Instagram carousel</h2>
- <div class="h2sub">Eight slides &middot; 1080 &times; 1350 &middot; post in order</div>
+ <div class="h2sub">Marriage &middot; eight slides &middot; 1080 &times; 1350 &middot; post in order</div>
  <div class="grid">{tiles}</div>
  <a class="allbtn" href="instagram-carousel.zip" download>Download all 8 slides + caption (.zip)</a>
  <div class="note"><a href="instagram/caption.md" download style="color:var(--accent)">caption.md</a>
@@ -109,8 +125,14 @@ PAGE = """<!doctype html>
 class H(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path in ("/", "/index.html"):
+            lessons = "\n".join(
+                f'<h2>{n}</h2><div class="h2sub">{r}</div>'
+                + "\n".join(card(*f) for f in fs)
+                for n, r, fs in LESSONS)
+            caps = "\n".join(card(p, l, d) for p, l, d in CAPTIONS)
             html = PAGE.format(
-                cards="\n".join(card(*f) for f in FILES),
+                lessons=lessons,
+                captions=caps,
                 tiles="\n".join(tile(*t) for t in IG),
             ).encode()
             self.send_response(200)
