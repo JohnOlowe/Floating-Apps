@@ -11,6 +11,17 @@ FILES = [
     ("sunday-school-marriage.txt", "Plain text", "Clean ASCII, fixed-width \u2014 opens anywhere"),
 ]
 
+IG = [
+    ("instagram/slides/slide-01-cover.jpg", "01", "Cover \u2014 Marriage"),
+    ("instagram/slides/slide-02-not-an-afterthought.jpg", "02", "She is not an afterthought"),
+    ("instagram/slides/slide-03-not-good.jpg", "03", "\u201cIt is not good\u201d \u2260 evil"),
+    ("instagram/slides/slide-04-alone-not-lonely.jpg", "04", "Alone is not lonely"),
+    ("instagram/slides/slide-05-the-desire.jpg", "05", "God created the desire"),
+    ("instagram/slides/slide-06-ezer.jpg", "06", "Helper = ezer"),
+    ("instagram/slides/slide-07-the-rib.jpg", "07", "She was brought to him"),
+    ("instagram/slides/slide-08-closing.jpg", "08", "Bone of my bones"),
+]
+
 def card(name, label, desc):
     size = os.path.getsize(os.path.join(DIR, name)) / 1024
     return f"""
@@ -22,6 +33,14 @@ def card(name, label, desc):
         <div class="size">{size:.0f} KB</div>
       </div>
       <div class="dl">Download &darr;</div>
+    </a>"""
+
+
+def tile(path, num, desc):
+    return f"""
+    <a class="tile" href="{path}" download>
+      <img src="{path}" alt="Slide {num}" loading="lazy">
+      <div class="cap"><b>{num}</b> {desc}</div>
     </a>"""
 
 PAGE = """<!doctype html>
@@ -54,21 +73,46 @@ PAGE = """<!doctype html>
  .size{{color:#9a9a9a;font-size:12px;margin-top:4px}}
  .dl{{flex:0 0 auto;font-size:13px;font-weight:600;color:var(--accent);white-space:nowrap}}
  .note{{text-align:center;color:var(--muted);font-size:12.5px;margin-top:26px;line-height:1.6}}
- @media(max-width:520px){{.card{{flex-wrap:wrap}}.dl{{width:100%;text-align:right}}}}
+ h2{{font-family:Georgia,serif;color:var(--accent);font-size:23px;margin:44px 0 4px;text-align:center}}
+ .h2sub{{text-align:center;color:var(--muted);font-size:13px;margin-bottom:20px}}
+ .grid{{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}}
+ .tile{{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--rule);
+   border-radius:10px;overflow:hidden;transition:.18s}}
+ .tile:hover{{border-color:var(--accent);transform:translateY(-2px);
+   box-shadow:0 8px 20px rgba(122,31,43,.15)}}
+ .tile img{{width:100%;display:block;aspect-ratio:4/5;object-fit:cover}}
+ .cap{{font-size:10.5px;color:var(--muted);padding:7px 8px;line-height:1.35}}
+ .cap b{{color:var(--accent)}}
+ .allbtn{{display:block;text-align:center;margin-top:16px;padding:13px;border-radius:10px;
+   background:var(--accent);color:#fff;text-decoration:none;font-size:14px;font-weight:600}}
+ .allbtn:hover{{opacity:.9}}
+ @media(max-width:520px){{.card{{flex-wrap:wrap}}.dl{{width:100%;text-align:right}}
+   .grid{{grid-template-columns:repeat(2,1fr)}}}}
 </style></head><body><div class="wrap">
  <div class="kicker">Sunday School</div>
  <h1>Marriage</h1>
  <div class="sub">What God instituted in the beginning &mdash; a study in Genesis 1 and 2</div>
  <hr>
  {cards}
- <div class="note">Click any card to download.<br>
- All three files live in the <code>sunday-school/</code> folder of the repository.</div>
+
+ <h2>Instagram carousel</h2>
+ <div class="h2sub">Eight slides &middot; 1080 &times; 1350 &middot; post in order</div>
+ <div class="grid">{tiles}</div>
+ <a class="allbtn" href="instagram-carousel.zip" download>Download all 8 slides + caption (.zip)</a>
+ <div class="note"><a href="instagram/caption.md" download style="color:var(--accent)">caption.md</a>
+ has the ready-to-paste caption, hashtags, story hooks and alt text.</div>
+
+ <div class="note">Click any card or slide to download.<br>
+ Everything lives in the <code>sunday-school/</code> folder of the repository.</div>
 </div></body></html>"""
 
 class H(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path in ("/", "/index.html"):
-            html = PAGE.format(cards="\n".join(card(*f) for f in FILES)).encode()
+            html = PAGE.format(
+                cards="\n".join(card(*f) for f in FILES),
+                tiles="\n".join(tile(*t) for t in IG),
+            ).encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.send_header("Content-Length", str(len(html)))
