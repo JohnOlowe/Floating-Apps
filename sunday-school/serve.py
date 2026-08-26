@@ -16,11 +16,17 @@ LESSONS = [
         ("spiritual-gifts.md", "Markdown", "Headings, lists and emphasis"),
         ("spiritual-gifts.txt", "Plain text", "Clean ASCII, opens anywhere"),
     ]),
+    ("Reading the Bible 2", "Hermeneutics and Translations", [
+        ("reading-the-bible-2.pdf", "PDF", "Print-ready A4 booklet (4 pages)"),
+        ("reading-the-bible-2.md", "Markdown", "Headings, lists and emphasis"),
+        ("reading-the-bible-2.txt", "Plain text", "Clean ASCII, opens anywhere"),
+    ]),
 ]
 
 CAPTIONS = [
     ("captions/marriage-caption.md", "Marriage", "Your edited caption, kept as the style reference"),
     ("captions/spiritual-gifts-caption.md", "Spiritual Gifts", "Caption, alternates, story hooks, house style"),
+    ("captions/reading-the-bible-2-caption.md", "Reading the Bible 2", "Caption, alternates, story hooks, corrections"),
 ]
 
 IG = [
