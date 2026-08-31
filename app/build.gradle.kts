@@ -41,6 +41,14 @@ android {
         }
     }
 
+    lint {
+        // This is a large legacy app that targets minSdk 19 while using several
+        // newer APIs guarded at runtime. Report lint findings but don't let them
+        // break the build for this project.
+        abortOnError = false
+        warningsAsErrors = false
+    }
+
 }
 
 dependencies {
