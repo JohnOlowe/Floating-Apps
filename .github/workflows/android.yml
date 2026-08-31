@@ -2,7 +2,7 @@ name: Android CI (Strict Iterative Verification)
 
 on:
   push:
-    branches: [ "arena/01a059ee-floating-apps", "arena/01a05979-floating-apps", "main" ]
+    branches: [ "**" ]
   pull_request:
     branches: [ "main" ]
   workflow_dispatch:
