@@ -32,6 +32,15 @@ android {
         }
     }
 
+    testOptions {
+        unitTests {
+            // Return default values instead of throwing "not mocked" errors for
+            // Android framework methods that are accidentally touched from a unit
+            // test. (No Robolectric is used, so resources are not required.)
+            isReturnDefaultValues = true
+        }
+    }
+
 }
 
 dependencies {
@@ -41,6 +50,5 @@ dependencies {
     implementation("com.google.android.material:material:1.9.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     
-    testImplementation("junit:junit:4.12")
-    testImplementation("org.mockito:mockito-core:1.10.19")
+    testImplementation("junit:junit:4.13.2")
 }
