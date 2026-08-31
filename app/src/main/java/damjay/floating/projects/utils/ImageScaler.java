@@ -2,8 +2,14 @@ package damjay.floating.projects.utils;
 
 import android.graphics.Bitmap;
 
+/**
+ * Utility for scaling bitmap images with configurable minimum scale limits.
+ * Supports both fast and smooth scaling modes.
+ */
 public class ImageScaler {
+
     private static final float SCALE_CHANGE = 0.1f;
+
     private float defaultMinScale = 0.1f;
     private float scale = 1.0f;
 
@@ -12,17 +18,17 @@ public class ImageScaler {
     }
 
     public float getScale() {
-        return this.scale;
+        return scale;
     }
 
     public void increaseScale() {
-        this.scale += 0.1f;
+        scale += SCALE_CHANGE;
     }
 
     public void decreaseScale() {
-        float f = this.scale;
-        if (f - 0.1f >= this.defaultMinScale) {
-            this.scale = f - 0.1f;
+        float adjusted = scale - SCALE_CHANGE;
+        if (adjusted >= defaultMinScale) {
+            scale = adjusted;
         }
     }
 
@@ -31,24 +37,28 @@ public class ImageScaler {
     }
 
     public float getDefaultMinScale() {
-        return this.defaultMinScale;
+        return defaultMinScale;
     }
 
+    /** Scale bitmap quickly without filtering */
     public Bitmap getFastScaled(Bitmap bitmap) {
-        float f = this.scale;
-        float f2 = this.defaultMinScale;
-        if (f < f2) {
-            this.scale = f2;
-        }
-        return Bitmap.createScaledBitmap(bitmap, (int) (bitmap.getWidth() * this.scale), (int) (bitmap.getHeight() * this.scale), false);
+        float currentScale = Math.max(scale, defaultMinScale);
+        scale = currentScale;
+        return Bitmap.createScaledBitmap(
+                bitmap,
+                (int) (bitmap.getWidth() * scale),
+                (int) (bitmap.getHeight() * scale),
+                false);
     }
 
+    /** Scale bitmap with filtering for smoother results */
     public Bitmap getScaled(Bitmap bitmap) {
-        float f = this.scale;
-        float f2 = this.defaultMinScale;
-        if (f < f2) {
-            this.scale = f2;
-        }
-        return Bitmap.createScaledBitmap(bitmap, (int) (bitmap.getWidth() * this.scale), (int) (bitmap.getHeight() * this.scale), true);
+        float currentScale = Math.max(scale, defaultMinScale);
+        scale = currentScale;
+        return Bitmap.createScaledBitmap(
+                bitmap,
+                (int) (bitmap.getWidth() * scale),
+                (int) (bitmap.getHeight() * scale),
+                true);
     }
 }

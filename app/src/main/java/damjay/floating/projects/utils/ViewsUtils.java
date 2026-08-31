@@ -1,82 +1,114 @@
 package damjay.floating.projects.utils;
 
 import android.app.Activity;
+import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
+import android.graphics.PixelFormat;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
+import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.WindowManager.LayoutParams;
+
+import androidx.annotation.NonNull;
+
 import java.io.File;
 import java.util.Locale;
 
 public class ViewsUtils {
     public static Class<?> mainClass;
     public static Context mainContext;
-
+        
     public static View.OnTouchListener getViewTouchListener(
-            Context context, View parentLayout, WindowManager window, WindowManager.LayoutParams params) {
+            final Context context,
+            final View parentLayout,
+            final WindowManager window,
+            final WindowManager.LayoutParams params) {
         return (view, event) -> {
             TouchState touchState = TouchState.getInstance();
             TouchState.moveTolerance = ViewConfiguration.get(context).getScaledTouchSlop();
-            int maxParamsX = Resources.getSystem().getDisplayMetrics().widthPixels - parentLayout.getMeasuredWidth();
-            int maxParamsY = Resources.getSystem().getDisplayMetrics().heightPixels - parentLayout.getMeasuredHeight();
+
             switch (event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
                     touchState.setInitialPosition(event.getRawX(), event.getRawY());
                     touchState.setOriginalPosition(params.x, params.y);
                     return true;
+                case MotionEvent.ACTION_MOVE:
+                    touchState.setFinalPosition(event.getRawX(), event.getRawY());
+                    if (touchState.hasMoved()) {
+                        int maxX = Resources.getSystem().getDisplayMetrics().widthPixels - parentLayout.getMeasuredWidth();
+                        int maxY = Resources.getSystem().getDisplayMetrics().heightPixels - parentLayout.getMeasuredHeight();
+                        params.x = Math.min(maxX, touchState.updatedPositionX());
+                        params.y = Math.min(maxY, touchState.updatedPositionY());
+                        window.updateViewLayout(parentLayout, params);
+                        return true;
+                    }
+                    break;
                 case MotionEvent.ACTION_UP:
                     if (!touchState.hasMoved()) {
                         return view.performClick();
                     }
-                    return false;
-                case MotionEvent.ACTION_MOVE:
-                    touchState.setFinalPosition(event.getRawX(), event.getRawY());
-                    if (touchState.hasMoved()) {
-                        params.x = Math.min(maxParamsX, touchState.updatedPositionX());
-                        params.y = Math.min(maxParamsY, touchState.updatedPositionY());
-                        window.updateViewLayout(parentLayout, params);
-                        return true;
-                    }
-                    return false;
-                default:
-                    return false;
             }
+            return false;
         };
     }
-
-    public static void addTouchListener(View parentView, View.OnTouchListener listener, boolean applyToChildren,
-            boolean recursive, Class... allowedClasses) {
-        boolean checkAbsent = allowedClasses != null && allowedClasses.length > 0
-                && allowedClasses[allowedClasses.length - 1] == null;
-        if ((parentView instanceof ViewGroup) && (applyToChildren || recursive)) {
+    
+    /**
+     * If applyToChildren is set, and recursive isn't, if this item is a view group,
+     * the touch listener is only added to the immediate allowed child views, and
+     * never added to the grand child views.
+     *
+     * Flag recursive doesn't depend on applyToChildren, if recursive is set, allowed
+     * child and grand child views get the touch listener applied to them
+     * 
+     * If the last element of allowedClasses array is null, the array is treated as
+     * forbidden classes. Also if allowedClasses is null, no class filter is applied.
+     */
+    public static void addTouchListener(
+            View parentView,
+            View.OnTouchListener listener,
+            boolean applyToChildren,
+            boolean recursive,
+            Class... allowedClasses) {
+        // Check if absent if the last class in the array is null
+        boolean checkAbsent =
+                allowedClasses != null
+                        && allowedClasses.length > 0
+                        && allowedClasses[allowedClasses.length - 1] == null;
+        if (parentView instanceof ViewGroup && (applyToChildren || recursive)) {
             ViewGroup viewGroup = (ViewGroup) parentView;
             for (int i = 0; i < viewGroup.getChildCount(); i++) {
                 View child = viewGroup.getChildAt(i);
                 boolean present = isPresent(child.getClass(), allowedClasses);
-                boolean present2 = checkAbsent != present;
-                if (recursive && present2) {
+                present = checkAbsent != present;
+                if (recursive && present) {
                     addTouchListener(child, listener, applyToChildren, recursive, allowedClasses);
-                } else if (present2) {
-                    child.setOnTouchListener(listener);
+                } else {
+                    if (present) {
+                        child.setOnTouchListener(listener);
+                    }
                 }
             }
         }
-        boolean present3 = isPresent(parentView.getClass(), allowedClasses);
-        boolean present4 = checkAbsent != present3;
-        if (present4) {
+        boolean present = isPresent(parentView.getClass(), allowedClasses);
+        // If we are to check the absent classes in the allowed classes array, toggle the "present" variable.
+        present = checkAbsent != present;
+        if (present) {
             parentView.setOnTouchListener(listener);
         }
     }
 
+    // Check if viewClass is present
     private static boolean isPresent(Class<?> viewClass, Class<?>[] classes) {
         if (classes != null && viewClass != null) {
             for (Class<?> clazz : classes) {
@@ -85,15 +117,16 @@ public class ViewsUtils {
                 }
             }
         }
+        // If nothing was specified, match all classes
         return classes == null || classes.length == 0;
     }
-
+    
     public static void openAppInfo(Activity activity, String packageName) {
         openAppInfo(activity, packageName, -911);
     }
-
+    
     public static void openAppInfo(Activity activity, String packageName, int requestCode) {
-        Intent intent = new Intent("android.settings.APPLICATION_DETAILS_SETTINGS");
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
         Uri uri = Uri.fromParts("package", packageName, null);
         intent.setData(uri);
         if (requestCode == -911) {
@@ -104,101 +137,108 @@ public class ViewsUtils {
     }
 
     public static void launchApp(Context context, Class<?> mainActivity) {
-        Intent intent = mainActivity.getName().contains("MainActivity") ? new Intent("android.intent.category.LAUNCHER")
-                                                                        : new Intent();
-        Class<?> cls = mainClass;
-        String classPackage = cls == null ? mainActivity.getPackage().getName() : cls.getPackage().getName();
+        Intent intent = mainActivity.getName().contains("MainActivity")
+                ? new Intent("android.intent.category.LAUNCHER")
+                : new Intent();
+        String classPackage = mainClass != null ? mainClass.getPackage().getName() : mainActivity.getPackage().getName();
         String fullClassName = mainActivity.getCanonicalName();
         intent.setClassName(classPackage, fullClassName);
         intent.setFlags(
-                Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                Intent.FLAG_ACTIVITY_NEW_TASK
+                        | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         context.startActivity(intent);
     }
 
     public static int getViewWidth(float minSmallestWidth) {
+        float smallestDeviceWidth;
         DisplayMetrics metrics = Resources.getSystem().getDisplayMetrics();
-        float smallestDeviceWidth = metrics.widthPixels / metrics.density;
-        if (smallestDeviceWidth / 2.0f >= minSmallestWidth) {
-            int viewWidth = metrics.widthPixels;
-            return viewWidth / 2;
-        }
-        if (smallestDeviceWidth >= minSmallestWidth) {
-            int viewWidth2 = (int) (metrics.density * minSmallestWidth);
-            return viewWidth2;
-        }
-        int viewWidth3 = metrics.widthPixels;
-        return viewWidth3;
-    }
+        smallestDeviceWidth = (float) metrics.widthPixels / metrics.density;
 
+        int viewWidth;
+        if (smallestDeviceWidth / 2 < minSmallestWidth) {
+            // If the smallest device width is less than min smallest width, use the device width
+            if (smallestDeviceWidth < minSmallestWidth) viewWidth = metrics.widthPixels;
+            // Use the min smallest width, convert it to width pixels
+            else viewWidth = (int) (minSmallestWidth * metrics.density);
+        } else {
+            // Use half of the device width
+            viewWidth = metrics.widthPixels / 2;
+        }
+        return viewWidth;
+    }
+    
     public static int getViewHeight(float minSmallestHeight) {
+        float smallestDeviceHeight;
         DisplayMetrics metrics = Resources.getSystem().getDisplayMetrics();
-        float smallestDeviceHeight = metrics.heightPixels / metrics.density;
-        if (smallestDeviceHeight / 2.0f >= minSmallestHeight) {
-            int viewHeight = metrics.widthPixels;
-            return viewHeight / 2;
-        }
-        if (smallestDeviceHeight >= minSmallestHeight) {
-            int viewHeight2 = (int) (metrics.density * minSmallestHeight);
-            return viewHeight2;
-        }
-        int viewHeight3 = metrics.heightPixels;
-        return viewHeight3;
-    }
+        smallestDeviceHeight = (float) metrics.heightPixels / metrics.density;
 
-    public static WindowManager.LayoutParams getFloatingLayoutParams(int x, int y) {
-        int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                                                                  : WindowManager.LayoutParams.TYPE_PHONE;
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT, type, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                android.graphics.PixelFormat.TRANSLUCENT);
-        params.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
+        int viewHeight;
+        if (smallestDeviceHeight / 2 < minSmallestHeight) {
+            // If the smallest device height is less than min smallest height, use the device height
+            if (smallestDeviceHeight < minSmallestHeight) viewHeight = metrics.heightPixels;
+            // Use the min smallest height, convert it to height pixels
+            else viewHeight = (int) (minSmallestHeight * metrics.density);
+        } else {
+            // Use half of the device height
+            viewHeight = metrics.widthPixels / 2;
+        }
+        return viewHeight;
+    }
+    
+    
+    public static LayoutParams getFloatingLayoutParams(int x, int y) {
+        int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O ? LayoutParams.TYPE_APPLICATION_OVERLAY : LayoutParams.TYPE_PHONE;
+        
+        LayoutParams params = new LayoutParams(
+            LayoutParams.WRAP_CONTENT,
+            LayoutParams.WRAP_CONTENT,
+            type,
+            LayoutParams.FLAG_NOT_FOCUSABLE,
+            PixelFormat.TRANSLUCENT);
+
+        params.gravity = Gravity.TOP | Gravity.START;
         params.x = x;
         params.y = y;
         return params;
     }
-
-    public static WindowManager.LayoutParams getFloatingLayoutParams() {
+    
+    public static LayoutParams getFloatingLayoutParams() {
         return getFloatingLayoutParams(0, 100);
     }
 
-    public static WindowManager.LayoutParams getFloatingLayoutParams(boolean focused) {
-        WindowManager.LayoutParams params = getFloatingLayoutParams();
-        if (focused) {
-            params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
+    public static LayoutParams getFloatingLayoutParams(boolean focusable) {
+        LayoutParams params = getFloatingLayoutParams();
+        if (focusable) {
+            params.flags = LayoutParams.FLAG_NOT_TOUCH_MODAL;
         }
         return params;
     }
 
-    public static int spToPx(int sp, Context context) {
-        return (int) TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_SP, sp, context.getResources().getDisplayMetrics());
+    public static int dpToPx(int value, Context context) {
+        return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, value, context.getResources().getDisplayMetrics());
     }
 
-    public static int dpToPx(int dp, Context context) {
-        return (int) TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, dp, context.getResources().getDisplayMetrics());
-    }
-
-    public static void openDownloads(Activity activity) {
+    public static void openDownloads(@NonNull Activity activity) {
         if (isSamsung()) {
-            Intent intent = activity.getPackageManager().getLaunchIntentForPackage("com.sec.android.app.myfiles");
+            Intent intent = activity.getPackageManager()
+                .getLaunchIntentForPackage("com.sec.android.app.myfiles");
             intent.setAction("samsung.myfiles.intent.action.LAUNCH_MY_FILES");
-            intent.putExtra("samsung.myfiles.intent.extra.START_PATH", getDownloadsFile().getPath());
+            intent.putExtra("samsung.myfiles.intent.extra.START_PATH", 
+                            getDownloadsFile().getPath());
             activity.startActivity(intent);
-            return;
-        }
-        activity.startActivity(new Intent("android.intent.action.VIEW_DOWNLOADS"));
+        } else activity.startActivity(new Intent(DownloadManager.ACTION_VIEW_DOWNLOADS));
     }
 
     public static boolean isSamsung() {
         String manufacturer = Build.MANUFACTURER;
-        if (manufacturer != null) {
-            return manufacturer.toLowerCase(Locale.getDefault()).equals("samsung");
-        }
+        if (manufacturer != null) return manufacturer.toLowerCase(Locale.getDefault()).equals("samsung");
         return false;
     }
 
     public static File getDownloadsFile() {
         return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     }
+
+
 }

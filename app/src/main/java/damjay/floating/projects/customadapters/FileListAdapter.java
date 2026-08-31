@@ -8,19 +8,28 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
+
 import damjay.floating.projects.R;
 import damjay.floating.projects.files.FileItem;
 import damjay.floating.projects.utils.FormatUtils;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 
+/**
+ * Adapter for displaying file and directory listings in floating file browsers.
+ * Shows internal storage drives, directories, and files with icons and metadata.
+ */
 public class FileListAdapter extends BaseAdapter {
-    private Context context;
-    private ArrayList<FileItem> fileItems = new ArrayList<>();
+
+    private final Context context;
+    private final ArrayList<FileItem> fileItems = new ArrayList<>();
+
     public File folder;
     public File internalDrive;
     private ArrayList<FileItem> internalStorageDrives;
@@ -33,81 +42,87 @@ public class FileListAdapter extends BaseAdapter {
         }
     }
 
+    /** Load available storage media and initialize root view */
     private void loadStorageDrives() {
         try {
-            if (this.internalDrive == null) {
-                this.internalDrive = Environment.getExternalStorageDirectory();
+            if (internalDrive == null) {
+                internalDrive = Environment.getExternalStorageDirectory();
             }
-            this.internalStorageDrives = getInternalStorageDrives();
-            this.folder = null;
-            this.fileItems.clear();
-            for (FileItem item : this.internalStorageDrives) {
-                this.fileItems.add(item);
-            }
+            internalStorageDrives = getInternalStorageDrives();
+            folder = null;
+            fileItems.clear();
+            fileItems.addAll(internalStorageDrives);
         } catch (Throwable t) {
             t.printStackTrace();
         }
     }
 
+    /** Detect internal storage drives from external files directories */
     private ArrayList<FileItem> getInternalStorageDrives() {
-        File[] externalFilesDirs = ContextCompat.getExternalFilesDirs(this.context, null);
+        File[] externalFilesDirs = ContextCompat.getExternalFilesDirs(context, null);
         ArrayList<FileItem> storageMedia = new ArrayList<>();
         int driveNo = 0;
-        int length = externalFilesDirs.length;
-        int i = 0;
-        while (i < length) {
-            File file = externalFilesDirs[i];
+        for (File file : externalFilesDirs) {
+            if (file == null) continue;
             String filePath = file.getPath();
-            int driveNo2 = driveNo + 1;
-            storageMedia.add(new FileItem(new File(filePath.substring(0, filePath.indexOf("Android"))),
-                    driveNo == 0 ? "Phone Storage" : "SDCard" + (driveNo2 - 1)));
-            i++;
-            driveNo = driveNo2;
+            int androidIndex = filePath.indexOf("Android");
+            String rootPath = (androidIndex >= 0) ? filePath.substring(0, androidIndex) : filePath;
+            String label = (driveNo == 0) ? "Phone Storage" : "SDCard" + driveNo;
+            storageMedia.add(new FileItem(new File(rootPath), label));
+            driveNo++;
         }
         return storageMedia;
     }
 
+    /** Update adapter content for selected directory path */
     public void updatePath(File folder) {
-        String rootValue = this.internalDrive.getParentFile().getParent();
+        String rootValue = internalDrive != null ? internalDrive.getParentFile().getParent() : null;
+        if (folder == null || rootValue == null) return;
+
+        // Navigate back to root storage
         if (folder.getPath().equals(rootValue)) {
-            File file = this.folder;
-            if (file == null || file.getPath().equals(this.internalDrive.getParent())) {
+            File currentFolder = this.folder;
+            if (currentFolder == null || currentFolder.getPath().equals(internalDrive.getParent())) {
                 return;
             }
-            Iterator<FileItem> it = this.internalStorageDrives.iterator();
+            // Check if current folder is a storage drive
+            Iterator<FileItem> it = internalStorageDrives.iterator();
             while (it.hasNext()) {
                 if (it.next().getFile().getPath().equals(this.folder.getPath())) {
                     loadStorageDrives();
                     return;
                 }
             }
-            this.internalStorageDrives.add(new FileItem(this.folder, "SDCard" + this.internalStorageDrives.size()));
+            internalStorageDrives.add(new FileItem(
+                    this.folder, "SDCard" + internalStorageDrives.size()));
             loadStorageDrives();
             return;
         }
-        this.fileItems.clear();
-        String rootValue2 = this.internalDrive.getParent();
-        if (folder.getPath().equals(rootValue2)) {
+
+        fileItems.clear();
+        String parentPath = internalDrive != null ? internalDrive.getParent() : null;
+        if (folder.getPath().equals(parentPath)) {
             loadStorageDrives();
             return;
         }
-        int folders = 0;
+
+        int directoryCount = 0;
         File[] files = folder.listFiles();
-        if (files == null) {
-            return;
-        }
-        // Sort files alphabetically, directories first
+        if (files == null) return;
+
+        // Sort: directories first, then files, both alphabetically
         Arrays.sort(files, (a, b) -> {
             if (a.isDirectory() && !b.isDirectory()) return -1;
             if (!a.isDirectory() && b.isDirectory()) return 1;
             return a.getName().compareToIgnoreCase(b.getName());
         });
-        for (File file2 : files) {
-            if (file2.isDirectory()) {
-                this.fileItems.add(folders, new FileItem(file2));
-                folders++;
+
+        for (File file : files) {
+            if (file.isDirectory()) {
+                fileItems.add(directoryCount, new FileItem(file));
+                directoryCount++;
             } else {
-                this.fileItems.add(new FileItem(file2));
+                fileItems.add(new FileItem(file));
             }
         }
         this.folder = folder;
@@ -115,19 +130,12 @@ public class FileListAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        ArrayList<FileItem> arrayList = this.fileItems;
-        if (arrayList == null) {
-            return 0;
-        }
-        return arrayList.size();
+        return fileItems == null ? 0 : fileItems.size();
     }
 
     @Override
     public Object getItem(int index) {
-        if (this.fileItems.size() <= index) {
-            return null;
-        }
-        return this.fileItems.get(index);
+        return (fileItems == null || fileItems.size() <= index) ? null : fileItems.get(index);
     }
 
     @Override
@@ -136,24 +144,22 @@ public class FileListAdapter extends BaseAdapter {
     }
 
     @Override
-    public View getView(int position, View view, ViewGroup viewGroup) {
-        if (this.fileItems == null) {
-            return view;
-        }
+    public View getView(int position, View view, ViewGroup parent) {
+        if (fileItems == null) return view;
         if (view == null) {
-            view = LayoutInflater.from(this.context).inflate(R.layout.file_items, viewGroup, false);
+            view = LayoutInflater.from(context).inflate(R.layout.file_items, parent, false);
         }
-        FileItem item = this.fileItems.get(position);
+        FileItem item = fileItems.get(position);
         FileItem.ViewLayout layout = item.getLayout();
         layout.setName(view.findViewById(R.id.fileName)).setText(item.getFileName());
-        layout.setInfo(view.findViewById(R.id.fileInfo))
-                .setText((item.isDirectory() ? "" : FormatUtils.formatSize(item.getFileSize()) + ", ")
+        layout.setInfo(view.findViewById(R.id.fileInfo)).setText(
+                (item.isDirectory() ? "" : FormatUtils.formatSize(item.getFileSize()) + ", ")
                         + FormatUtils.formatDate(item.getLastModified()));
         ImageView icon = layout.setIcon(view.findViewById(R.id.file_icon));
         int resource = item.isDirectory() ? R.drawable.folder : R.drawable.file_icon;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            icon.setImageDrawable(
-                    ResourcesCompat.getDrawable(this.context.getResources(), resource, this.context.getTheme()));
+            icon.setImageDrawable(ResourcesCompat.getDrawable(
+                    context.getResources(), resource, context.getTheme()));
         } else {
             icon.setImageResource(resource);
         }

@@ -1,64 +1,75 @@
 package damjay.floating.projects.autoclicker.activity;
 
+import android.Manifest;
+import android.annotation.SuppressLint;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+
+import static android.view.ViewGroup.LayoutParams.*;
+
 import android.app.AlertDialog;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
 import damjay.floating.projects.R;
+import damjay.floating.projects.bluetooth.BluetoothOperations;
 import damjay.floating.projects.customadapters.BluetoothDeviceAdapter;
-import java.io.IOException;
+
 import java.util.UUID;
 
-public class GuestActivity extends AppCompatActivity implements AdapterView.OnItemClickListener, Runnable {
+public class GuestActivity extends AppCompatActivity
+        implements AdapterView.OnItemClickListener, Runnable {
+    private ListView deviceList;
     private BluetoothDeviceAdapter bluetoothAdapter;
     private BluetoothSocket bluetoothSocket;
-    private ListView deviceList;
+
     private AlertDialog waitingDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         initView();
-        setContentView(this.deviceList);
+        setContentView(deviceList);
         getSupportActionBar().setTitle(R.string.asGuest);
     }
 
     private void initView() {
-        ListView listView = new ListView(this);
-        this.deviceList = listView;
-        listView.setLayoutParams(new ViewGroup.LayoutParams(-1, -1));
-        View content = getLayoutInflater().inflate(R.layout.activity_guest, (ViewGroup) null);
-        this.deviceList.addHeaderView(content);
-        BluetoothDeviceAdapter bluetoothDeviceAdapter = new BluetoothDeviceAdapter(this, this.deviceList);
-        this.bluetoothAdapter = bluetoothDeviceAdapter;
-        this.deviceList.setAdapter((ListAdapter) bluetoothDeviceAdapter);
-        this.deviceList.setOnItemClickListener(this);
+        deviceList = new ListView(this);
+        deviceList.setLayoutParams(new ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT));
+        View content = getLayoutInflater().inflate(R.layout.activity_guest, null);
+        deviceList.addHeaderView(content);
+        bluetoothAdapter = new BluetoothDeviceAdapter(this, deviceList);
+        deviceList.setAdapter(bluetoothAdapter);
+        deviceList.setOnItemClickListener(this);
     }
 
+    @SuppressLint("MissingPermission")
     @Override
     public void onItemClick(AdapterView<?> adapter, View childView, int position, long id) {
         Object tag = childView.getTag();
-        if (tag instanceof BluetoothDevice) {
-            BluetoothDevice device = (BluetoothDevice) tag;
-            BluetoothSocket socket = null;
-            try {
-                socket = device.createRfcommSocketToServiceRecord(
-                        UUID.fromString(getResources().getString(R.string.clicker_uuid)));
-            } catch (Throwable t) {
-                t.printStackTrace();
-            }
-            if (socket == null) {
-                onComplete(null);
-                return;
-            }
+        if (!(tag instanceof BluetoothDevice)) return;
+        BluetoothDevice device = (BluetoothDevice) tag;
+        BluetoothSocket socket = null;
+        try {
+            socket =
+                    device.createRfcommSocketToServiceRecord(
+                            UUID.fromString(getResources().getString(R.string.clicker_uuid)));
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        if (socket == null) {
+            onComplete(null);
+        } else {
             this.bluetoothSocket = socket;
             new Thread(this).start();
             startWaiting();
@@ -66,61 +77,65 @@ public class GuestActivity extends AppCompatActivity implements AdapterView.OnIt
     }
 
     private void onComplete(BluetoothSocket connectedSocket) {
-        AlertDialog alertDialog = this.waitingDialog;
-        if (alertDialog != null) {
-            alertDialog.dismiss();
-            this.waitingDialog = null;
+        if (waitingDialog != null) {
+            waitingDialog.dismiss();
+            waitingDialog = null;
         }
         if (connectedSocket == null) {
+            // Error occurred
             new AlertDialog.Builder(this)
                     .setMessage(R.string.bluetooth_error_occurred)
                     .setCancelable(true)
                     .create()
                     .show();
-            return;
+        } else {
+            // Connected with other device successfully
+            Intent intent = new Intent(this, ActionSelectorActivity.class);
+            ActionSelectorActivity.bluetoothSocket = connectedSocket;
+            startActivity(intent);
         }
-        Intent intent = new Intent(this, ActionSelectorActivity.class);
-        ActionSelectorActivity.bluetoothSocket = connectedSocket;
-        startActivity(intent);
     }
 
     private void startWaiting() {
-        View view = getLayoutInflater().inflate(R.layout.loading_view, (ViewGroup) null);
-        TextView loadingText = (TextView) view.findViewById(R.id.loading_text);
+        View view = getLayoutInflater().inflate(R.layout.loading_view, null);
+        TextView loadingText = view.findViewById(R.id.loading_text);
         loadingText.setText(R.string.waiting_for_connection);
-        AlertDialog alertDialogCreate = new AlertDialog.Builder(this)
-                                                .setView(view)
-                                                .setNegativeButton(R.string.cancel,
-                                                        (dialog, id) -> {
-                                                            dialog.dismiss();
-                                                            cancel();
-                                                        })
-                                                .setCancelable(false)
-                                                .create();
-        this.waitingDialog = alertDialogCreate;
-        alertDialogCreate.show();
+
+        waitingDialog =
+                new AlertDialog.Builder(this)
+                        .setView(view)
+                        .setNegativeButton(R.string.cancel, (dialog, id) -> {
+                            dialog.dismiss();
+                            cancel();
+                        })
+                        .setCancelable(false)
+                        .create();
+        waitingDialog.show();
     }
 
     private void cancel() {
         finish();
     }
 
+    @SuppressLint("MissingPermission")
     @Override
     public void run() {
+        // bluetoothAdapter.cancelDiscovery();
         boolean connected = false;
         try {
-            this.bluetoothSocket.connect();
+            bluetoothSocket.connect();
             connected = true;
         } catch (Throwable connectException) {
             connectException.printStackTrace();
             try {
-                this.bluetoothSocket.close();
-                this.bluetoothSocket = null;
+                bluetoothSocket.close();
+                bluetoothSocket = null;
             } catch (Throwable closeException) {
                 closeException.printStackTrace();
             }
         }
-        boolean connectedFlag = connected;
-        runOnUiThread(() -> onComplete(connectedFlag ? this.bluetoothSocket : null));
+        final boolean connectedFlag = connected;
+        runOnUiThread(() -> onComplete(connectedFlag ? bluetoothSocket : null));
     }
+
 }

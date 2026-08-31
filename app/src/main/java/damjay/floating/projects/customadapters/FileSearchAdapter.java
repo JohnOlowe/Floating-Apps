@@ -8,20 +8,36 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
+
 import damjay.floating.projects.FloatingPDFActivity;
 import damjay.floating.projects.R;
 import damjay.floating.projects.files.FileBrowserActivity;
 import damjay.floating.projects.files.FileItem;
 import damjay.floating.projects.utils.FormatUtils;
+
 import java.io.File;
 import java.util.ArrayList;
 
+/**
+ * Adapter for displaying file search results in floating file browsers.
+ * Searches common storage directories for files matching the allowed extension.
+ */
 public class FileSearchAdapter extends BaseAdapter {
-    public static final String[] COMMON_PATH = {"Documents/", "Xender/", "Download/", "Movies/",
-            "Android/media/com.whatsapp/WhatsApp/Media/Whatsapp Documents/"};
+
+    /** Common directory paths to search within storage media */
+    public static final String[] COMMON_PATH = {
+            "Documents/",
+            "Xender/",
+            "Download/",
+            "Movies/",
+            "Android/media/com.whatsapp/WhatsApp/Media/Whatsapp Documents/"
+    };
+
     public static String SUPPORTED_EXT = FloatingPDFActivity.PDF_EXTENSION;
+
     private final FileBrowserActivity.FileCallback callback;
     private final Context context;
     private ArrayList<DocumentFile> documentFiles;
@@ -32,31 +48,36 @@ public class FileSearchAdapter extends BaseAdapter {
     public FileSearchAdapter(Context context, FileBrowserActivity.FileCallback callback) {
         this.context = context;
         this.callback = callback;
+
         File[] externalFilesDirs = ContextCompat.getExternalFilesDirs(context, null);
         storageMedia = new ArrayList<>();
         for (File file : externalFilesDirs) {
-            String filePath = file.getPath();
-            storageMedia.add(new File(filePath.substring(0, filePath.indexOf("Android"))));
-            System.out.println(file);
+            if (file != null) {
+                String filePath = file.getPath();
+                int androidIndex = filePath.indexOf("Android");
+                storageMedia.add(new File(androidIndex >= 0 ? filePath.substring(0, androidIndex) : filePath));
+            }
         }
+
         if (callback != null) {
             SUPPORTED_EXT = callback.extensionAllowed();
         }
         loadDocumentFiles();
     }
 
+    /** Load document files asynchronously from storage media */
     private void loadDocumentFiles() {
         Handler handler = new Handler();
         new Thread(() -> {
-            if (documentFiles != null) {
-                return;
+            if (documentFiles == null) {
+                documentFiles = new ArrayList<>();
             }
-            for (File storageMediaFile : storageMedia) {
-                if (documentFiles == null) {
-                    documentFiles = new ArrayList<>();
+            for (File storageFile : storageMedia) {
+                getDocumentFiles(getCommonDirectoryFiles(storageFile), documentFiles, true);
+                File[] files = storageFile.listFiles();
+                if (files != null) {
+                    getDocumentFiles(files, documentFiles, false);
                 }
-                getDocumentFiles(getCommonDirectoryFiles(storageMediaFile), documentFiles, true);
-                getDocumentFiles(storageMediaFile.listFiles(), documentFiles, false);
             }
             handler.post(() -> {
                 if (pendingKeyword == null) {
@@ -67,79 +88,71 @@ public class FileSearchAdapter extends BaseAdapter {
         }).start();
     }
 
+    /** Reload search results based on user-entered keyword */
     public void reloadSearchResults(String keyword) {
-        String keyword2 = keyword.trim();
+        String cleanKeyword = keyword.trim();
         if (documentFiles == null) {
-            pendingKeyword = keyword2;
+            pendingKeyword = cleanKeyword;
             return;
         }
-        if (keyword2.isEmpty()) {
+        if (cleanKeyword.isEmpty()) {
             matchingFiles = documentFiles;
             notifyDataSetChanged();
             return;
         }
-        ArrayList<DocumentFile> matchingFiles = new ArrayList<>();
-        int originalMatchNumber = 0;
+        ArrayList<DocumentFile> results = new ArrayList<>();
+        int exactMatches = 0;
         for (DocumentFile file : documentFiles) {
-            if (file.name.contains(keyword2)) {
-                matchingFiles.add(originalMatchNumber, file);
-                originalMatchNumber++;
-            } else if (file.name.toLowerCase().contains(keyword2.toLowerCase())) {
-                matchingFiles.add(file);
+            if (file.name.contains(cleanKeyword)) {
+                results.add(exactMatches, file);
+                exactMatches++;
+            } else if (file.name.toLowerCase().contains(cleanKeyword.toLowerCase())) {
+                results.add(file);
             }
         }
-        this.matchingFiles = matchingFiles;
+        matchingFiles = results;
         notifyDataSetChanged();
     }
 
+    /** Recursively collect document files from directory paths */
     private void getDocumentFiles(File[] paths, ArrayList<DocumentFile> documentFiles, boolean recursive) {
-        if (paths == null) {
-            return;
-        }
+        if (paths == null) return;
         for (File path : paths) {
             if (path.exists()) {
                 if (path.isDirectory()) {
                     if (recursive) {
-                        getDocumentFiles(path.listFiles(), documentFiles, true);
+                        File[] children = path.listFiles();
+                        if (children != null) {
+                            getDocumentFiles(children, documentFiles, true);
+                        }
                     }
                 } else {
-                    DocumentFile file = new DocumentFile(path);
-                    if (file.name.toLowerCase().endsWith(SUPPORTED_EXT)) {
-                        documentFiles.add(file);
+                    DocumentFile docFile = new DocumentFile(path);
+                    if (docFile.name.toLowerCase().endsWith(SUPPORTED_EXT)) {
+                        documentFiles.add(docFile);
                     }
                 }
             }
         }
     }
 
+    /** Build array of common directory paths relative to storage root */
     private File[] getCommonDirectoryFiles(File parent) {
-        File[] outputFiles = new File[COMMON_PATH.length];
-        int i = 0;
-        while (true) {
-            String[] strArr = COMMON_PATH;
-            if (i < strArr.length) {
-                outputFiles[i] = new File(parent, strArr[i]);
-                i++;
-            } else {
-                return outputFiles;
-            }
+        File[] output = new File[COMMON_PATH.length];
+        for (int i = 0; i < COMMON_PATH.length; i++) {
+            output[i] = new File(parent, COMMON_PATH[i]);
         }
+        return output;
     }
 
     @Override
     public int getCount() {
-        if (matchingFiles == null) {
-            return 0;
-        }
-        return matchingFiles.size();
+        return matchingFiles == null ? 0 : matchingFiles.size();
     }
 
     @Override
     public Object getItem(int position) {
-        if (matchingFiles == null) {
-            return null;
-        }
-        return matchingFiles.get(position);
+        return matchingFiles == null ? null : matchingFiles.get(position);
     }
 
     @Override
@@ -149,9 +162,7 @@ public class FileSearchAdapter extends BaseAdapter {
 
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
-        if (matchingFiles == null) {
-            return null;
-        }
+        if (matchingFiles == null) return null;
         if (convertView == null) {
             convertView = LayoutInflater.from(context).inflate(R.layout.file_items, parent, false);
         }
@@ -171,14 +182,14 @@ public class FileSearchAdapter extends BaseAdapter {
         return convertView;
     }
 
+    /** Internal document file wrapper for search results */
     public static class DocumentFile {
         private final FileItem fileItem;
-        String name;
-        String path;
+        final String name;
+        final String path;
 
         DocumentFile(File file) {
-            FileItem fileItem = new FileItem(file);
-            this.fileItem = fileItem;
+            fileItem = new FileItem(file);
             name = fileItem.getFileName();
             path = fileItem.getDirectoryName();
         }

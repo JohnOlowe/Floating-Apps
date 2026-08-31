@@ -7,40 +7,38 @@ import java.util.Enumeration;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+/**
+ * Utility for extracting zip archives to output directories.
+ */
 public class ZipUtils {
-    public static boolean extractZip(File file, File outputDir) {
-        try {
-            ZipFile zipFile = new ZipFile(file);
-            try {
-                Enumeration<? extends ZipEntry> enumerationEntries = zipFile.entries();
-                while (enumerationEntries.hasMoreElements()) {
-                    ZipEntry curEntry = enumerationEntries.nextElement();
-                    String path = curEntry.getName();
-                    File outputFile = new File(outputDir, path);
-                    if (curEntry.isDirectory()) {
-                        outputFile.mkdirs();
-                    } else {
-                        outputFile.getParentFile().mkdirs();
-                        InputStream stream = zipFile.getInputStream(curEntry);
-                        if (!FileUtils.copyStream(stream, new FileOutputStream(outputFile))) {
-                            zipFile.close();
+
+    /** Extract contents of zip file to output directory */
+    public static boolean extractZip(File zipFile, File outputDir) {
+        try (ZipFile archive = new ZipFile(zipFile)) {
+            Enumeration<? extends ZipEntry> entries = archive.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                String entryPath = entry.getName();
+                File outputFile = new File(outputDir, entryPath);
+                if (entry.isDirectory()) {
+                    outputFile.mkdirs();
+                } else {
+                    File parentDir = outputFile.getParentFile();
+                    if (parentDir != null && !parentDir.exists()) {
+                        parentDir.mkdirs();
+                    }
+                    try (InputStream input = archive.getInputStream(entry);
+                         FileOutputStream output = new FileOutputStream(outputFile)) {
+                        if (!FileUtils.copyStream(input, output)) {
                             return false;
                         }
                     }
                 }
-                zipFile.close();
-                return true;
-            } catch (Throwable th) {
-                try {
-                    zipFile.close();
-                } catch (Throwable th2) {
-                    th.addSuppressed(th2);
-                }
-                throw th;
             }
         } catch (Throwable t) {
             t.printStackTrace();
             return false;
         }
+        return true;
     }
 }

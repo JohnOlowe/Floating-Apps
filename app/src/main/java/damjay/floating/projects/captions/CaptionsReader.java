@@ -1,21 +1,34 @@
 package damjay.floating.projects.captions;
 
 import android.os.Handler;
+
 import java.util.ArrayList;
 
+/**
+ * Reads and displays subtitle/caption text synchronized with video/content playback.
+ * Parses caption text with timestamp ranges and manages playback state.
+ */
 public class CaptionsReader implements Runnable {
+
     public static final int PAUSED = 0;
     public static final int PLAYING = 1;
+
+    // Playback state tracking
     private long captionTime;
-    private final CaptionsCallback captionsCallback;
     private long startTime;
     private int playMode = PAUSED;
     private boolean isDisplaying = false;
     private int currentCaptionIndex = 0;
+
+    // Callback for displaying caption text updates
+    private final CaptionsCallback captionsCallback;
+
+    // Handler for posting caption updates to the UI thread
     public final Handler handler = new Handler();
 
+    /** Callback interface for caption display updates */
     public interface CaptionsCallback {
-        void displayCaption(String str);
+        void displayCaption(String text);
     }
 
     public CaptionsReader(String captionsText, CaptionsCallback captionsCallback) {
@@ -23,6 +36,7 @@ public class CaptionsReader implements Runnable {
         this.captionsCallback = captionsCallback;
     }
 
+    /** Navigate to previous caption */
     public void fastBackward() {}
 
     public void fastForward() {}
@@ -31,33 +45,36 @@ public class CaptionsReader implements Runnable {
         if (!isDisplaying || currentCaptionIndex == 0) {
             return;
         }
-        CaptionElement prevCaptionElement = CaptionElement.getCaptionAtIndex(Math.max(1, currentCaptionIndex - 1));
-        if (prevCaptionElement != null) {
-            startTime = System.currentTimeMillis() - prevCaptionElement.startTime;
+        CaptionElement prevCaption = CaptionElement.getCaptionAtIndex(Math.max(1, currentCaptionIndex - 1));
+        if (prevCaption != null) {
+            startTime = System.currentTimeMillis() - prevCaption.startTime;
         }
         if (!isPlaying()) {
             play();
         }
     }
 
+    /** Navigate to next caption */
     public void gotoNextCaption() {
         if (!isDisplaying) {
             return;
         }
-        CaptionElement nextCaptionElement = CaptionElement.getCaptionAtIndex(currentCaptionIndex + 1);
-        if (nextCaptionElement != null) {
-            startTime = System.currentTimeMillis() - nextCaptionElement.startTime;
+        CaptionElement nextCaption = CaptionElement.getCaptionAtIndex(currentCaptionIndex + 1);
+        if (nextCaption != null) {
+            startTime = System.currentTimeMillis() - nextCaption.startTime;
         }
         if (!isPlaying()) {
             play();
         }
     }
 
+    /** Resume caption playback */
     public void play() {
         startTime = System.currentTimeMillis() - captionTime;
         setPlayMode(PLAYING);
     }
 
+    /** Pause caption playback */
     public void pause() {
         setPlayMode(PAUSED);
         captionTime = System.currentTimeMillis() - startTime;
@@ -67,10 +84,11 @@ public class CaptionsReader implements Runnable {
         return playMode == PLAYING;
     }
 
-    private void setPlayMode(int playMode) {
-        this.playMode = playMode;
+    private void setPlayMode(int mode) {
+        this.playMode = mode;
     }
 
+    /** Start displaying captions */
     public void startDisplaying() {
         isDisplaying = true;
         startTime = System.currentTimeMillis();
@@ -81,12 +99,13 @@ public class CaptionsReader implements Runnable {
         return isDisplaying;
     }
 
+    /** Get caption text for the given time offset */
     public String getCaptions(long time) {
-        CaptionElement correspondingCaption = CaptionElement.getCorrespondingCaption(time);
-        if (correspondingCaption != null) {
-            currentCaptionIndex = correspondingCaption.getCaptionIndex();
+        CaptionElement caption = CaptionElement.getCorrespondingCaption(time);
+        if (caption != null) {
+            currentCaptionIndex = caption.getCaptionIndex();
         }
-        return correspondingCaption == null ? "" : correspondingCaption.getCaptionText();
+        return caption == null ? "" : caption.getCaptionText();
     }
 
     @Override
@@ -103,20 +122,24 @@ public class CaptionsReader implements Runnable {
                 try {
                     Thread.sleep(50L);
                 } catch (InterruptedException e) {
+                    // Interrupted during caption playback
                 }
             }
         }
     }
 
+    /** Internal element representing a single caption with time range */
     static class CaptionElement {
         public static final int READING_CAPTIONS_TEXT = 0;
         public static final int READING_TIME_RANGE = 1;
         public static final int IDLE_MODE = 2;
+
         public static ArrayList<CaptionElement> captionElements;
-        private String captionText;
-        private long endTime;
+
         private final int index;
+        private String captionText;
         private long startTime;
+        private long endTime;
 
         public CaptionElement(int index) {
             this.index = index;
@@ -139,6 +162,7 @@ public class CaptionsReader implements Runnable {
             return index;
         }
 
+        /** Initialize caption elements from raw text */
         public static void initializeCaptionElements(String captionText) {
             captionElements = new ArrayList<>();
             String[] captionLines = captionText.split("\n");
@@ -188,15 +212,17 @@ public class CaptionsReader implements Runnable {
             }
         }
 
+        /** Find caption corresponding to the given time */
         public static CaptionElement getCorrespondingCaption(long time) {
             return getCaptionAtIndex(getCorrespondingCaptionIndex(time));
         }
 
+        /** Binary search for caption index at given time */
         private static int getCorrespondingCaptionIndex(long time) {
             int beginIndex = 0;
             int endIndex = captionElements.size() - 1;
 
-            // Binary search to narrow down the range
+            // Narrow down with binary search
             while (endIndex - beginIndex > 5) {
                 int middleIndex = (beginIndex + endIndex) / 2;
                 CaptionElement middle = captionElements.get(middleIndex);
@@ -227,6 +253,7 @@ public class CaptionsReader implements Runnable {
             return captionElements.get(index - 1);
         }
 
+        /** Parse timestamp from caption range line */
         private static long parseTimestamp(String rangeLine, boolean isStart) {
             int arrowIndex = rangeLine.indexOf("-->");
             String raw = isStart ? rangeLine.substring(0, arrowIndex)
@@ -234,6 +261,7 @@ public class CaptionsReader implements Runnable {
             return timestampToMillis(stripExtra(raw));
         }
 
+        /** Convert timestamp string to milliseconds */
         private static long timestampToMillis(String timestamp) {
             String[] parts = timestamp.split(":");
             long totalSeconds = 0;
@@ -251,9 +279,10 @@ public class CaptionsReader implements Runnable {
 
             String lastPart = parts[parts.length - 1];
             String millisPart = lastPart.substring(lastPart.indexOf(',') + 1);
-            return (totalSeconds * 1000) + Integer.parseInt(millisPart);
+            return (totalSeconds * 1000) + Long.parseLong(millisPart);
         }
 
+        /** Strip extra whitespace and special characters */
         private static String stripExtra(String inputString) {
             int start = 0;
             int end = inputString.length();
