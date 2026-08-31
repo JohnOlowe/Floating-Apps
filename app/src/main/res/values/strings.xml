@@ -4,6 +4,7 @@
     <string name="floating_calc">Floating Calculator</string>
     <string name="floating_bible">Floating Bible</string>
     <string name="floating_clicker">Floating Clicker</string>
+    <string name="floating_clicker_description">Allows Floating Clicker to tap points on your screen that are controlled by a paired device over Bluetooth.</string>
     
     <string name="path_hint">Path to PDF File</string>
     <string name="browse_files">Browse Files</string>
