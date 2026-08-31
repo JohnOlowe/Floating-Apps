@@ -1,6 +1,7 @@
 package damjay.floating.projects.autoclicker.service;
 
 import android.accessibilityservice.AccessibilityService;
+import android.accessibilityservice.AccessibilityServiceInfo;
 import android.accessibilityservice.GestureDescription;
 import android.bluetooth.BluetoothSocket;
 import android.graphics.Path;
@@ -176,6 +177,24 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         // A single tap: 0 ms delay, short duration.
         builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 40));
         dispatchGesture(builder.build(), null, null);
+    }
+
+    /**
+     * The system only honours {@link #dispatchGesture} when the service was bound with the
+     * {@code android:canPerformGestures} capability. getServiceInfo() is null until the service
+     * is connected, so this doubles as a "am I actually running?" check.
+     */
+    private boolean canPerformGestures() {
+        try {
+            AccessibilityServiceInfo info = getServiceInfo();
+            return info != null
+                    && (info.getCapabilities()
+                                    & AccessibilityServiceInfo.CAPABILITY_CAN_PERFORM_GESTURES)
+                            != 0;
+        } catch (Throwable t) {
+            // getServiceInfo() throws if the service is not connected yet.
+            return false;
+        }
     }
 
     @Override
