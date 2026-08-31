@@ -1,0 +1,499 @@
+diff --git a/HANDOFF-SUMMARY.md b/HANDOFF-SUMMARY.md
+new file mode 100644
+index 0000000..0463843
+--- /dev/null
++++ b/HANDOFF-SUMMARY.md
+@@ -0,0 +1,258 @@
++# Handoff Summary — Floating-Apps
++
++Paste the sections below into a new coding session (or apply manually). Everything
++below was implemented and verified by static analysis, but could NOT be pushed to
++GitHub because the previous session was closed and remote access was blocked.
++
++## Repository / branch context
++
++- Repo: `JohnOlowe/Floating-Apps`
++- Base: `main` @ `15ab1ec` ("Merge pull request #4 from JohnOlowe/arena/01a0337d-floating-apps")
++- Work branch: `arena/01a057a3-floating-apps`
++- Language/build: Android app, Java 11, Kotlin DSL Gradle, AGP 8.0.0, Gradle 8.5,
++  compileSdk 33, targetSdk 33, minSdk 19 (Android 4.4).
++- App uses AndroidX (appcompat 1.6.1, material 1.9.0, constraintlayout 2.1.4).
++
++## Goal
++
++Two things were requested:
++1. Home-screen tiles should be the teal/"greenish-purple" (`#00aaaa`) shade in BOTH
++   light and dark themes (they were grey `#aaa` in light mode).
++2. Fix "Open in another app" in the floating PDF reader, which always showed an
++   error.
++3. (Later) Make the app fully usable on Android 4.4 (API 19) — this is the bigger
++   goal and is partially done (see "Android 4.4 status" below).
++
++---
++
++## Change 1 — Home-screen tile color (DONE)
++
++`app/src/main/res/values/colors.xml`:
++```
++<color name="buttonColor">#00aaaa</color>   <!-- was #aaa -->
++```
++
++`app/src/main/res/layout/activity_main.xml` (calculator tile):
++```
++android:background="@color/buttonColor"     <!-- was "#00aaaa" hardcoded -->
++```
++
++Note: `buttonColor` is also used by the other floating screens (bible, calculator,
++PDF, notes, player, timer, captions), so those all become teal in light mode too.
++If you only want the HOME SCREEN changed, use a dedicated color instead of
++reusing `buttonColor`.
++
++---
++
++## Change 2 — PDF "Open in another app" fix (DONE)
++
++File: `app/src/main/java/damjay/floating/projects/PDFReaderService.java`
++
++Root cause: the app-chooser was built and shown directly from a `Service`:
++`new AlertDialog.Builder(service).show()`. A `Service` has no window token, so
++`show()` throws `BadTokenException`, which was swallowed by a `catch (Exception)`
++and surfaced as "An error occurred". Also, `startActivity()` from a Service needs
++`FLAG_ACTIVITY_NEW_TASK`.
++
++Fix applied:
++1. Add `FLAG_ACTIVITY_NEW_TASK` to the open intent:
++```java
++openIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
++```
++2. Build the dialog with `.create()`, set its window type to an overlay type, then
++   `.show()`:
++```java
++android.app.AlertDialog chooserDialog =
++        new android.app.AlertDialog.Builder(PDFReaderService.this)
++                .setTitle(R.string.choose_app_to_open)
++                .setItems(labels.toArray(new String[0]), (dialog, which) -> { ... })
++                .setNegativeButton(android.R.string.cancel, null)
++                .create();
++
++if (chooserDialog.getWindow() != null) {
++    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
++        chooserDialog.getWindow().setType(
++                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY);
++    } else {
++        chooserDialog.getWindow().setType(
++                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
++    }
++}
++chooserDialog.show();
++```
++
++---
++
++## Change 3 — Android 4.4 (API 19) compatibility (PARTIALLY DONE)
++
++Static analysis (equivalent to lint `NewApi`) found these blockers. Status:
++
++### 3a. Vector drawables rasterization (DONE — was a guaranteed crash on 4.4)
++
++`app/build.gradle.kts`: REMOVE the `vectorDrawables { useSupportLibrary = true }`
++block inside `defaultConfig`. With it removed, AGP rasterizes the vector icons
++(`play`, `pause`, `plus`, `minus`, `cancel`, `fast_forward`, `fast_backward`,
++`copy_logo`) to PNG for pre-21 devices. Without this, the floating service layouts
++(calculator, music, PDF, notes) crash on API 19 because `VectorDrawable` is API 21+.
++
++Delete file: `app/src/main/res/drawable-anydpi/copy_logo.xml` (a stray non-v21
++vector; `copy_logo` already has PNGs in every density bucket plus a v21 vector in
++`drawable-anydpi-v21/`).
++
++### 3b. Clicker "clicked device" mode guard (DONE)
++
++`app/src/main/java/damjay/floating/projects/autoclicker/activity/ActionSelectorActivity.java`
++
++`GestureDescription` / `dispatchGesture()` are API 24 (Android 7.0)+. Guard
++`startAccessibilityService()` so the class is never loaded on older devices:
++```java
++if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
++    Toast.makeText(this, R.string.clicker_service_not_supported, Toast.LENGTH_LONG).show();
++    return;
++}
++```
++Add imports `android.os.Build` and `android.widget.Toast`.
++
++Added string (values/strings.xml):
++```xml
++<string name="clicker_service_not_supported">The &#8220;clicked device&#8221; mode requires Android 7.0 (Nougat) or higher. You can still use this device as the controller.</string>
++```
++
++### 3c. PDF entry-point guards (DONE)
++
++`PdfRenderer` is API 21 (Android 5.0)+. Two entry points were unguarded:
++
++1. `app/src/main/java/damjay/floating/projects/QuickLaunchControl.java` — the
++   calculator's quick-launch PDF button. Guard:
++```java
++if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
++    Toast.makeText(appContext, R.string.pdf_not_supported, Toast.LENGTH_LONG).show();
++    return;
++}
++```
++Add imports `android.os.Build`, `android.widget.Toast`.
++
++2. `app/src/main/java/damjay/floating/projects/FloatingPDFActivity.java` — a
++   `VIEW` intent from another app. Guard at the top of `onCreate()`:
++```java
++if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
++    Toast.makeText(this, R.string.pdf_not_supported, Toast.LENGTH_LONG).show();
++    finish();
++    return;
++}
++```
++(The home-screen PDF tile in `MainActivity` was ALREADY guarded with the same
++message.)
++
++The existing string `pdf_not_supported` reads: "Sorry, PDF Reader is only
++available on phones running Android 5 and higher."
++
++### 3d. NOT DONE — in-app PDF rendering on Android 4.4 (OPEN DECISION)
++
++The native `PdfRenderer` is API 21+. On Android 4.4 there is currently no in-app
++PDF rendering (it falls back to the "not supported" message). A library fallback
++was requested but hit a hard constraint:
++
++- Native `android.graphics.pdf.PdfRenderer` = API 21+.
++- `io.legere:pdfiumandroid` (PdfiumAndroidKt) — the engine behind the maintained
++  `dev.zwander:pdfviewer` AndroidX fork — is documented as ">= API 21".
++- `com.github.barteksc:android-pdf-viewer:3.2.0-beta.1` was "updated to support
++  library 28" — it is a SUPPORT-LIBRARY artifact that conflicts with this
++  project's AndroidX + AGP 8 (jetifier was removed in AGP 8).
++- The only AndroidX fork with an API 11+ engine is
++  `com.github.TalbotGooday:AndroidPdfViewer` via **JitPack**, last updated ~4 years
++  ago, bundling old pdfium native libs with a 16 KB page-size issue Google flags.
++
++Recommended: keep native `PdfRenderer` on Android 5+, and either (a) accept the
++"not supported" fallback on 4.4, or (b) deliberately add the JitPack fork knowing
++it is unmaintained. Do NOT add the barteksc Maven Central artifact (support-lib
++conflict).
++
++---
++
++## CI workflow (paste into `.github/workflows/android.yml`)
++
++If adding a workflow, use this corrected version (includes a lint step):
++
++```yaml
++name: Android CI
++
++on:
++  push:
++  pull_request:
++  workflow_dispatch:
++
++concurrency:
++  group: ${{ github.workflow }}-${{ github.ref }}
++  cancel-in-progress: true
++
++jobs:
++  build:
++    name: Build debug APK
++    runs-on: ubuntu-latest
++    steps:
++      - name: Checkout
++        uses: actions/checkout@v4
++
++      - name: Set up JDK 17
++        uses: actions/setup-java@v4
++        with:
++          distribution: temurin
++          java-version: '17'
++
++      - name: Set up Android SDK
++        run: |
++          SDKMGR="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
++          if [ ! -x "$SDKMGR" ]; then SDKMGR="$(command -v sdkmanager)"; fi
++          echo "Using sdkmanager: $SDKMGR"
++          yes | "$SDKMGR" --licenses > /dev/null 2>&1 || true
++          "$SDKMGR" "platforms;android-33" "build-tools;33.0.0"
++
++      - name: Run unit tests
++        run: ./gradlew testDebugUnitTest --stacktrace --info --no-daemon --console=plain
++
++      - name: Run lint
++        run: ./gradlew lintDebug --stacktrace --no-daemon --console=plain
++
++      - name: Build debug APK
++        run: ./gradlew assembleDebug --stacktrace --info --no-daemon --console=plain
++
++      - name: Upload APK
++        uses: actions/upload-artifact@v4
++        with:
++          name: app-debug
++          path: app/build/outputs/apk/debug/*.apk
++          if-no-files-found: error
++
++      - name: Upload lint report
++        if: always()
++        uses: actions/upload-artifact@v4
++        with:
++          name: lint-report
++          path: app/build/reports/lint-results-debug.html
++          if-no-files-found: ignore
++
++      - name: Upload Build and Test Logs for AI
++        uses: actions/upload-artifact@v4
++        if: always()
++        continue-on-error: true
++        with:
++          name: raw-build-logs
++          path: |
++            app/build/reports/
++            app/build/outputs/androidTest-results/
++```
++
++Note: SDK platform/bundle is `android-33` (matches `compileSdk = 33`), not 36.
++
++---
++
++## Verification not yet done
++
++The changes compile-safe but have NOT been through an actual Gradle build / lint /
++device run (no Android SDK available in the previous sandbox, and no network).
++In the new session:
++1. `./gradlew assembleDebug`
++2. `./gradlew lintDebug` — confirm no remaining `NewApi` errors against minSdk 19
++   (the vector + clicker + PDF fixes above should resolve the ones found).
++3. Test on an Android 4.4 device/emulator if available.
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+index c394c73..3cd037c 100644
+--- a/app/build.gradle.kts
++++ b/app/build.gradle.kts
+@@ -14,10 +14,11 @@ android {
+         targetSdk = 33
+         versionCode = 1
+         versionName = "1.0"
+-        
+-        vectorDrawables { 
+-            useSupportLibrary = true
+-        }
++        // Do NOT set vectorDrawables.useSupportLibrary = true.
++        // With minSdk 19 the vector icons (play/pause/plus/minus/cancel/
++        // fast_forward/fast_backward/copy_logo) must be rasterized to PNG
++        // for pre-21 devices, otherwise the floating service layouts crash
++        // on Android 4.4 (VectorDrawable is API 21+).
+     }
+     
+     compileOptions {
+diff --git a/app/src/main/java/damjay/floating/projects/FloatingPDFActivity.java b/app/src/main/java/damjay/floating/projects/FloatingPDFActivity.java
+index e29573d..d861565 100644
+--- a/app/src/main/java/damjay/floating/projects/FloatingPDFActivity.java
++++ b/app/src/main/java/damjay/floating/projects/FloatingPDFActivity.java
+@@ -71,6 +71,14 @@ public class FloatingPDFActivity extends AppCompatActivity {
+     @Override
+     protected void onCreate(Bundle savedInstanceState) {
+         super.onCreate(savedInstanceState);
++        // PdfRenderer is Android 5.0 (API 21)+. On older versions (e.g. Android 4.4)
++        // guard here so a VIEW intent from another app cannot launch the floating
++        // PDF service and crash.
++        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
++            Toast.makeText(this, R.string.pdf_not_supported, Toast.LENGTH_LONG).show();
++            finish();
++            return;
++        }
+         if (viewIntent()) {
+             return;
+         }
+diff --git a/app/src/main/java/damjay/floating/projects/PDFReaderService.java b/app/src/main/java/damjay/floating/projects/PDFReaderService.java
+index e628c91..c485170 100644
+--- a/app/src/main/java/damjay/floating/projects/PDFReaderService.java
++++ b/app/src/main/java/damjay/floating/projects/PDFReaderService.java
+@@ -170,6 +170,8 @@ public class PDFReaderService extends Service {
+             openIntent.setDataAndType(pdfUri, "application/pdf");
+             openIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+             openIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
++            // Required when launching an Activity from a Service context.
++            openIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+ 
+             // Query with MIME type only (no URI) so all PDF apps match regardless of declared scheme
+             Intent queryIntent = new Intent(Intent.ACTION_VIEW);
+@@ -207,27 +209,42 @@ public class PDFReaderService extends Service {
+                     packageNames.add(info.activityInfo.packageName);
+                 }
+ 
+-                // Show custom app chooser excluding this app
+-                new android.app.AlertDialog.Builder(PDFReaderService.this)
+-                        .setTitle(R.string.choose_app_to_open)
+-                        .setItems(labels.toArray(new String[0]), (dialog, which) -> {
+-                            String selectedPackage = packageNames.get(which);
+-                            Intent selectedIntent = new Intent(openIntent);
+-                            selectedIntent.setPackage(selectedPackage);
+-                            selectedIntent.setClassName(selectedPackage,
+-                                    filteredList.get(which).activityInfo.name);
+-                            grantUriPermission(selectedPackage, pdfUri,
+-                                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
+-                            try {
+-                                startActivity(selectedIntent);
+-                                minimizeButton.performClick();
+-                            } catch (android.content.ActivityNotFoundException ex) {
+-                                Toast.makeText(PDFReaderService.this,
+-                                        R.string.no_app_to_open_pdf, Toast.LENGTH_LONG).show();
+-                            }
+-                        })
+-                        .setNegativeButton(android.R.string.cancel, null)
+-                        .show();
++                // Show custom app chooser excluding this app.
++                // A Service has no window token, so a plain dialog would throw
++                // BadTokenException. Use the system overlay window type instead,
++                // which this app can do since it holds SYSTEM_ALERT_WINDOW.
++                android.app.AlertDialog chooserDialog =
++                        new android.app.AlertDialog.Builder(PDFReaderService.this)
++                                .setTitle(R.string.choose_app_to_open)
++                                .setItems(labels.toArray(new String[0]), (dialog, which) -> {
++                                    String selectedPackage = packageNames.get(which);
++                                    Intent selectedIntent = new Intent(openIntent);
++                                    selectedIntent.setPackage(selectedPackage);
++                                    selectedIntent.setClassName(selectedPackage,
++                                            filteredList.get(which).activityInfo.name);
++                                    grantUriPermission(selectedPackage, pdfUri,
++                                            Intent.FLAG_GRANT_READ_URI_PERMISSION);
++                                    try {
++                                        startActivity(selectedIntent);
++                                        minimizeButton.performClick();
++                                    } catch (android.content.ActivityNotFoundException ex) {
++                                        Toast.makeText(PDFReaderService.this,
++                                                R.string.no_app_to_open_pdf, Toast.LENGTH_LONG).show();
++                                    }
++                                })
++                                .setNegativeButton(android.R.string.cancel, null)
++                                .create();
++
++                if (chooserDialog.getWindow() != null) {
++                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
++                        chooserDialog.getWindow().setType(
++                                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY);
++                    } else {
++                        chooserDialog.getWindow().setType(
++                                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
++                    }
++                }
++                chooserDialog.show();
+             } catch (Exception e) {
+                 Toast.makeText(PDFReaderService.this,
+                         R.string.error_occurred, Toast.LENGTH_LONG).show();
+diff --git a/app/src/main/java/damjay/floating/projects/QuickLaunchControl.java b/app/src/main/java/damjay/floating/projects/QuickLaunchControl.java
+index 53dc8ea..b226a5f 100644
+--- a/app/src/main/java/damjay/floating/projects/QuickLaunchControl.java
++++ b/app/src/main/java/damjay/floating/projects/QuickLaunchControl.java
+@@ -2,8 +2,10 @@ package damjay.floating.projects;
+ 
+ import android.content.Context;
+ import android.content.Intent;
++import android.os.Build;
+ import android.view.LayoutInflater;
+ import android.view.View;
++import android.widget.Toast;
+ 
+ import damjay.floating.projects.bible.BibleService;
+ import damjay.floating.projects.calculate.CalculatorService;
+@@ -25,6 +27,12 @@ public class QuickLaunchControl {
+         View quickLaunchView = LayoutInflater.from(appContext).inflate(R.layout.quick_launch, null);
+ 
+         quickLaunchView.findViewById(R.id.quick_launch_pdf).setOnClickListener(v -> {
++            // PdfRenderer requires Android 5.0 (API 21)+. Guard so the floating
++            // PDF service is never reached (and never crashes) on Android 4.4.
++            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
++                Toast.makeText(appContext, R.string.pdf_not_supported, Toast.LENGTH_LONG).show();
++                return;
++            }
+             Intent intent = new Intent(appContext, FloatingPDFActivity.class);
+             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                     | Intent.FLAG_ACTIVITY_CLEAR_TOP
+diff --git a/app/src/main/java/damjay/floating/projects/autoclicker/activity/ActionSelectorActivity.java b/app/src/main/java/damjay/floating/projects/autoclicker/activity/ActionSelectorActivity.java
+index f9cfb84..bae57f2 100644
+--- a/app/src/main/java/damjay/floating/projects/autoclicker/activity/ActionSelectorActivity.java
++++ b/app/src/main/java/damjay/floating/projects/autoclicker/activity/ActionSelectorActivity.java
+@@ -3,8 +3,10 @@ package damjay.floating.projects.autoclicker.activity;
+ import android.app.AlertDialog;
+ import android.bluetooth.BluetoothSocket;
+ import android.content.Intent;
++import android.os.Build;
+ import android.os.Bundle;
+ import android.provider.Settings;
++import android.widget.Toast;
+ import androidx.appcompat.app.AppCompatActivity;
+ 
+ import damjay.floating.projects.R;
+@@ -30,7 +32,14 @@ public class ActionSelectorActivity extends AppCompatActivity {
+     }
+     
+     private void startAccessibilityService() {
+-        if(checkIfEnabled())
++        // The "clicked device" mode relies on GestureDescription/dispatchGesture(),
++        // which only exists on Android 7.0 (API 24)+. Guard it so the class is never
++        // loaded (and the app never crashes) on older versions like KitKat.
++        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
++            Toast.makeText(this, R.string.clicker_service_not_supported, Toast.LENGTH_LONG).show();
++            return;
++        }
++        if (checkIfEnabled())
+             startClickerAccessibilityService();
+     }
+ 
+diff --git a/app/src/main/res/drawable-anydpi/copy_logo.xml b/app/src/main/res/drawable-anydpi/copy_logo.xml
+deleted file mode 100644
+index 6440f23..0000000
+--- a/app/src/main/res/drawable-anydpi/copy_logo.xml
++++ /dev/null
+@@ -1,16 +0,0 @@
+-<vector xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:width="24dp"
+-    android:height="24dp"
+-    android:viewportWidth="24"
+-    android:viewportHeight="24"
+-    android:tint="#000000"
+-    android:alpha="0.8">
+-  <group android:scaleX="1.0909091"
+-      android:scaleY="1.0909091"
+-      android:translateX="-1.0909091"
+-      android:translateY="-1.0909091">
+-    <path
+-        android:fillColor="@android:color/white"
+-        android:pathData="M16,1L4,1c-1.1,0 -2,0.9 -2,2v14h2L4,3h12L16,1zM19,5L8,5c-1.1,0 -2,0.9 -2,2v14c0,1.1 0.9,2 2,2h11c1.1,0 2,-0.9 2,-2L21,7c0,-1.1 -0.9,-2 -2,-2zM19,21L8,21L8,7h11v14z"/>
+-  </group>
+-</vector>
+diff --git a/app/src/main/res/layout/activity_main.xml b/app/src/main/res/layout/activity_main.xml
+index 57e5ec9..8ea95ac 100644
+--- a/app/src/main/res/layout/activity_main.xml
++++ b/app/src/main/res/layout/activity_main.xml
+@@ -39,7 +39,7 @@
+             </RelativeLayout>
+             <RelativeLayout
+                 android:id="@+id/floating_calculator"
+-                android:background="#00aaaa"
++                android:background="@color/buttonColor"
+                 android:padding="10dp"
+                 android:layout_width="0dp"
+                 android:layout_height="match_parent"
+diff --git a/app/src/main/res/values/colors.xml b/app/src/main/res/values/colors.xml
+index 9e5bb4c..ddf17ce 100644
+--- a/app/src/main/res/values/colors.xml
++++ b/app/src/main/res/values/colors.xml
+@@ -3,7 +3,7 @@
+     <color name="colorPrimary">#3f51b5</color>
+     <color name="colorPrimaryDark">#303f9f</color>
+     <color name="colorAccent">#ff4081</color>
+-    <color name="buttonColor">#aaa</color>
++    <color name="buttonColor">#00aaaa</color>
+     
+     <!--Floating calculator colors-->
+     <color name="calcBackground">#ddd</color>
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index a56167c..cb4c7e0 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -45,6 +45,7 @@
+     <string name="waiting_for_connection">Waiting for connection...</string>
+     <string name="null_socket">Bluetooth Socket is not available</string>
+     <string name="bluetooth_not_supported">This feature is not supported on this device.</string>
++    <string name="clicker_service_not_supported">The &#8220;clicked device&#8221; mode requires Android 7.0 (Nougat) or higher. You can still use this device as the controller.</string>
+     <string name="activate_bluetooth">For this feature to work, you need to activate Bluetooth.</string>
+     <string name="bluetooth_permission_needed">Please grant Nearby Devices permission so that this app will be able to use Bluetooth.</string>
+     <string name="enable_bluetooth">Please turn on Bluetooth for this feature to work.</string>
