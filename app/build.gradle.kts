@@ -14,10 +14,11 @@ android {
         targetSdk = 33
         versionCode = 1
         versionName = "1.0"
-        
-        vectorDrawables { 
-            useSupportLibrary = true
-        }
+        // Do NOT set vectorDrawables.useSupportLibrary = true.
+        // With minSdk 19 the vector icons (play/pause/plus/minus/cancel/
+        // fast_forward/fast_backward/copy_logo) must be rasterized to PNG
+        // for pre-21 devices, otherwise the floating service layouts crash
+        // on Android 4.4 (VectorDrawable is API 21+).
     }
     
     compileOptions {

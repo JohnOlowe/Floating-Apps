@@ -170,6 +170,8 @@ public class PDFReaderService extends Service {
             openIntent.setDataAndType(pdfUri, "application/pdf");
             openIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             openIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            // Required when launching an Activity from a Service context.
+            openIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
             // Query with MIME type only (no URI) so all PDF apps match regardless of declared scheme
             Intent queryIntent = new Intent(Intent.ACTION_VIEW);
@@ -207,27 +209,42 @@ public class PDFReaderService extends Service {
                     packageNames.add(info.activityInfo.packageName);
                 }
 
-                // Show custom app chooser excluding this app
-                new android.app.AlertDialog.Builder(PDFReaderService.this)
-                        .setTitle(R.string.choose_app_to_open)
-                        .setItems(labels.toArray(new String[0]), (dialog, which) -> {
-                            String selectedPackage = packageNames.get(which);
-                            Intent selectedIntent = new Intent(openIntent);
-                            selectedIntent.setPackage(selectedPackage);
-                            selectedIntent.setClassName(selectedPackage,
-                                    filteredList.get(which).activityInfo.name);
-                            grantUriPermission(selectedPackage, pdfUri,
-                                    Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                            try {
-                                startActivity(selectedIntent);
-                                minimizeButton.performClick();
-                            } catch (android.content.ActivityNotFoundException ex) {
-                                Toast.makeText(PDFReaderService.this,
-                                        R.string.no_app_to_open_pdf, Toast.LENGTH_LONG).show();
-                            }
-                        })
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .show();
+                // Show custom app chooser excluding this app.
+                // A Service has no window token, so a plain dialog would throw
+                // BadTokenException. Use the system overlay window type instead,
+                // which this app can do since it holds SYSTEM_ALERT_WINDOW.
+                android.app.AlertDialog chooserDialog =
+                        new android.app.AlertDialog.Builder(PDFReaderService.this)
+                                .setTitle(R.string.choose_app_to_open)
+                                .setItems(labels.toArray(new String[0]), (dialog, which) -> {
+                                    String selectedPackage = packageNames.get(which);
+                                    Intent selectedIntent = new Intent(openIntent);
+                                    selectedIntent.setPackage(selectedPackage);
+                                    selectedIntent.setClassName(selectedPackage,
+                                            filteredList.get(which).activityInfo.name);
+                                    grantUriPermission(selectedPackage, pdfUri,
+                                            Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                    try {
+                                        startActivity(selectedIntent);
+                                        minimizeButton.performClick();
+                                    } catch (android.content.ActivityNotFoundException ex) {
+                                        Toast.makeText(PDFReaderService.this,
+                                                R.string.no_app_to_open_pdf, Toast.LENGTH_LONG).show();
+                                    }
+                                })
+                                .setNegativeButton(android.R.string.cancel, null)
+                                .create();
+
+                if (chooserDialog.getWindow() != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        chooserDialog.getWindow().setType(
+                                WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY);
+                    } else {
+                        chooserDialog.getWindow().setType(
+                                WindowManager.LayoutParams.TYPE_SYSTEM_ALERT);
+                    }
+                }
+                chooserDialog.show();
             } catch (Exception e) {
                 Toast.makeText(PDFReaderService.this,
                         R.string.error_occurred, Toast.LENGTH_LONG).show();

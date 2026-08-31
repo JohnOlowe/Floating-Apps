@@ -39,7 +39,7 @@
             </RelativeLayout>
             <RelativeLayout
                 android:id="@+id/floating_calculator"
-                android:background="#00aaaa"
+                android:background="@color/buttonColor"
                 android:padding="10dp"
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
