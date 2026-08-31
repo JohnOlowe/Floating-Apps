@@ -26,6 +26,8 @@ public class BluetoothOperations implements Runnable {
     
     private boolean closed = false;
 
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
     public BluetoothOperations(BluetoothSocket socket) {
         this.socket = socket;
 
@@ -64,31 +66,35 @@ public class BluetoothOperations implements Runnable {
         while (!closed) {
             try {
                 int type = inputStream.read();
-                if (type == -1) continue;
+                // -1 means the remote device closed the stream cleanly; stop reading.
+                if (type == -1) {
+                    if (!closed) onError(bluetoothCallback, new java.io.EOFException("Remote device disconnected"));
+                    break;
+                }
                 switch (type) {
                     case TYPE_TEXT:
                         onSuccess(bluetoothCallback, TYPE_TEXT, inputStream.readUTF());
                         break;
                     case TYPE_BYTE:
-                        onSuccess(bluetoothCallback, TYPE_TEXT, inputStream.readByte());
+                        onSuccess(bluetoothCallback, TYPE_BYTE, inputStream.readByte());
                         break;
                     case TYPE_SHORT:
-                         onSuccess(bluetoothCallback, TYPE_TEXT, inputStream.readShort());                   
+                         onSuccess(bluetoothCallback, TYPE_SHORT, inputStream.readShort());
                         break;
                     case TYPE_CHAR:
-                        onSuccess(bluetoothCallback, TYPE_TEXT, inputStream.readChar());
+                        onSuccess(bluetoothCallback, TYPE_CHAR, inputStream.readChar());
                         break;
                     case TYPE_INT:
-                        onSuccess(bluetoothCallback, TYPE_TEXT, inputStream.readInt());
+                        onSuccess(bluetoothCallback, TYPE_INT, inputStream.readInt());
                         break;
                     case TYPE_LONG:
-                        onSuccess(bluetoothCallback, TYPE_TEXT, inputStream.readLong());
+                        onSuccess(bluetoothCallback, TYPE_LONG, inputStream.readLong());
                         break;
                     case TYPE_FLOAT:
-                        onSuccess(bluetoothCallback, TYPE_TEXT, inputStream.readFloat());
+                        onSuccess(bluetoothCallback, TYPE_FLOAT, inputStream.readFloat());
                         break;
                     case TYPE_DOUBLE:
-                        onSuccess(bluetoothCallback, TYPE_TEXT, inputStream.readDouble());
+                        onSuccess(bluetoothCallback, TYPE_DOUBLE, inputStream.readDouble());
                         break;
                     case TYPE_RAW_C0NTENT:
                         byte[] bytes = new byte[inputStream.readUnsignedShort()];
@@ -202,6 +208,8 @@ public class BluetoothOperations implements Runnable {
         checkNull(bluetoothOperationsCallback);
         try {
             outputStream.write(TYPE_RAW_C0NTENT);
+            // Length is a 2-byte unsigned short, matching the read side (readUnsignedShort()).
+            outputStream.writeShort(content.length);
             outputStream.write(content);
             onSuccess(bluetoothOperationsCallback, TYPE_SUCCESS, null);
         } catch (Throwable t) {
@@ -221,9 +229,9 @@ public class BluetoothOperations implements Runnable {
     public void close() {
         try {
             closed = true;
-            inputStream.close();
-            outputStream.close();
-            socket.close();
+            if (inputStream != null) inputStream.close();
+            if (outputStream != null) outputStream.close();
+            if (socket != null) socket.close();
         } catch (Throwable t) {
             t.printStackTrace();
         }
@@ -240,11 +248,11 @@ public class BluetoothOperations implements Runnable {
     }
     
     private void onSuccess(BluetoothOperationsCallback callback, byte type, Object returnValue) {
-        new Handler(Looper.getMainLooper()).post(() -> callback.onSuccess(type, returnValue));
+        mainHandler.post(() -> callback.onSuccess(type, returnValue));
     }
     
     private void onError(BluetoothOperationsCallback callback, Throwable error) {
-        new Handler(Looper.getMainLooper()).post(() -> callback.onError(error));
+        mainHandler.post(() -> callback.onError(error));
     }
 
     public static interface BluetoothOperationsCallback {

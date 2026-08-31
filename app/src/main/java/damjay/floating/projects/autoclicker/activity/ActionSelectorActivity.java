@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.text.TextUtils;
 import androidx.appcompat.app.AppCompatActivity;
 
 import damjay.floating.projects.R;
@@ -48,13 +49,8 @@ public class ActionSelectorActivity extends AppCompatActivity {
     }
     
     private boolean checkIfEnabled() {
-        int accessEnabled = 0; 
-        try { 
-            accessEnabled = Settings.Secure.getInt(getContentResolver(), Settings.Secure.ACCESSIBILITY_ENABLED);
-        } catch (Settings.SettingNotFoundException e) { 
-            e.printStackTrace(); 
-        }
-        if (accessEnabled == 0) {
+        boolean enabled = isAccessibilityServiceEnabled();
+        if (!enabled) {
             alertDialog = new AlertDialog.Builder(this)
                 .setTitle(R.string.activate_service)
                 .setMessage(R.string.activate_service_message)
@@ -62,9 +58,30 @@ public class ActionSelectorActivity extends AppCompatActivity {
                 .setNegativeButton(R.string.cancel, (dialog, id) -> finish())
                 .create();
             alertDialog.show();
-            
         }
-        return accessEnabled != 0;
+        return enabled;
+    }
+
+    /**
+     * Checks whether THIS specific accessibility service is enabled, rather than relying on the
+     * global {@link Settings.Secure#ACCESSIBILITY_ENABLED} flag (which only tells us that *some*
+     * accessibility service is enabled).
+     */
+    private boolean isAccessibilityServiceEnabled() {
+        String expectedFull = getPackageName() + "/" + ClickerAccessibilityService.class.getName();
+        String expectedShort = getPackageName() + "/." + ClickerAccessibilityService.class.getSimpleName();
+        String enabledServices =
+                Settings.Secure.getString(getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        if (enabledServices == null) return false;
+
+        TextUtils.SimpleStringSplitter splitter = new TextUtils.SimpleStringSplitter(':');
+        splitter.setString(enabledServices);
+        for (String service : splitter) {
+            if (expectedFull.equalsIgnoreCase(service) || expectedShort.equalsIgnoreCase(service)) {
+                return true;
+            }
+        }
+        return false;
     }
     
     private void showAccessibilityPage() {
@@ -80,8 +97,8 @@ public class ActionSelectorActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent intent) {
         super.onActivityResult(requestCode, resultCode, intent);
-        
-        if (checkIfEnabled())
+
+        if (requestCode == SERVICE_ACCESSIBILITY && checkIfEnabled())
             startClickerAccessibilityService();
     }
 

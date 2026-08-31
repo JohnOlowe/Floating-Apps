@@ -67,8 +67,8 @@ public class ClickerActivity extends AppCompatActivity implements BluetoothOpera
     public void sendToDevice(byte value, BluetoothOperationsCallback callback) {
         if (btOperation != null) {
             btOperation.write(value, callback);
-            pendingAddButton = value == CLICKER_ADD_POINT ? true : pendingAddButton;
-            pendingRemoveButton = value == CLICKER_DELETE_POINT ? true : pendingRemoveButton;
+            pendingAddButton = value == CLICKER_ADD_POINT || pendingAddButton;
+            pendingRemoveButton = value == CLICKER_DELETE_POINT || pendingRemoveButton;
         }
         else Toast.makeText(this, R.string.null_socket, Toast.LENGTH_SHORT).show();
     }
@@ -128,6 +128,10 @@ public class ClickerActivity extends AppCompatActivity implements BluetoothOpera
     }
     
     public void onClick(View view) {
+        if (btOperation == null) {
+            Toast.makeText(this, R.string.null_socket, Toast.LENGTH_SHORT).show();
+            return;
+        }
         btOperation.write(Byte.parseByte(((Button) view).getText().toString()), this);
     }
     

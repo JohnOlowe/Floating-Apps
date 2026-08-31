@@ -136,8 +136,8 @@
         <service
             android:name=".autoclicker.service.ClickerAccessibilityService"
             android:exported="true"
+            android:label="@string/floating_clicker"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <!--android:label="@string/floating_clicker"-->
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService"/>
             </intent-filter>

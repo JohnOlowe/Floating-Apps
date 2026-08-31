@@ -99,8 +99,10 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
     private void startSelectorActivity() {
         Intent intent = new Intent(this, ActionSelectorActivity.class);
         ActionSelectorActivity.bluetoothSocket = socket;
-        // finish();
         startActivity(intent);
+        // Close this screen so pressing Back does not return to a stale "waiting" dialog
+        // backed by an already-accepted (and closed) server socket.
+        finish();
     }
     
     public void checkResult(int resultCode, Object artifact) {
