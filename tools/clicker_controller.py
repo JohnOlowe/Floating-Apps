@@ -227,16 +227,24 @@ def bluetooth_supported() -> bool:
 
 
 def _require_bluetooth() -> None:
-    if not bluetooth_supported():
-        raise RuntimeError(
-            "This Python build has no Bluetooth socket support "
-            f"(platform: {platform.system()}). Use --demo, or the tcp transport."
-        )
+    if bluetooth_supported():
+        return
+    hint = "Use --demo, or the tcp transport."
+    if platform.system() == "Windows":
+        hint = ("Windows RFCOMM support landed in Python 3.9 (bpo-36590); "
+                f"you are on {platform.python_version()}. Upgrade Python, or use --demo.")
+    elif platform.system() == "Darwin":
+        hint = "macOS CPython has no AF_BLUETOOTH at all. Use --demo, or the tcp transport."
+    raise RuntimeError(
+        f"This Python build has no Bluetooth socket support ({platform.system()}, "
+        f"Python {platform.python_version()}). {hint}"
+    )
 
 
 def connect_bluetooth(address: str, channel: int | None = None, log=print) -> SocketTransport:
     """Dial the phone's RFCOMM service (phone must be on the Host screen)."""
     _require_bluetooth()
+    probing = channel is None
     candidates = [channel] if channel else _channel_candidates(address, log)
 
     last_error: Exception | None = None
@@ -245,10 +253,14 @@ def connect_bluetooth(address: str, channel: int | None = None, log=print) -> So
         try:
             log(f"trying RFCOMM channel {candidate} ...")
             sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
-            sock.settimeout(10)
+            sock.settimeout(5 if probing else 15)
             sock.connect((address, candidate))
             sock.settimeout(None)
             log(f"connected on channel {candidate}")
+            if probing:
+                log("check the phone: if it still says 'Waiting for connection' we "
+                    f"reached some other service -- Disconnect, put {candidate + 1} "
+                    "in Chan/Port and Start again")
             return SocketTransport(sock)
         except Exception as error:  # noqa: BLE001 - report and keep probing
             last_error = error

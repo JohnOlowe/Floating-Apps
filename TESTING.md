@@ -150,9 +150,29 @@ phone choose **Connect as Guest** and pick the laptop. This is the only way to
 exercise `GuestActivity` and the device-list adapter without a second phone.
 
 One caveat: Android resolves the service by UUID over SDP, so the laptop has to
-publish a service record. That needs **PyBluez** (`pip install pybluez`, Linux).
-Without it the script still listens but the phone almost certainly will not find
-it, and it says so.
+publish a service record, which raw Python sockets cannot do. On Linux,
+`pip install pybluez` covers it. On **Windows PyBluez is effectively dead** —
+the PyPI release does not build on Python 3.8+ and needs the 15 GB Visual C++
+Build Tools even to try — so `--listen` is Linux-only in practice. Everything
+else needs no third-party package at all.
+
+### Requirements
+
+Nothing to install beyond Python itself:
+
+- **Windows**: Python **3.9 or newer** — native RFCOMM support was added in 3.9
+  (bpo-36590). Tkinter ships with the python.org installer.
+- **Linux**: any Python 3; `sudo apt install python3-tk` for the GUI.
+- **macOS**: CPython has no `AF_BLUETOOTH`, so only `--demo` and the tcp
+  transport work.
+
+Check with:
+
+```
+python -c "import socket, tkinter; print(hasattr(socket, 'AF_BLUETOOTH'))"
+```
+
+Do **not** install PyBluez unless you specifically need `--listen` on Linux.
 
 ### Notes
 
