@@ -178,9 +178,14 @@ Do **not** install PyBluez unless you specifically need `--listen` on Linux.
 
 - The *Traffic* pane decodes every frame both ways, so you can watch
   `-> BYTE -1 add point` leave and see what comes back.
-- Android allocates the RFCOMM channel dynamically. The script asks SDP if
-  PyBluez is installed, otherwise it probes channels 1–30. If it attaches to the
-  wrong service, put the right channel in the Chan/Port box.
+- Android allocates the RFCOMM channel dynamically, so the script resolves it
+  in this order: the channel you typed in Chan/Port, then an **SDP lookup** for
+  the app's UUID (via PyBluez on Linux, or the Windows `WSALookupService` API
+  through ctypes — no install needed), then whatever worked last time (cached in
+  `~/.floating_clicker_channels.json`), and only then a probe of channels 1–30.
+- Probed channels are verified rather than assumed: the clicker protocol never
+  speaks first, so any channel that greets you or hangs up is some other
+  Bluetooth profile and is skipped automatically.
 - If your laptop has no working Bluetooth, the *tcp* transport is there for a
   USB bridge over `adb reverse` — that needs a small debug hook in the app, so
   ask for it if you need to go that way.

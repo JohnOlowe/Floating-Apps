@@ -33,10 +33,13 @@ import queue
 import re
 import socket
 import struct
+import json
+import os
 import subprocess
 import sys
 import threading
 import time
+import uuid as uuid_module
 
 # ---------------------------------------------------------------------------
 # Wire protocol -- mirrors BluetoothOperations.BluetoothOperationsConstants
@@ -66,6 +69,9 @@ CLICKER_DELETE_POINT = -2
 
 # HostActivity registers its service record with this UUID (res/values/strings.xml).
 CLICKER_UUID = "1cf64473-3259-4cb7-8f91-5ebb341506cd"
+
+# How long a freshly connected channel must stay silent to be believed.
+PROBE_SETTLE_SECONDS = 1.2
 
 _FIXED_WIDTH = {
     TYPE_BYTE: 1, TYPE_SHORT: 2, TYPE_CHAR: 2, TYPE_INT: 4,
@@ -241,52 +247,279 @@ def _require_bluetooth() -> None:
     )
 
 
-def connect_bluetooth(address: str, channel: int | None = None, log=print) -> SocketTransport:
-    """Dial the phone's RFCOMM service (phone must be on the Host screen)."""
-    _require_bluetooth()
-    probing = channel is None
-    candidates = [channel] if channel else _channel_candidates(address, log)
 
-    last_error: Exception | None = None
-    for candidate in candidates:
-        sock = None
-        try:
-            log(f"trying RFCOMM channel {candidate} ...")
-            sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
-            sock.settimeout(5 if probing else 15)
-            sock.connect((address, candidate))
-            sock.settimeout(None)
-            log(f"connected on channel {candidate}")
-            if probing:
-                log("check the phone: if it still says 'Waiting for connection' we "
-                    f"reached some other service -- Disconnect, put {candidate + 1} "
-                    "in Chan/Port and Start again")
-            return SocketTransport(sock)
-        except Exception as error:  # noqa: BLE001 - report and keep probing
-            last_error = error
-            if sock is not None:
-                try:
-                    sock.close()
-                except Exception:  # noqa: BLE001
-                    pass
-    raise RuntimeError(f"could not connect to {address}: {last_error}")
+# ---------------------------------------------------------------------------
+# Finding the phone's RFCOMM channel
+# ---------------------------------------------------------------------------
+
+CHANNEL_CACHE = os.path.join(
+    os.path.expanduser("~"), ".floating_clicker_channels.json"
+)
 
 
-def _channel_candidates(address: str, log) -> list[int]:
+def _load_cached_channel(address: str) -> int | None:
+    try:
+        with open(CHANNEL_CACHE, "r", encoding="utf-8") as handle:
+            return json.load(handle).get(address.upper())
+    except Exception:  # noqa: BLE001 - the cache is a convenience
+        return None
+
+
+def _save_cached_channel(address: str, channel: int) -> None:
+    data = {}
+    try:
+        with open(CHANNEL_CACHE, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except Exception:  # noqa: BLE001
+        pass
+    data[address.upper()] = channel
+    try:
+        with open(CHANNEL_CACHE, "w", encoding="utf-8") as handle:
+            json.dump(data, handle)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _sdp_lookup_windows(address: str, log) -> list[int]:
+    """
+    Ask Windows for the RFCOMM channel of our service UUID on a remote device.
+
+    This is the same WSALookupService* SDP query PyBluez performs, reached through
+    ctypes so that nothing has to be compiled or installed.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    class GUID(ctypes.Structure):
+        _fields_ = [
+            ("Data1", wintypes.DWORD),
+            ("Data2", wintypes.WORD),
+            ("Data3", wintypes.WORD),
+            ("Data4", ctypes.c_ubyte * 8),
+        ]
+
+    class SOCKADDR_BTH(ctypes.Structure):
+        _fields_ = [
+            ("addressFamily", wintypes.USHORT),
+            ("btAddr", ctypes.c_ulonglong),
+            ("serviceClassId", GUID),
+            ("port", wintypes.ULONG),
+        ]
+
+    class SOCKET_ADDRESS(ctypes.Structure):
+        _fields_ = [("lpSockaddr", ctypes.c_void_p), ("iSockaddrLength", ctypes.c_int)]
+
+    class CSADDR_INFO(ctypes.Structure):
+        _fields_ = [
+            ("LocalAddr", SOCKET_ADDRESS),
+            ("RemoteAddr", SOCKET_ADDRESS),
+            ("iSocketType", ctypes.c_int),
+            ("iProtocol", ctypes.c_int),
+        ]
+
+    class BLOB(ctypes.Structure):
+        _fields_ = [("cbSize", wintypes.ULONG), ("pBlobData", ctypes.c_void_p)]
+
+    class WSAQUERYSETW(ctypes.Structure):
+        _fields_ = [
+            ("dwSize", wintypes.DWORD),
+            ("lpszServiceInstanceName", wintypes.LPWSTR),
+            ("lpServiceClassId", ctypes.POINTER(GUID)),
+            ("lpVersion", ctypes.c_void_p),
+            ("lpszComment", wintypes.LPWSTR),
+            ("dwNameSpace", wintypes.DWORD),
+            ("lpNSProviderId", ctypes.POINTER(GUID)),
+            ("lpszContext", wintypes.LPWSTR),
+            ("dwNumberOfProtocols", wintypes.DWORD),
+            ("lpafpProtocols", ctypes.c_void_p),
+            ("lpszQueryString", wintypes.LPWSTR),
+            ("dwNumberOfCsAddrs", wintypes.DWORD),
+            ("lpcsaBuffer", ctypes.POINTER(CSADDR_INFO)),
+            ("dwOutputFlags", wintypes.DWORD),
+            ("lpBlob", ctypes.POINTER(BLOB)),
+        ]
+
+    NS_BTH = 16
+    LUP_RETURN_ADDR = 0x0100
+    LUP_FLUSHCACHE = 0x1000
+    SOCKET_ERROR = -1
+
+    ws2 = ctypes.WinDLL("ws2_32", use_last_error=True)
+
+    fields = uuid_module.UUID(CLICKER_UUID).fields
+    guid = GUID()
+    guid.Data1, guid.Data2, guid.Data3 = fields[0], fields[1], fields[2]
+    tail = uuid_module.UUID(CLICKER_UUID).bytes[8:]
+    guid.Data4 = (ctypes.c_ubyte * 8)(*tail)
+
+    query = WSAQUERYSETW()
+    ctypes.memset(ctypes.byref(query), 0, ctypes.sizeof(query))
+    query.dwSize = ctypes.sizeof(WSAQUERYSETW)
+    query.dwNameSpace = NS_BTH
+    query.lpServiceClassId = ctypes.pointer(guid)
+    query.lpszContext = f"({address.upper()})"
+
+    handle = wintypes.HANDLE()
+    if ws2.WSALookupServiceBeginW(
+        ctypes.byref(query), LUP_RETURN_ADDR | LUP_FLUSHCACHE, ctypes.byref(handle)
+    ) == SOCKET_ERROR:
+        raise OSError(ctypes.get_last_error(), "WSALookupServiceBegin failed")
+
+    channels: list[int] = []
+    try:
+        size = wintypes.DWORD(8192)
+        buffer = ctypes.create_string_buffer(size.value)
+        while True:
+            size.value = ctypes.sizeof(buffer)
+            result = ws2.WSALookupServiceNextW(
+                handle, LUP_RETURN_ADDR, ctypes.byref(size), buffer
+            )
+            if result == SOCKET_ERROR:
+                break
+            found = ctypes.cast(buffer, ctypes.POINTER(WSAQUERYSETW)).contents
+            for index in range(found.dwNumberOfCsAddrs):
+                remote = found.lpcsaBuffer[index].RemoteAddr
+                if not remote.lpSockaddr:
+                    continue
+                bth = ctypes.cast(
+                    remote.lpSockaddr, ctypes.POINTER(SOCKADDR_BTH)
+                ).contents
+                if bth.port and bth.port not in channels:
+                    channels.append(int(bth.port))
+    finally:
+        ws2.WSALookupServiceEnd(handle)
+
+    return channels
+
+
+def _sdp_lookup(address: str, log) -> list[int]:
+    """Resolve the clicker service's RFCOMM channel. Returns [] if it cannot."""
     try:
         import bluetooth  # type: ignore  # PyBluez, optional
 
         services = bluetooth.find_service(uuid=CLICKER_UUID, address=address)
         if services:
             found = [s["port"] for s in services]
-            log(f"SDP found the clicker service on channel(s) {found}")
+            log(f"SDP: clicker service is on channel(s) {found}")
             return found
-        log("SDP found no clicker service; is the phone on the Host screen?")
+        log("SDP: the phone is not advertising the clicker service right now")
+        return []
     except ImportError:
-        log("PyBluez not installed, probing channels instead (this is fine)")
+        pass
     except Exception as error:  # noqa: BLE001
-        log(f"SDP lookup failed ({error}), probing channels instead")
-    return list(range(1, 31))
+        log(f"SDP lookup via PyBluez failed ({error})")
+
+    if platform.system() == "Windows":
+        try:
+            channels = _sdp_lookup_windows(address, log)
+            if channels:
+                log(f"SDP: clicker service is on channel(s) {channels}")
+            else:
+                log("SDP: Windows found no clicker service on that device "
+                    "(is the phone on the Host screen?)")
+            return channels
+        except Exception as error:  # noqa: BLE001
+            log(f"SDP lookup failed ({error}); falling back to probing")
+    return []
+
+
+def _speaks_first(sock: socket.socket, settle: float, log) -> bool:
+    """
+    True when the peer sends something unprompted, which our app never does.
+
+    The clicker protocol is silent until a button is pressed, so any traffic
+    arriving right after connecting means we reached a different Bluetooth
+    profile (OBEX, phonebook, handsfree and friends all greet you).
+    """
+    previous = sock.gettimeout()
+    sock.settimeout(settle)
+    try:
+        data = sock.recv(64)
+    except socket.timeout:
+        sock.settimeout(previous)
+        return False
+    except OSError:
+        return True
+    finally:
+        try:
+            sock.settimeout(previous)
+        except OSError:
+            pass
+    if not data:
+        return True                     # closed on us
+    log(f"    channel spoke first ({data[:16]!r}) -- not the clicker")
+    return True
+
+
+def connect_bluetooth(address: str, channel: int | None = None, log=print) -> SocketTransport:
+    """
+    Dial the phone's RFCOMM service (the phone must be on the Host screen).
+
+    Order of preference: the channel you asked for, then the one SDP reports, then
+    the one that worked last time, then a probe of every channel. Probed channels
+    are checked before being accepted, so landing on some other Bluetooth profile
+    no longer means trying the rest by hand.
+    """
+    _require_bluetooth()
+
+    if channel:
+        transport = _try_channel(address, channel, verify=False, log=log)
+        if transport:
+            return transport
+        raise RuntimeError(f"could not connect to {address} on channel {channel}")
+
+    for candidate in _sdp_lookup(address, log):
+        transport = _try_channel(address, candidate, verify=False, log=log)
+        if transport:
+            _save_cached_channel(address, candidate)
+            return transport
+
+    remembered = _load_cached_channel(address)
+    if remembered:
+        log(f"trying channel {remembered}, which worked last time ...")
+        transport = _try_channel(address, remembered, verify=True, log=log)
+        if transport:
+            return transport
+
+    log("probing channels 1-30 and checking each one ...")
+    for candidate in range(1, 31):
+        if candidate == remembered:
+            continue
+        transport = _try_channel(address, candidate, verify=True, log=log)
+        if transport:
+            _save_cached_channel(address, candidate)
+            log(f"channel {candidate} accepted and stayed quiet -- this is the clicker")
+            return transport
+
+    raise RuntimeError(
+        f"no clicker service found on {address}. Check the phone is showing "
+        "'Waiting for connection' on the Host screen."
+    )
+
+
+def _try_channel(address: str, channel: int, verify: bool, log) -> SocketTransport | None:
+    """Connect to one channel, optionally rejecting it if it is not our service."""
+    sock = None
+    try:
+        log(f"trying RFCOMM channel {channel} ...")
+        sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
+        sock.settimeout(5 if verify else 15)
+        sock.connect((address, channel))
+        if verify and _speaks_first(sock, PROBE_SETTLE_SECONDS, log):
+            sock.close()
+            return None
+        sock.settimeout(None)
+        log(f"connected on channel {channel}")
+        return SocketTransport(sock)
+    except Exception as error:  # noqa: BLE001 - probing is expected to fail a lot
+        if sock is not None:
+            try:
+                sock.close()
+            except Exception:  # noqa: BLE001
+                pass
+        if not verify:
+            log(f"    channel {channel}: {error}")
+        return None
 
 
 def listen_bluetooth(channel: int = 3, log=print) -> SocketTransport:
