@@ -223,6 +223,21 @@ public class ViewsUtils {
         return params;
     }
 
+    /**
+     * As {@link #getAccessibilityOverlayParams(int, int)} but with an explicit size.
+     *
+     * <p>A view added straight to the WindowManager is sized by these params, not by the
+     * layout_width/layout_height in its XML, so anything that has to stay square (a round
+     * click point, say) must say so here.
+     */
+    @RequiresApi(22)
+    public static LayoutParams getAccessibilityOverlayParams(int x, int y, int width, int height) {
+        LayoutParams params = getAccessibilityOverlayParams(x, y);
+        params.width = width;
+        params.height = height;
+        return params;
+    }
+
     public static LayoutParams getFloatingLayoutParams(boolean focusable) {
         LayoutParams params = getFloatingLayoutParams();
         if (focusable) {

@@ -5,25 +5,32 @@
      android:layout_width="wrap_content"
      android:background="@drawable/rounded_top"
      android:orientation="vertical"
-     android:paddingBottom="5sp"
-     android:paddingTop="5sp">
+     android:paddingLeft="10dp"
+     android:paddingRight="10dp"
+     android:paddingTop="10dp"
+     android:paddingBottom="10dp">
 
     <ImageView
          android:layout_height="wrap_content"
          android:layout_width="wrap_content"
          android:src="@drawable/plus"
+         android:padding="4dp"
          android:id="@+id/addClicker" />
 
     <ImageView
          android:layout_height="wrap_content"
          android:layout_width="wrap_content"
          android:src="@drawable/minus"
+         android:padding="4dp"
+         android:layout_marginTop="8dp"
          android:id="@+id/removeClicker" />
 
     <ImageView
          android:layout_height="wrap_content"
          android:layout_width="wrap_content"
          android:src="@drawable/cancel"
+         android:padding="4dp"
+         android:layout_marginTop="8dp"
          android:id="@+id/closeClicker" />
 
 </LinearLayout>

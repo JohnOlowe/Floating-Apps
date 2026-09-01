@@ -196,8 +196,12 @@ public class ClickerAccessibilityService extends AccessibilityService implements
                         hasPrevious, lastX, lastY, pointSize, spacing,
                         metrics.widthPixels, metrics.heightPixels);
 
+        // An explicit square size: without it the window wraps its content and comes out
+        // wider than it is tall, which renders the oval background as an ellipse and puts
+        // the real centre somewhere other than where the tap is aimed.
         LayoutParams pointParams =
-                ViewsUtils.getAccessibilityOverlayParams(position[0], position[1]);
+                ViewsUtils.getAccessibilityOverlayParams(
+                        position[0], position[1], pointSize, pointSize);
         clickPoint.setTag(pointParams);
         clickPoint.setOnTouchListener(
                 ViewsUtils.getViewTouchListener(this, clickPoint, windowManager, pointParams));
@@ -223,6 +227,31 @@ public class ClickerAccessibilityService extends AccessibilityService implements
     }
 
     /**
+     * Taps the middle of a click point, as it actually sits on screen.
+     *
+     * <p>Gesture coordinates are absolute screen coordinates, while a window's params are
+     * relative to whatever the window manager decided its parent frame is (below the status
+     * bar, for instance). Asking the view where it ended up avoids that whole class of
+     * off-by-an-inset error.
+     */
+    private void tapPoint(View point) {
+        int width = point.getWidth();
+        int height = point.getHeight();
+        if (width > 0 && height > 0) {
+            int[] location = new int[2];
+            point.getLocationOnScreen(location);
+            clickPoint(location[0] + width / 2, location[1] + height / 2);
+            return;
+        }
+        // Not laid out yet: fall back to the requested position.
+        LayoutParams params = (LayoutParams) point.getTag();
+        if (params == null) return;
+        int size = pointSizePx();
+        clickPoint(ClickPointLayout.centerOf(params.x, size),
+                   ClickPointLayout.centerOf(params.y, size));
+    }
+
+    /**
      * Lets dispatched gestures reach the app underneath.
      *
      * <p>The points are real windows sitting exactly where we are about to tap, so without this
@@ -231,18 +260,24 @@ public class ClickerAccessibilityService extends AccessibilityService implements
     private void setPointsTouchable(boolean touchable) {
         if (windowManager == null) return;
         for (View point : clickPoints) {
-            LayoutParams params = (LayoutParams) point.getTag();
-            if (params == null) continue;
-            if (touchable) {
-                params.flags &= ~LayoutParams.FLAG_NOT_TOUCHABLE;
-            } else {
-                params.flags |= LayoutParams.FLAG_NOT_TOUCHABLE;
-            }
-            try {
-                windowManager.updateViewLayout(point, params);
-            } catch (Throwable ignored) {
-                // View may have been removed underneath us.
-            }
+            applyTouchable(point, (LayoutParams) point.getTag(), touchable);
+        }
+        // The toolbar is a window as well: a point sitting under it would otherwise send the
+        // injected tap to our own + / - buttons.
+        applyTouchable(clickerLayout, clickerParams, touchable);
+    }
+
+    private void applyTouchable(View view, LayoutParams params, boolean touchable) {
+        if (view == null || params == null) return;
+        if (touchable) {
+            params.flags &= ~LayoutParams.FLAG_NOT_TOUCHABLE;
+        } else {
+            params.flags |= LayoutParams.FLAG_NOT_TOUCHABLE;
+        }
+        try {
+            windowManager.updateViewLayout(view, params);
+        } catch (Throwable ignored) {
+            // View may have been removed underneath us.
         }
     }
 
@@ -317,13 +352,7 @@ public class ClickerAccessibilityService extends AccessibilityService implements
                     // Buttons are labelled 1-based on the controller, points are stored 0-based.
                     int index = ClickPointLayout.indexForButton(byteValue);
                     if (ClickPointLayout.isValidIndex(index, clickPoints.size())) {
-                        LayoutParams params = (LayoutParams) clickPoints.get(index).getTag();
-                        if (params != null) {
-                            int pointSize = pointSizePx();
-                            clickPoint(
-                                    ClickPointLayout.centerOf(params.x, pointSize),
-                                    ClickPointLayout.centerOf(params.y, pointSize));
-                        }
+                        tapPoint(clickPoints.get(index));
                     }
                 }
                 break;
