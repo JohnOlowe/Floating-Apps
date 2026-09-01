@@ -17,6 +17,7 @@ import android.widget.TextView;
 import androidx.annotation.RequiresApi;
 
 import damjay.floating.projects.R;
+import damjay.floating.projects.autoclicker.ClickPointLayout;
 import damjay.floating.projects.bluetooth.BluetoothOperations;
 import damjay.floating.projects.bluetooth.BluetoothOperations.BluetoothOperationsCallback;
 import damjay.floating.projects.utils.ViewsUtils;
@@ -117,32 +118,30 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         int pointSize = pointSizePx();
         int spacing = ViewsUtils.dpToPx(POINT_SPACING_DP, this);
         DisplayMetrics metrics = getResources().getDisplayMetrics();
-        int maxX = metrics.widthPixels - pointSize;
 
-        int x;
-        int y;
-        if (clickPoints.isEmpty()) {
-            // First point near the top-left, slightly offset so it is not hidden under the toolbar.
-            x = spacing;
-            y = spacing;
-        } else {
+        boolean hasPrevious = !clickPoints.isEmpty();
+        int lastX = 0;
+        int lastY = 0;
+        if (hasPrevious) {
             LayoutParams last = (LayoutParams) clickPoints.get(clickPoints.size() - 1).getTag();
-            int nextX = last.x + pointSize + spacing;
-            if (nextX <= maxX) {
-                // Continue on the same row.
-                x = nextX;
-                y = last.y;
+            if (last == null) {
+                hasPrevious = false;
             } else {
-                // Wrap to a new row (and wrap back to the top if we run off the bottom).
-                x = spacing;
-                y = last.y + pointSize + spacing;
-                if (y > metrics.heightPixels - pointSize) {
-                    y = spacing;
-                }
+                lastX = last.x;
+                lastY = last.y;
             }
         }
+        int[] position =
+                ClickPointLayout.nextPosition(
+                        hasPrevious,
+                        lastX,
+                        lastY,
+                        pointSize,
+                        spacing,
+                        metrics.widthPixels,
+                        metrics.heightPixels);
 
-        LayoutParams pointParams = ViewsUtils.getFloatingLayoutParams(x, y);
+        LayoutParams pointParams = ViewsUtils.getFloatingLayoutParams(position[0], position[1]);
         clickPoint.setTag(pointParams);
         clickPoint.setOnTouchListener(ViewsUtils.getViewTouchListener(this, clickPoint, windowManager, pointParams));
         clickPoints.add(clickPoint);
@@ -212,12 +211,14 @@ public class ClickerAccessibilityService extends AccessibilityService implements
                     removeLastButton();
                 } else {
                     // Buttons are labelled 1-based on the controller, points are stored 0-based.
-                    int index = byteValue - 1;
-                    if (index >= 0 && index < clickPoints.size()) {
+                    int index = ClickPointLayout.indexForButton(byteValue);
+                    if (ClickPointLayout.isValidIndex(index, clickPoints.size())) {
                         LayoutParams params = (LayoutParams) clickPoints.get(index).getTag();
                         if (params != null) {
                             int pointSize = pointSizePx();
-                            clickPoint(params.x + pointSize / 2, params.y + pointSize / 2);
+                            clickPoint(
+                                    ClickPointLayout.centerOf(params.x, pointSize),
+                                    ClickPointLayout.centerOf(params.y, pointSize));
                         }
                     }
                 }

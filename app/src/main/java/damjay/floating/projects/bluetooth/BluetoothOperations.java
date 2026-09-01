@@ -1,18 +1,13 @@
 package damjay.floating.projects.bluetooth;
 
-import android.app.Activity;
 import android.bluetooth.BluetoothSocket;
-import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
+import java.io.EOFException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Arrays;
-import java.util.Locale;
 
 import static damjay.floating.projects.bluetooth.BluetoothOperations.BluetoothOperationsConstants.*;
 
@@ -24,12 +19,23 @@ public class BluetoothOperations implements Runnable {
     private DataInputStream inputStream;
     private DataOutputStream outputStream;
     
-    private boolean closed = false;
+    private volatile boolean closed = false;
 
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    /** Where callbacks are delivered. On a device this is the main thread. */
+    private final CallbackDispatcher dispatcher;
+    private Handler mainHandler;
+    private Thread readerThread;
 
     public BluetoothOperations(BluetoothSocket socket) {
+        this(socket, null);
+    }
+
+    /**
+     * @param dispatcher where callbacks are delivered, or null for the main thread.
+     */
+    public BluetoothOperations(BluetoothSocket socket, CallbackDispatcher dispatcher) {
         this.socket = socket;
+        this.dispatcher = dispatcher;
 
         try {
             inputStream = new DataInputStream(socket.getInputStream());
@@ -38,6 +44,18 @@ public class BluetoothOperations implements Runnable {
             this.openError = openError;
             openError.printStackTrace();
         }
+    }
+
+    /**
+     * Stream-based constructor. The wire protocol does not actually care that the bytes came
+     * from Bluetooth, so this lets the protocol be exercised over any pair of streams (which is
+     * what the JVM unit tests do -- no device, no emulator required).
+     */
+    public BluetoothOperations(InputStream in, OutputStream out, CallbackDispatcher dispatcher) {
+        this.socket = null;
+        this.dispatcher = dispatcher;
+        this.inputStream = new DataInputStream(in);
+        this.outputStream = new DataOutputStream(out);
     }
     
     public BluetoothSocket getSocket() {
@@ -52,8 +70,20 @@ public class BluetoothOperations implements Runnable {
             handle(openError, bluetoothCallback);
             return;
         }
-        else
-            new Thread(this).start();
+        readerThread = new Thread(this, "bluetooth-reader");
+        readerThread.start();
+    }
+
+    /** Visible for testing: runs the read loop on the calling thread until the stream ends. */
+    void readSynchronously(BluetoothOperationsCallback bluetoothOperationsCallback) {
+        checkNull(bluetoothOperationsCallback);
+        this.bluetoothCallback = bluetoothOperationsCallback;
+        run();
+    }
+
+    /** Visible for testing: waits for the reader thread to finish. */
+    void awaitReader(long millis) throws InterruptedException {
+        if (readerThread != null) readerThread.join(millis);
     }
 
     @Override
@@ -68,7 +98,7 @@ public class BluetoothOperations implements Runnable {
                 int type = inputStream.read();
                 // -1 means the remote device closed the stream cleanly; stop reading.
                 if (type == -1) {
-                    if (!closed) onError(bluetoothCallback, new java.io.EOFException("Remote device disconnected"));
+                    if (!closed) onError(bluetoothCallback, new EOFException("Remote device disconnected"));
                     break;
                 }
                 switch (type) {
@@ -121,6 +151,7 @@ public class BluetoothOperations implements Runnable {
         try {
             outputStream.write(TYPE_TEXT);
             outputStream.writeUTF(content);
+            outputStream.flush();
             onSuccess(bluetoothOperationsCallback, TYPE_SUCCESS, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -132,6 +163,7 @@ public class BluetoothOperations implements Runnable {
         try {
             outputStream.write(TYPE_BYTE);
             outputStream.writeByte(content);
+            outputStream.flush();
             onSuccess(bluetoothOperationsCallback, TYPE_SUCCESS, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -143,6 +175,7 @@ public class BluetoothOperations implements Runnable {
         try {
             outputStream.write(TYPE_SHORT);
             outputStream.writeShort(content);
+            outputStream.flush();
             onSuccess(bluetoothOperationsCallback, TYPE_SUCCESS, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -154,6 +187,7 @@ public class BluetoothOperations implements Runnable {
         try {
             outputStream.write(TYPE_CHAR);
             outputStream.writeChar(content);
+            outputStream.flush();
             onSuccess(bluetoothOperationsCallback, TYPE_SUCCESS, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -165,6 +199,7 @@ public class BluetoothOperations implements Runnable {
         try {
             outputStream.write(TYPE_INT);
             outputStream.writeInt(content);
+            outputStream.flush();
             onSuccess(bluetoothOperationsCallback, TYPE_SUCCESS, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -176,6 +211,7 @@ public class BluetoothOperations implements Runnable {
         try {
             outputStream.write(TYPE_LONG);
             outputStream.writeLong(content);
+            outputStream.flush();
             onSuccess(bluetoothOperationsCallback, TYPE_SUCCESS, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -187,6 +223,7 @@ public class BluetoothOperations implements Runnable {
         try {
             outputStream.write(TYPE_FLOAT);
             outputStream.writeFloat(content);
+            outputStream.flush();
             onSuccess(bluetoothOperationsCallback, TYPE_SUCCESS, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -198,6 +235,7 @@ public class BluetoothOperations implements Runnable {
         try {
             outputStream.write(TYPE_DOUBLE);
             outputStream.writeDouble(content);
+            outputStream.flush();
             onSuccess(bluetoothOperationsCallback, TYPE_SUCCESS, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -211,6 +249,7 @@ public class BluetoothOperations implements Runnable {
             // Length is a 2-byte unsigned short, matching the read side (readUnsignedShort()).
             outputStream.writeShort(content.length);
             outputStream.write(content);
+            outputStream.flush();
             onSuccess(bluetoothOperationsCallback, TYPE_SUCCESS, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -220,6 +259,7 @@ public class BluetoothOperations implements Runnable {
     public void writeExit(BluetoothOperationsCallback bluetoothOperationsCallback) {
         try {
             outputStream.write(TYPE_EXIT);
+            outputStream.flush();
             onSuccess(bluetoothOperationsCallback, TYPE_SUCCESS, null);
         } catch (Throwable t) {
             handle(t, bluetoothOperationsCallback);
@@ -248,11 +288,27 @@ public class BluetoothOperations implements Runnable {
     }
     
     private void onSuccess(BluetoothOperationsCallback callback, byte type, Object returnValue) {
-        mainHandler.post(() -> callback.onSuccess(type, returnValue));
+        post(() -> callback.onSuccess(type, returnValue));
     }
     
     private void onError(BluetoothOperationsCallback callback, Throwable error) {
-        mainHandler.post(() -> callback.onError(error));
+        post(() -> callback.onError(error));
+    }
+
+    private void post(Runnable runnable) {
+        if (dispatcher != null) {
+            dispatcher.dispatch(runnable);
+            return;
+        }
+        // Created lazily so that the stream-based constructor never touches the Android
+        // framework, keeping it usable from plain JVM unit tests.
+        if (mainHandler == null) mainHandler = new Handler(Looper.getMainLooper());
+        mainHandler.post(runnable);
+    }
+
+    /** Strategy for delivering callbacks; lets tests run them inline. */
+    public interface CallbackDispatcher {
+        void dispatch(Runnable runnable);
     }
 
     public static interface BluetoothOperationsCallback {
