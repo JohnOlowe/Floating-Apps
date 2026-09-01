@@ -21,6 +21,7 @@ import android.view.WindowManager;
 import android.view.WindowManager.LayoutParams;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 
 import java.io.File;
 import java.util.Locale;
@@ -205,6 +206,21 @@ public class ViewsUtils {
     
     public static LayoutParams getFloatingLayoutParams() {
         return getFloatingLayoutParams(0, 100);
+    }
+
+    /**
+     * Window params for a view added by an AccessibilityService.
+     *
+     * <p>TYPE_ACCESSIBILITY_OVERLAY is the right window type for these: unlike
+     * TYPE_APPLICATION_OVERLAY it does not require the "display over other apps"
+     * permission, because the user already granted the far stronger accessibility
+     * permission.
+     */
+    @RequiresApi(22)
+    public static LayoutParams getAccessibilityOverlayParams(int x, int y) {
+        LayoutParams params = getFloatingLayoutParams(x, y);
+        params.type = LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
+        return params;
     }
 
     public static LayoutParams getFloatingLayoutParams(boolean focusable) {

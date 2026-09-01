@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import damjay.floating.projects.R;
@@ -36,10 +37,17 @@ public class ActionSelectorActivity extends AppCompatActivity {
     }
 
     private void startClickerAccessibilityService() {
-        Intent intent = new Intent(this, ClickerAccessibilityService.class);
-        ClickerAccessibilityService.bluetoothSocket = bluetoothSocket;
+        // Hand the session straight to the running service instance. startService() alone is not
+        // enough: the system creates an accessibility service when the user ENABLES it, so its
+        // onCreate() has long since run with no socket to work with.
+        boolean attached = ClickerAccessibilityService.attach(bluetoothSocket);
+        if (!attached) {
+            // Not bound yet; it will pick the socket up from onServiceConnected(). Nudge it too,
+            // in case it is already bound but the static reference was lost with the process.
+            startService(new Intent(this, ClickerAccessibilityService.class));
+            Toast.makeText(this, R.string.clicker_service_starting, Toast.LENGTH_LONG).show();
+        }
         finish();
-        startService(intent);
     }
 
     private void showControlActivity() {

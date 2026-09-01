@@ -4,8 +4,11 @@ import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.accessibilityservice.GestureDescription;
 import android.bluetooth.BluetoothSocket;
+import android.content.Intent;
 import android.graphics.Path;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,6 +16,7 @@ import android.view.WindowManager;
 import android.view.WindowManager.LayoutParams;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 
@@ -34,47 +38,104 @@ public class ClickerAccessibilityService extends AccessibilityService implements
     private static final int POINT_SIZE_DP = 30;
     /** Gap placed between successive click points. */
     private static final int POINT_SPACING_DP = 16;
+    /** Safety net in case a dispatched gesture never reports back. */
+    private static final long TOUCH_RESTORE_MS = 1500;
+
+    /**
+     * The live instance, published once the system has bound us.
+     *
+     * <p>An accessibility service is created by the system when the user enables it in Settings,
+     * which is almost never the moment the app has a Bluetooth session to hand over. So the
+     * session cannot be picked up in onCreate(); the activity calls {@link #attach} on the
+     * running instance instead.
+     */
+    private static ClickerAccessibilityService instance;
+
+    /** Session handed over by ActionSelectorActivity, possibly before we are connected. */
+    public static BluetoothSocket bluetoothSocket;
 
     private final ArrayList<View> clickPoints = new ArrayList<>();
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private View clickerLayout;
     private WindowManager windowManager;
     private LayoutParams clickerParams;
 
-    public static BluetoothSocket bluetoothSocket;
     private BluetoothOperations btOperation;
 
     private boolean pendingAddButton = false;
     private boolean pendingRemoveButton = false;
 
-    @Override
-    public void onCreate() {
-        super.onCreate();
+    /**
+     * Hands a connected socket to the running service.
+     *
+     * @return false when the service is not enabled/connected yet, in which case the socket is
+     *     remembered and picked up from {@link #onServiceConnected()}.
+     */
+    public static boolean attach(BluetoothSocket socket) {
+        bluetoothSocket = socket;
+        ClickerAccessibilityService service = instance;
+        if (service == null) return false;
+        service.startSession(socket);
+        return true;
+    }
 
-        if (bluetoothSocket == null) {
-            // No Bluetooth session was provided; there is nothing to control or be controlled by.
-            stopSelf();
-            return;
+    /** True when the service is enabled and bound by the system. */
+    public static boolean isRunning() {
+        return instance != null;
+    }
+
+    @Override
+    protected void onServiceConnected() {
+        super.onServiceConnected();
+        instance = this;
+        // The user may have enabled us in response to the app asking, with a session already
+        // waiting; if so, start it now.
+        if (bluetoothSocket != null && btOperation == null) {
+            startSession(bluetoothSocket);
         }
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        // Belt and braces: the activity also pings us with startService().
+        if (bluetoothSocket != null && btOperation == null) {
+            startSession(bluetoothSocket);
+        }
+        return START_NOT_STICKY;
+    }
+
+    /** Shows the floating toolbar and starts reading commands from the peer. */
+    private void startSession(BluetoothSocket socket) {
+        if (socket == null || btOperation != null) return;
 
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
         if (windowManager == null) {
-            stopSelf();
+            toast(R.string.clicker_service_failed);
             return;
         }
 
         clickerLayout = LayoutInflater.from(this).inflate(R.layout.service_clicker, null);
-        clickerParams = ViewsUtils.getFloatingLayoutParams();
+        clickerParams = ViewsUtils.getAccessibilityOverlayParams(0, 100);
         try {
             windowManager.addView(clickerLayout, clickerParams);
         } catch (Throwable t) {
             t.printStackTrace();
-            stopSelf();
+            clickerLayout = null;
+            toast(R.string.clicker_service_failed);
             return;
         }
 
-        btOperation = new BluetoothOperations(bluetoothSocket);
+        btOperation = new BluetoothOperations(socket);
         addClickListeners();
         btOperation.startReading(this);
+    }
+
+    private void toast(int messageRes) {
+        try {
+            Toast.makeText(this, messageRes, Toast.LENGTH_LONG).show();
+        } catch (Throwable ignored) {
+            // Never let a diagnostic take the service down.
+        }
     }
 
     private void addClickListeners() {
@@ -99,8 +160,6 @@ public class ClickerAccessibilityService extends AccessibilityService implements
             btOperation.write(value, callback);
             pendingAddButton = value == CLICKER_ADD_POINT || pendingAddButton;
             pendingRemoveButton = value == CLICKER_DELETE_POINT || pendingRemoveButton;
-        } else {
-            stopSelf();
         }
     }
 
@@ -110,6 +169,7 @@ public class ClickerAccessibilityService extends AccessibilityService implements
 
     private void addNewButton() {
         pendingAddButton = false;
+        if (windowManager == null) return;
 
         View clickPoint = LayoutInflater.from(this).inflate(R.layout.clicker_point, null);
         ((TextView) clickPoint.findViewById(R.id.clickId))
@@ -133,17 +193,14 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         }
         int[] position =
                 ClickPointLayout.nextPosition(
-                        hasPrevious,
-                        lastX,
-                        lastY,
-                        pointSize,
-                        spacing,
-                        metrics.widthPixels,
-                        metrics.heightPixels);
+                        hasPrevious, lastX, lastY, pointSize, spacing,
+                        metrics.widthPixels, metrics.heightPixels);
 
-        LayoutParams pointParams = ViewsUtils.getFloatingLayoutParams(position[0], position[1]);
+        LayoutParams pointParams =
+                ViewsUtils.getAccessibilityOverlayParams(position[0], position[1]);
         clickPoint.setTag(pointParams);
-        clickPoint.setOnTouchListener(ViewsUtils.getViewTouchListener(this, clickPoint, windowManager, pointParams));
+        clickPoint.setOnTouchListener(
+                ViewsUtils.getViewTouchListener(this, clickPoint, windowManager, pointParams));
         clickPoints.add(clickPoint);
         try {
             windowManager.addView(clickPoint, pointParams);
@@ -165,6 +222,30 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         }
     }
 
+    /**
+     * Lets dispatched gestures reach the app underneath.
+     *
+     * <p>The points are real windows sitting exactly where we are about to tap, so without this
+     * the injected touch lands on our own overlay instead of the app being controlled.
+     */
+    private void setPointsTouchable(boolean touchable) {
+        if (windowManager == null) return;
+        for (View point : clickPoints) {
+            LayoutParams params = (LayoutParams) point.getTag();
+            if (params == null) continue;
+            if (touchable) {
+                params.flags &= ~LayoutParams.FLAG_NOT_TOUCHABLE;
+            } else {
+                params.flags |= LayoutParams.FLAG_NOT_TOUCHABLE;
+            }
+            try {
+                windowManager.updateViewLayout(point, params);
+            } catch (Throwable ignored) {
+                // View may have been removed underneath us.
+            }
+        }
+    }
+
     private void clickPoint(int x, int y) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N || !canPerformGestures()) {
             return;
@@ -175,7 +256,30 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         GestureDescription.Builder builder = new GestureDescription.Builder();
         // A single tap: 0 ms delay, short duration.
         builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 40));
-        dispatchGesture(builder.build(), null, null);
+
+        setPointsTouchable(false);
+        // Restore even if the callback never arrives, so the points stay draggable.
+        handler.postDelayed(() -> setPointsTouchable(true), TOUCH_RESTORE_MS);
+
+        try {
+            dispatchGesture(
+                    builder.build(),
+                    new GestureResultCallback() {
+                        @Override
+                        public void onCompleted(GestureDescription gestureDescription) {
+                            setPointsTouchable(true);
+                        }
+
+                        @Override
+                        public void onCancelled(GestureDescription gestureDescription) {
+                            setPointsTouchable(true);
+                        }
+                    },
+                    null);
+        } catch (Throwable t) {
+            t.printStackTrace();
+            setPointsTouchable(true);
+        }
     }
 
     /**
@@ -224,6 +328,9 @@ public class ClickerAccessibilityService extends AccessibilityService implements
                 }
                 break;
             }
+            case TYPE_EXIT:
+                endSession();
+                break;
             default:
                 // Ignore unsupported payload types.
         }
@@ -231,22 +338,32 @@ public class ClickerAccessibilityService extends AccessibilityService implements
 
     @Override
     public void onError(Throwable t) {
-        stopSelf();
+        endSession();
     }
 
     private void notifyAndStop() {
         if (btOperation != null) {
             btOperation.writeExit(this);
         }
-        stopSelf();
+        endSession();
     }
 
-    @Override
-    public void onDestroy() {
+    /**
+     * Tears the session down but leaves the service bound: an accessibility service stays alive
+     * until the user disables it, so it must be able to host another session afterwards.
+     */
+    private void endSession() {
         if (btOperation != null) {
             btOperation.close();
             btOperation = null;
         }
+        bluetoothSocket = null;
+        removeViews();
+        pendingAddButton = false;
+        pendingRemoveButton = false;
+    }
+
+    private void removeViews() {
         if (windowManager != null) {
             if (clickerLayout != null) {
                 try {
@@ -263,7 +380,20 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         }
         clickPoints.clear();
         clickerLayout = null;
-        bluetoothSocket = null;
+    }
+
+    @Override
+    public boolean onUnbind(Intent intent) {
+        endSession();
+        instance = null;
+        return super.onUnbind(intent);
+    }
+
+    @Override
+    public void onDestroy() {
+        endSession();
+        instance = null;
+        handler.removeCallbacksAndMessages(null);
         super.onDestroy();
     }
 
