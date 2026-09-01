@@ -186,6 +186,14 @@ Do **not** install PyBluez unless you specifically need `--listen` on Linux.
 - Probed channels are verified rather than assumed: the clicker protocol never
   speaks first, so any channel that greets you or hangs up is some other
   Bluetooth profile and is skipped automatically.
+- Chan/Port takes a list or a range as well as a single number, so you can queue
+  several candidates in one go: `5`, `5,9`, `5-12`, `5, 8-11, 20`.
+- If the search does land on the wrong service, press **Wrong one — try next**.
+  It drops that connection and resumes at the next candidate; the channels
+  already ruled out stay ruled out, and nothing has to be retyped.
+- **Start** turns into **Stop** while a search is running, so you never have to
+  sit through a sweep you already know is pointless. The status line shows which
+  channel is being tried and how many are left.
 - If your laptop has no working Bluetooth, the *tcp* transport is there for a
   USB bridge over `adb reverse` — that needs a small debug hook in the app, so
   ask for it if you need to go that way.

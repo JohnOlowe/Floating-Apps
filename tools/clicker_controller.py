@@ -73,6 +73,9 @@ CLICKER_UUID = "1cf64473-3259-4cb7-8f91-5ebb341506cd"
 # How long a freshly connected channel must stay silent to be believed.
 PROBE_SETTLE_SECONDS = 1.2
 
+# How long to wait for a probed channel to accept before moving on.
+PROBE_CONNECT_SECONDS = 4
+
 _FIXED_WIDTH = {
     TYPE_BYTE: 1, TYPE_SHORT: 2, TYPE_CHAR: 2, TYPE_INT: 4,
     TYPE_LONG: 8, TYPE_FLOAT: 4, TYPE_DOUBLE: 8,
@@ -451,75 +454,150 @@ def _speaks_first(sock: socket.socket, settle: float, log) -> bool:
     return True
 
 
-def connect_bluetooth(address: str, channel: int | None = None, log=print) -> SocketTransport:
+def parse_channels(text: str) -> list[int]:
     """
-    Dial the phone's RFCOMM service (the phone must be on the Host screen).
+    Turn a Chan/Port entry into a list of channels.
 
-    Order of preference: the channel you asked for, then the one SDP reports, then
-    the one that worked last time, then a probe of every channel. Probed channels
-    are checked before being accepted, so landing on some other Bluetooth profile
-    no longer means trying the rest by hand.
+    Accepts a single number, a comma separated list, ranges, or any mixture of
+    those: "5", "5,9", "5-12", "5, 8-11, 20". Blank means "work it out".
     """
-    _require_bluetooth()
-
-    if channel:
-        transport = _try_channel(address, channel, verify=False, log=log)
-        if transport:
-            return transport
-        raise RuntimeError(f"could not connect to {address} on channel {channel}")
-
-    for candidate in _sdp_lookup(address, log):
-        transport = _try_channel(address, candidate, verify=False, log=log)
-        if transport:
-            _save_cached_channel(address, candidate)
-            return transport
-
-    remembered = _load_cached_channel(address)
-    if remembered:
-        log(f"trying channel {remembered}, which worked last time ...")
-        transport = _try_channel(address, remembered, verify=True, log=log)
-        if transport:
-            return transport
-
-    log("probing channels 1-30 and checking each one ...")
-    for candidate in range(1, 31):
-        if candidate == remembered:
+    channels: list[int] = []
+    for chunk in text.replace(" ", "").split(","):
+        if not chunk:
             continue
-        transport = _try_channel(address, candidate, verify=True, log=log)
-        if transport:
-            _save_cached_channel(address, candidate)
-            log(f"channel {candidate} accepted and stayed quiet -- this is the clicker")
-            return transport
+        if "-" in chunk[1:]:
+            first, _, last = chunk.partition("-")
+            step = 1 if int(last) >= int(first) else -1
+            for value in range(int(first), int(last) + step, step):
+                if value not in channels:
+                    channels.append(value)
+        elif chunk.isdigit():
+            if int(chunk) not in channels:
+                channels.append(int(chunk))
+        else:
+            raise ValueError(f"'{chunk}' is not a channel number or range")
+    return channels
 
-    raise RuntimeError(
-        f"no clicker service found on {address}. Check the phone is showing "
-        "'Waiting for connection' on the Host screen."
-    )
 
+class ChannelSearch:
+    """
+    A resumable walk through the channels the phone might be listening on.
 
-def _try_channel(address: str, channel: int, verify: bool, log) -> SocketTransport | None:
-    """Connect to one channel, optionally rejecting it if it is not our service."""
-    sock = None
-    try:
-        log(f"trying RFCOMM channel {channel} ...")
-        sock = socket.socket(socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM)
-        sock.settimeout(5 if verify else 15)
-        sock.connect((address, channel))
-        if verify and _speaks_first(sock, PROBE_SETTLE_SECONDS, log):
-            sock.close()
-            return None
-        sock.settimeout(None)
-        log(f"connected on channel {channel}")
-        return SocketTransport(sock)
-    except Exception as error:  # noqa: BLE001 - probing is expected to fail a lot
+    The point of this being an object rather than a loop is that a connection
+    can be rejected after the fact. If a channel accepts us but turns out to be
+    the wrong service, ``next_connection`` picks up at the following candidate
+    instead of starting over.
+    """
+
+    PROBE_RANGE = range(1, 31)
+
+    def __init__(self, address: str, explicit: list[int] | None = None, log=print):
+        self.address = address
+        self.log = log
+        self.cancelled = False
+        self.tried: list[int] = []
+        self._current_sock: socket.socket | None = None
+        self._extended = False
+        # (channel, verify). Channels typed by hand are taken at face value.
+        self._queue: list[tuple[int, bool]] = [(c, False) for c in (explicit or [])]
+
+    # -- candidate list ----------------------------------------------------
+
+    def _extend(self) -> None:
+        """Append the automatic candidates: SDP first, then cache, then a sweep."""
+        if self._extended:
+            return
+        self._extended = True
+        known = {channel for channel, _ in self._queue} | set(self.tried)
+
+        for channel in _sdp_lookup(self.address, self.log):
+            if channel not in known:
+                self._queue.append((channel, False))
+                known.add(channel)
+
+        remembered = _load_cached_channel(self.address)
+        if remembered and remembered not in known:
+            self.log(f"channel {remembered} worked last time, trying it early")
+            self._queue.append((remembered, True))
+            known.add(remembered)
+
+        for channel in self.PROBE_RANGE:
+            if channel not in known:
+                self._queue.append((channel, True))
+
+    @property
+    def remaining(self) -> int:
+        return len(self._queue)
+
+    # -- control -----------------------------------------------------------
+
+    def cancel(self) -> None:
+        """Stop the search, interrupting a connect that is already in flight."""
+        self.cancelled = True
+        sock = self._current_sock
         if sock is not None:
             try:
                 sock.close()
-            except Exception:  # noqa: BLE001
+            except OSError:
                 pass
-        if not verify:
-            log(f"    channel {channel}: {error}")
-        return None
+
+    # -- the search itself -------------------------------------------------
+
+    def next_connection(self) -> tuple[SocketTransport, int]:
+        """Connect to the next plausible channel, or raise if there are none left."""
+        _require_bluetooth()
+        while True:
+            if self.cancelled:
+                raise RuntimeError("search stopped")
+            if not self._queue:
+                self._extend()
+            if not self._queue:
+                raise RuntimeError(
+                    f"tried every channel on {self.address} without finding the "
+                    "clicker. Check the phone is showing 'Waiting for connection'."
+                )
+            channel, verify = self._queue.pop(0)
+            self.tried.append(channel)
+            result = self._attempt(channel, verify)
+            if result is not None:
+                _save_cached_channel(self.address, channel)
+                return result, channel
+
+    def _attempt(self, channel: int, verify: bool) -> SocketTransport | None:
+        sock = None
+        try:
+            self.log(f"trying RFCOMM channel {channel} ...")
+            sock = socket.socket(
+                socket.AF_BLUETOOTH, socket.SOCK_STREAM, socket.BTPROTO_RFCOMM
+            )
+            self._current_sock = sock
+            sock.settimeout(PROBE_CONNECT_SECONDS if verify else 15)
+            sock.connect((self.address, channel))
+            if verify and _speaks_first(sock, PROBE_SETTLE_SECONDS, self.log):
+                sock.close()
+                self._current_sock = None
+                return None
+            sock.settimeout(None)
+            self._current_sock = None
+            self.log(f"connected on channel {channel}")
+            return SocketTransport(sock)
+        except Exception as error:  # noqa: BLE001 - probing fails often by design
+            self._current_sock = None
+            if sock is not None:
+                try:
+                    sock.close()
+                except OSError:
+                    pass
+            if not self.cancelled:
+                self.log(f"    channel {channel}: {error}")
+            return None
+
+
+def connect_bluetooth(address: str, channel: int | None = None, log=print) -> SocketTransport:
+    """Dial the phone's RFCOMM service (the phone must be on the Host screen)."""
+    search = ChannelSearch(address, [channel] if channel else None, log=log)
+    transport, _ = search.next_connection()
+    return transport
 
 
 def listen_bluetooth(channel: int = 3, log=print) -> SocketTransport:
@@ -845,7 +923,7 @@ def run_gui(args) -> int:
 
     role = args.role
     events: queue.Queue = queue.Queue()
-    state: dict = {"session": None, "peer": None}
+    state: dict = {"session": None, "peer": None, "search": None, "searching": False}
 
     root = tk.Tk()
     root.title(f"Floating Clicker -- desktop {role}")
@@ -872,7 +950,10 @@ def run_gui(args) -> int:
     ttk.Label(row, text="Address").pack(side="left")
     ttk.Entry(row, textvariable=address_var, width=22).pack(side="left", padx=(6, 12))
     ttk.Label(row, text="Chan/Port").pack(side="left")
-    ttk.Entry(row, textvariable=channel_var, width=8).pack(side="left", padx=(6, 0))
+    channel_entry = ttk.Entry(row, textvariable=channel_var, width=12)
+    channel_entry.pack(side="left", padx=(6, 0))
+    ttk.Label(row, text="(blank = auto; 5,8-12 also fine)",
+              foreground="#888").pack(side="left", padx=(6, 0))
 
     row2 = ttk.Frame(top)
     row2.pack(fill="x", pady=(8, 0))
@@ -882,6 +963,8 @@ def run_gui(args) -> int:
     connect_button.pack(side="left", padx=6)
     disconnect_button = ttk.Button(row2, text="Disconnect", state="disabled")
     disconnect_button.pack(side="left")
+    next_button = ttk.Button(row2, text="Wrong one \u2014 try next", state="disabled")
+    next_button.pack(side="left", padx=6)
     ttk.Label(row2, textvariable=status_var, foreground="#666").pack(side="right")
 
     # -- role specific area ------------------------------------------------
@@ -1009,11 +1092,24 @@ def run_gui(args) -> int:
         root.after(220, lambda: redraw_canvas())
 
     def set_connected(connected: bool) -> None:
-        connect_button.configure(state="disabled" if connected else "normal")
+        state["searching"] = False
+        connect_button.configure(text="Start",
+                                 state="disabled" if connected else "normal")
         disconnect_button.configure(state="normal" if connected else "disabled")
+        can_advance = connected and state.get("search") is not None
+        next_button.configure(state="normal" if can_advance else "disabled")
         for key in ("add", "remove", "exit"):
             widgets[key].configure(state="normal" if connected else "disabled")
         status_var.set("connected" if connected else "not connected")
+
+    def set_searching() -> None:
+        """Start doubles as Stop while a channel search is running."""
+        state["searching"] = True
+        connect_button.configure(text="Stop", state="normal")
+        disconnect_button.configure(state="disabled")
+        next_button.configure(state="disabled")
+        for key in ("add", "remove", "exit"):
+            widgets[key].configure(state="disabled")
 
     def drain() -> None:
         try:
@@ -1030,6 +1126,8 @@ def run_gui(args) -> int:
                     log("info", "session closed")
                 elif kind == "connected":
                     set_connected(True)
+                elif kind == "status":
+                    status_var.set(message)
                 else:
                     log(kind, message)
         except queue.Empty:
@@ -1039,35 +1137,50 @@ def run_gui(args) -> int:
     # -- actions -----------------------------------------------------------
 
     def do_start() -> None:
-        set_connected(False)
-        status_var.set("waiting ..." if mode_var.get() == "listen" else "connecting ...")
-        connect_button.configure(state="disabled")
+        if state.get("searching"):
+            search = state.get("search")
+            if search is not None:
+                search.cancel()
+            log("info", "stopping the search ...")
+            status_var.set("stopping ...")
+            return
 
         transport_kind = transport_var.get()
         listening = mode_var.get() == "listen"
         address = address_var.get().strip()
         channel_text = channel_var.get().strip()
 
+        try:
+            channels = parse_channels(channel_text)
+        except ValueError as error:
+            log("error", str(error))
+            return
+
+        state["search"] = None
+        set_searching()
+        status_var.set("waiting ..." if listening else "connecting ...")
+
         def worker() -> None:
             try:
                 if transport_kind == "bluetooth":
                     if listening:
                         transport = listen_bluetooth(
-                            int(channel_text) if channel_text else 3,
+                            channels[0] if channels else 3,
                             log=lambda m: post("info", m))
                     else:
                         if not address:
                             raise RuntimeError("enter the phone's Bluetooth address first")
-                        transport = connect_bluetooth(
-                            address, int(channel_text) if channel_text else None,
-                            log=lambda m: post("info", m))
+                        search = ChannelSearch(address, channels, log=_search_log)
+                        state["search"] = search
+                        transport, channel = search.next_connection()
+                        post("info", f"using channel {channel}")
                 else:
-                    if not channel_text:
+                    if not channels:
                         raise RuntimeError("enter a TCP port")
                     if listening:
-                        transport = listen_tcp(int(channel_text), log=lambda m: post("info", m))
+                        transport = listen_tcp(channels[0], log=lambda m: post("info", m))
                     else:
-                        transport = connect_tcp(address or "127.0.0.1", int(channel_text),
+                        transport = connect_tcp(address or "127.0.0.1", channels[0],
                                                 log=lambda m: post("info", m))
             except Exception as error:  # noqa: BLE001
                 post("error", str(error))
@@ -1082,7 +1195,47 @@ def run_gui(args) -> int:
 
         threading.Thread(target=worker, daemon=True).start()
 
+    def _search_log(message: str) -> None:
+        """Search chatter goes to the log, and channel attempts also to the status."""
+        post("info", message)
+        if message.startswith("trying RFCOMM channel"):
+            search = state.get("search")
+            left = f", {search.remaining} left" if search else ""
+            post("status", message.replace("trying RFCOMM ", "").rstrip(" .") + left)
+
+    def do_try_next() -> None:
+        """
+        Reject the channel we landed on and resume the search at the next one.
+
+        Nothing has to be retyped and the sweep does not start over -- the
+        channels already ruled out stay ruled out.
+        """
+        search = state.get("search")
+        if search is None:
+            return
+        session = state["session"]
+        if session is not None:
+            session.close()
+            state["session"] = None
+        log("info", f"rejected; {search.remaining} channel(s) still to try")
+        set_searching()
+
+        def worker() -> None:
+            try:
+                transport, channel = search.next_connection()
+            except Exception as error:  # noqa: BLE001
+                post("error", str(error))
+                post("closed")
+                return
+            state["session"] = Session(transport, post)
+            post("info", f"using channel {channel}")
+            post("points")
+            post("connected")
+
+        threading.Thread(target=worker, daemon=True).start()
+
     def do_disconnect() -> None:
+        state["search"] = None
         session = state["session"]
         if session:
             session.close()
@@ -1106,6 +1259,7 @@ def run_gui(args) -> int:
         threading.Thread(target=worker, daemon=True).start()
 
     connect_button.configure(command=do_start)
+    next_button.configure(command=do_try_next)
     disconnect_button.configure(command=do_disconnect)
     scan_button.configure(command=do_scan)
     widgets["add"].configure(command=lambda: state["session"] and state["session"].add_point())
