@@ -44,6 +44,8 @@
     <string name="incorrect_format_message">Are you sure this is a %1$s file?</string>
     <string name="display_permission_message">For this app to work, you need to grant display over other apps permission.</string>
     <string name="waiting_for_connection">Waiting for connection...</string>
+    <string name="connecting">Connecting...</string>
+    <string name="no_paired_devices">No paired Bluetooth devices found. Pair the other device in your system Bluetooth settings first, then come back here.</string>
     <string name="null_socket">Bluetooth Socket is not available</string>
     <string name="bluetooth_not_supported">This feature is not supported on this device.</string>
     <string name="activate_bluetooth">For this feature to work, you need to activate Bluetooth.</string>

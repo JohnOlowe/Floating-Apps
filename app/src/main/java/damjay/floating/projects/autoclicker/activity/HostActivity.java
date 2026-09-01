@@ -31,7 +31,7 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_host);
 
-        getSupportActionBar().setTitle(R.string.asHost);
+        if (getSupportActionBar() != null) getSupportActionBar().setTitle(R.string.asHost);
 
         if (startListening()) {
             startWaiting();
@@ -61,6 +61,13 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
                             adapter,
                             getResources().getString(R.string.app_name),
                             UUID.fromString(getResources().getString(R.string.clicker_uuid)));
+            // Opening the listening socket can fail (Bluetooth off, permission revoked). Report
+            // that up front instead of showing a "waiting for connection" dialog that can never
+            // be satisfied.
+            if (!serverThread.isListening()) {
+                serverThread = null;
+                return false;
+            }
             serverThread.start();
             return true;
         }
@@ -106,28 +113,42 @@ public class HostActivity extends AppCompatActivity implements BluetoothCallback
     }
     
     public void checkResult(int resultCode, Object artifact) {
+        if (closed || isFinishing()) return;
         if (alertDialog != null) {
             alertDialog.dismiss();
             alertDialog = null;
         }
-        if (resultCode == BluetoothCallback.SUCCESS) {
-            if (artifact != null && artifact instanceof BluetoothSocket) {
-                // Connected successfully
-                socket = (BluetoothSocket) artifact;
-                startSelectorActivity();
-            }
-        } else {
-            if (closed) return;
-            new AlertDialog.Builder(this)
-                .setMessage(R.string.bluetooth_error_occurred)
-                .setPositiveButton(R.string.finish, (dialog, id) -> {
-                    dialog.dismiss();
-                    finish();
-                })
-                .setCancelable(false)
-                .create()
-                .show();
+        if (resultCode == BluetoothCallback.SUCCESS && artifact instanceof BluetoothSocket) {
+            // Connected successfully
+            socket = (BluetoothSocket) artifact;
+            startSelectorActivity();
+            return;
         }
+        new AlertDialog.Builder(this)
+            .setMessage(R.string.bluetooth_error_occurred)
+            .setPositiveButton(R.string.finish, (dialog, id) -> {
+                dialog.dismiss();
+                finish();
+            })
+            .setCancelable(false)
+            .create()
+            .show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        // Stop advertising and release the listening socket if we are going away without
+        // having handed a live connection over to the selector screen.
+        if (socket == null && serverThread != null) {
+            closed = true;
+            serverThread.cancel();
+        }
+        serverThread = null;
+        if (alertDialog != null) {
+            alertDialog.dismiss();
+            alertDialog = null;
+        }
+        super.onDestroy();
     }
 
 }

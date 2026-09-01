@@ -30,7 +30,7 @@ public class ModeSelectorActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mode_selector);
 
-        getSupportActionBar().setTitle(R.string.select_connect_mode);
+        if (getSupportActionBar() != null) getSupportActionBar().setTitle(R.string.select_connect_mode);
         initializeViews();
         if (permissionsGranted())
             checkBluetooth();
@@ -54,6 +54,9 @@ public class ModeSelectorActivity extends AppCompatActivity {
                     pendingLaunchClass = clazz;
                 }
             } else {
+                // Remember what the user was trying to open so we can continue once the
+                // permission (and possibly the Bluetooth enable prompt) comes back.
+                pendingLaunchClass = clazz;
                 showPermissions();
             }
         };
@@ -114,7 +117,19 @@ public class ModeSelectorActivity extends AppCompatActivity {
 
     @RequiresApi(value = 23)
     private void requestPermissions() {
-        requestPermissions(new String[]{Manifest.permission.BLUETOOTH, Manifest.permission.BLUETOOTH_CONNECT}, BLUETOOTH_PERMISSIONS);
+        // Only BLUETOOTH_CONNECT is a runtime permission. The legacy BLUETOOTH permission is a
+        // normal (install-time) one that is declared with maxSdkVersion=30, so asking for it at
+        // runtime always comes back denied and corrupts the grant result we check below.
+        requestPermissions(new String[]{Manifest.permission.BLUETOOTH_CONNECT}, BLUETOOTH_PERMISSIONS);
+    }
+
+    /** Continues into the screen the user originally tapped, once Bluetooth is usable. */
+    private void launchPendingIfReady() {
+        if (!checkBluetooth()) return;
+        if (pendingLaunchClass != null) {
+            startActivity(new Intent(this, pendingLaunchClass));
+            pendingLaunchClass = null;
+        }
     }
 
     @Override
@@ -138,7 +153,7 @@ public class ModeSelectorActivity extends AppCompatActivity {
             }
         } else if (requestCode == BLUETOOTH_PERMISSIONS) {
             if (permissionsGranted()) {
-                checkBluetooth();
+                launchPendingIfReady();
             } else {
                 new AlertDialog.Builder(this)
                     .setMessage(R.string.bluetooth_permission_needed)
@@ -159,10 +174,11 @@ public class ModeSelectorActivity extends AppCompatActivity {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         
         if (requestCode == BLUETOOTH_PERMISSIONS) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                checkBluetooth();
+            // grantResults is EMPTY when the request is cancelled or interrupted, so indexing
+            // into it unconditionally crashes. Ask the permission manager directly instead.
+            if (permissionsGranted()) {
+                launchPendingIfReady();
             } else {
-                if (permissionsGranted()) return;
                 new AlertDialog.Builder(this)
                     .setMessage(R.string.bluetooth_permission_needed)
                     .setPositiveButton(R.string.settings, (dialog, id) -> {
