@@ -9,6 +9,7 @@ import android.graphics.Path;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -40,6 +41,16 @@ public class ClickerAccessibilityService extends AccessibilityService implements
     private static final int POINT_SPACING_DP = 16;
     /** Safety net in case a dispatched gesture never reports back. */
     private static final long TOUCH_RESTORE_MS = 1500;
+    /**
+     * How long to wait after making our overlays non-touchable before injecting the tap.
+     * WindowManager applies the flag change asynchronously; without this pause the touch is
+     * still delivered to our own click point instead of the app underneath.
+     */
+    private static final long GESTURE_SETTLE_MS = 80;
+    /** Long enough that apps register a tap, far below the long-press threshold. */
+    private static final long TAP_DURATION_MS = 60;
+
+    private static final String TAG = "FloatingClicker";
 
     /**
      * The live instance, published once the system has bound us.
@@ -64,6 +75,13 @@ public class ClickerAccessibilityService extends AccessibilityService implements
 
     private boolean pendingAddButton = false;
     private boolean pendingRemoveButton = false;
+    private int gesturesInFlight = 0;
+
+    private final Runnable restoreTouch =
+            () -> {
+                gesturesInFlight = 0;
+                setPointsTouchable(true);
+            };
 
     /**
      * Hands a connected socket to the running service.
@@ -281,38 +299,72 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         }
     }
 
+    /**
+     * Taps the screen at an absolute coordinate.
+     *
+     * <p>Our own click point is a touchable window sitting exactly there, and its drag listener
+     * consumes ACTION_DOWN, so the injected tap would be eaten by us rather than reaching the
+     * app. The points are therefore made non-touchable first -- but WindowManager applies that
+     * asynchronously, so the gesture is delayed briefly to let the change actually land.
+     */
     private void clickPoint(int x, int y) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N || !canPerformGestures()) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return;
+        if (!canPerformGestures()) {
+            Log.w(TAG, "cannot dispatch gestures; is the service still enabled?");
+            toast(R.string.clicker_no_gestures);
             return;
         }
-        Path path = new Path();
-        path.moveTo(x, y);
 
-        GestureDescription.Builder builder = new GestureDescription.Builder();
-        // A single tap: 0 ms delay, short duration.
-        builder.addStroke(new GestureDescription.StrokeDescription(path, 0, 40));
-
+        gesturesInFlight++;
         setPointsTouchable(false);
-        // Restore even if the callback never arrives, so the points stay draggable.
-        handler.postDelayed(() -> setPointsTouchable(true), TOUCH_RESTORE_MS);
+        handler.removeCallbacks(restoreTouch);
+        handler.postDelayed(() -> dispatchTap(x, y), GESTURE_SETTLE_MS);
+    }
 
+    private void dispatchTap(int x, int y) {
+        boolean dispatched = false;
         try {
-            dispatchGesture(
-                    builder.build(),
-                    new GestureResultCallback() {
-                        @Override
-                        public void onCompleted(GestureDescription gestureDescription) {
-                            setPointsTouchable(true);
-                        }
+            Path path = new Path();
+            path.moveTo(x, y);
 
-                        @Override
-                        public void onCancelled(GestureDescription gestureDescription) {
-                            setPointsTouchable(true);
-                        }
-                    },
-                    null);
+            GestureDescription.Builder builder = new GestureDescription.Builder();
+            builder.addStroke(new GestureDescription.StrokeDescription(path, 0, TAP_DURATION_MS));
+
+            dispatched =
+                    dispatchGesture(
+                            builder.build(),
+                            new GestureResultCallback() {
+                                @Override
+                                public void onCompleted(GestureDescription gestureDescription) {
+                                    Log.d(TAG, "gesture completed");
+                                    finishGesture();
+                                }
+
+                                @Override
+                                public void onCancelled(GestureDescription gestureDescription) {
+                                    Log.w(TAG, "gesture cancelled");
+                                    finishGesture();
+                                }
+                            },
+                            null);
         } catch (Throwable t) {
-            t.printStackTrace();
+            // Coordinates outside the display make StrokeDescription throw.
+            Log.e(TAG, "could not build the tap gesture", t);
+        }
+
+        Log.d(TAG, "tap at " + x + "," + y + " dispatched=" + dispatched);
+        if (!dispatched) {
+            finishGesture();
+        } else {
+            // Safety net: restore touchability even if the callback never arrives.
+            handler.postDelayed(restoreTouch, TOUCH_RESTORE_MS);
+        }
+    }
+
+    private void finishGesture() {
+        if (gesturesInFlight > 0) gesturesInFlight--;
+        if (gesturesInFlight == 0) {
+            handler.removeCallbacks(restoreTouch);
             setPointsTouchable(true);
         }
     }
