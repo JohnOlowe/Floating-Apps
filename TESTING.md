@@ -89,6 +89,44 @@ exceptions rather than swallowing them, so a bad path shows up in the log.
 
 ---
 
+## 2b. One phone + your laptop as the controller
+
+`tools/clicker_controller.py` stands in for the second phone. Your phone runs
+as **Host** (the RFCOMM server) and the laptop connects as the client, speaking
+the same byte protocol as `BluetoothOperations.java`. Standard library only —
+no pip install, no emulator.
+
+Try it with no hardware at all first:
+
+```sh
+python3 tools/clicker_controller.py --demo       # GUI against a built-in fake phone
+python3 tools/clicker_controller.py --selftest   # headless, no GUI needed
+```
+
+Then against the real phone:
+
+1. Pair the laptop and the phone in your system Bluetooth settings.
+2. Phone: app → Bluetooth clicker → **Start as Host**.
+3. Laptop: `python3 tools/clicker_controller.py`, click **Find paired devices**,
+   pick the phone, **Connect**.
+4. Phone: once connected it moves to the action screen → **As Service**, and
+   enable the accessibility service if prompted.
+5. Laptop: press **+** twice, then **1**. The first point on the phone should be
+   tapped. Keys `1`–`9` and `+`/`-` work as shortcuts.
+
+The *Traffic* pane logs every frame in both directions, decoded, so you can see
+`-> BYTE -1 add point` leave and watch what the phone sends back when you press
+the buttons on its own floating toolbar.
+
+Android allocates the RFCOMM channel dynamically. The script asks SDP for it if
+PyBluez happens to be installed, and otherwise probes channels 1–30, which is
+usually fine. If it picks the wrong service, put the right channel in the
+Channel box.
+
+If your laptop has no working Bluetooth, the *tcp* transport is there for a USB
+bridge over `adb reverse` — that needs a small debug hook in the app, so ask
+for it if you need to go that way.
+
 ## 3. Two paired phones — the radio link
 
 Only the actual RFCOMM connection needs this, and your laptop is not involved.
