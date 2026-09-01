@@ -89,43 +89,81 @@ exceptions rather than swallowing them, so a bad path shows up in the log.
 
 ---
 
-## 2b. One phone + your laptop as the controller
+## 2b. One phone + your laptop as the second device
 
-`tools/clicker_controller.py` stands in for the second phone. Your phone runs
-as **Host** (the RFCOMM server) and the laptop connects as the client, speaking
-the same byte protocol as `BluetoothOperations.java`. Standard library only —
-no pip install, no emulator.
+`tools/clicker_controller.py` stands in for whichever device you do not have.
+It speaks the same byte protocol as `BluetoothOperations.java` and can play
+either end. Standard library only — no pip install, no emulator.
 
-Try it with no hardware at all first:
+Two things reverse independently:
+
+| | `--role controller` (default) | `--role service` |
+|---|---|---|
+| **laptop does** | sends +, −, and button presses | receives them, draws the points |
+| **phone does** | *As Service* — gets tapped | *As Controller* — drives the laptop |
+| **tests** | the accessibility service, gesture dispatch | `ClickerActivity`, the controller UI |
+
+| | default | `--listen` |
+|---|---|---|
+| **laptop is** | the client, dials out | the RFCOMM server |
+| **phone is** | *Start as Host* | *Connect as Guest* |
+| **tests** | `HostActivity`, `BluetoothServerThread` | `GuestActivity`, `BluetoothDeviceAdapter` |
+
+### Try it with no hardware first
 
 ```sh
-python3 tools/clicker_controller.py --demo       # GUI against a built-in fake phone
-python3 tools/clicker_controller.py --selftest   # headless, no GUI needed
+python3 tools/clicker_controller.py --demo                  # laptop controls a fake phone
+python3 tools/clicker_controller.py --role service --demo   # a fake phone controls the laptop
+python3 tools/clicker_controller.py --selftest              # headless, both directions
 ```
 
-Then against the real phone:
+The `--role service --demo` run is the fun one: a scripted fake controller
+presses +, +, +, then buttons 1, 2, 3, then −, and you watch the points appear
+and flash on the simulated screen.
+
+### Direction A — laptop controls the phone
 
 1. Pair the laptop and the phone in your system Bluetooth settings.
 2. Phone: app → Bluetooth clicker → **Start as Host**.
-3. Laptop: `python3 tools/clicker_controller.py`, click **Find paired devices**,
-   pick the phone, **Connect**.
-4. Phone: once connected it moves to the action screen → **As Service**, and
-   enable the accessibility service if prompted.
-5. Laptop: press **+** twice, then **1**. The first point on the phone should be
-   tapped. Keys `1`–`9` and `+`/`-` work as shortcuts.
+3. Laptop: `python3 tools/clicker_controller.py`, **Find paired devices**,
+   pick the phone, **Start**.
+4. Phone: **As Service**, and enable the accessibility service if prompted.
+5. Laptop: press **+** twice, then **1**. The first point on the phone should
+   be tapped. Keys `1`–`9` and `+`/`-` are shortcuts.
 
-The *Traffic* pane logs every frame in both directions, decoded, so you can see
-`-> BYTE -1 add point` leave and watch what the phone sends back when you press
-the buttons on its own floating toolbar.
+### Direction B — phone controls the laptop
 
-Android allocates the RFCOMM channel dynamically. The script asks SDP for it if
-PyBluez happens to be installed, and otherwise probes channels 1–30, which is
-usually fine. If it picks the wrong service, put the right channel in the
-Channel box.
+1. Phone: **Start as Host**.
+2. Laptop: `python3 tools/clicker_controller.py --role service`, connect the
+   same way.
+3. Phone: **As Controller**.
+4. Phone: press **+** a few times, then a numbered button. The matching circle
+   on the laptop's simulated screen flashes red.
 
-If your laptop has no working Bluetooth, the *tcp* transport is there for a USB
-bridge over `adb reverse` — that needs a small debug hook in the app, so ask
-for it if you need to go that way.
+This is the half that exercises `ClickerActivity` — its own point bookkeeping,
+its button grid, and the null-socket guard.
+
+### Making the phone the Guest
+
+Add `--listen` to either of the above and start the script *first*; then on the
+phone choose **Connect as Guest** and pick the laptop. This is the only way to
+exercise `GuestActivity` and the device-list adapter without a second phone.
+
+One caveat: Android resolves the service by UUID over SDP, so the laptop has to
+publish a service record. That needs **PyBluez** (`pip install pybluez`, Linux).
+Without it the script still listens but the phone almost certainly will not find
+it, and it says so.
+
+### Notes
+
+- The *Traffic* pane decodes every frame both ways, so you can watch
+  `-> BYTE -1 add point` leave and see what comes back.
+- Android allocates the RFCOMM channel dynamically. The script asks SDP if
+  PyBluez is installed, otherwise it probes channels 1–30. If it attaches to the
+  wrong service, put the right channel in the Chan/Port box.
+- If your laptop has no working Bluetooth, the *tcp* transport is there for a
+  USB bridge over `adb reverse` — that needs a small debug hook in the app, so
+  ask for it if you need to go that way.
 
 ## 3. Two paired phones — the radio link
 
