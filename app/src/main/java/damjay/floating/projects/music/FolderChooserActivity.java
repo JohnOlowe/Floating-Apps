@@ -1,6 +1,7 @@
 package damjay.floating.projects.music;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Button;
 import android.widget.EditText;
@@ -10,9 +11,9 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import damjay.floating.projects.R;
+import damjay.floating.projects.utils.ViewsUtils;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.util.HashSet;
 
 /**
@@ -41,7 +42,15 @@ public class FolderChooserActivity extends AppCompatActivity {
         directoriesInput = findViewById(R.id.directories_field);
         addDirectory = findViewById(R.id.add_chosen_directories);
         savePrefs = findViewById(R.id.save_music_prefs);
-        fullPath = new HashSet<>();
+        // Start from whatever was saved previously, so re-opening the screen and adding one
+        // more folder does not silently throw the old ones away.
+        fullPath =
+                new HashSet<>(
+                        getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                                .getStringSet(MUSIC_FOLDERS, new HashSet<>()));
+        if (!fullPath.isEmpty()) {
+            directoriesAdded.setText(folderNames());
+        }
 
         addDirectory.setOnClickListener(v -> {
             boolean notAccepted = false;
@@ -65,51 +74,52 @@ public class FolderChooserActivity extends AppCompatActivity {
                 }
             }
             if (!notAccepted) {
-                StringBuilder builder = new StringBuilder();
-                boolean firstFile = true;
-                for (String dir : fullPath) {
-                    if (firstFile) {
-                        firstFile = false;
-                        builder.append(new File(dir).getName());
-                    } else {
-                        builder.append(", ").append(new File(dir).getName());
-                    }
-                }
-                directoriesAdded.setText(builder.toString());
+                directoriesAdded.setText(folderNames());
             }
         });
 
         savePrefs.setOnClickListener(v -> {
-            File fileSafe = new File(getCacheDir(), PlayerService.CHOSEN_FOLDERS_FILE);
-            String text = getDirectoriesText();
-            if (text == null) {
+            if (fullPath.isEmpty()) {
+                Toast.makeText(this, R.string.directory_not_exist, Toast.LENGTH_LONG).show();
                 return;
             }
-            try {
-                FileOutputStream writer = new FileOutputStream(fileSafe);
-                writer.write(text.getBytes());
-                writer.close();
-                Intent intent = new Intent();
-                intent.setClass(this, PlayerService.class);
-                startService(intent);
-            } catch (Throwable th) {
-                Toast.makeText(this, R.string.error_occurred, Toast.LENGTH_SHORT).show();
+            // PlayerService reads the folders back from these preferences.
+            SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+            prefs.edit().putStringSet(MUSIC_FOLDERS, new HashSet<>(fullPath)).apply();
+            if (ViewsUtils.requestAudioReadPermission(this, 200)) {
+                startService(new Intent(this, PlayerService.class));
+                finish();
+            } else {
+                // Stay open: the permission result callback starts the player and finishes
+                // this screen once the user answers.
+                Toast.makeText(this, R.string.music_needs_permission, Toast.LENGTH_LONG).show();
             }
         });
     }
 
-    /** Build newline-separated directory path string from selected folders */
-    private String getDirectoriesText() {
-        StringBuilder builder = null;
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 200
+                && grantResults.length > 0
+                && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            startService(new Intent(this, PlayerService.class));
+            finish();
+        }
+    }
+
+    /** Comma-separated list of the chosen folder names, for the on-screen summary. */
+    private String folderNames() {
+        StringBuilder builder = new StringBuilder();
         boolean firstFile = true;
-        for (String folder : fullPath) {
+        for (String dir : fullPath) {
             if (firstFile) {
                 firstFile = false;
-                builder = new StringBuilder(folder);
             } else {
-                builder.append("\n").append(folder);
+                builder.append(", ");
             }
+            builder.append(new File(dir).getName());
         }
-        return builder != null ? builder.toString() : null;
+        return builder.toString();
     }
 }

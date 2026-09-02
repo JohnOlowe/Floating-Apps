@@ -108,13 +108,23 @@ public class MusicListAdapter extends BaseAdapter {
         }
 
         MusicFile(String path) {
-            fileName = path.substring(path.lastIndexOf('/') + 1);
-            String parentPath = path.substring(0, path.lastIndexOf('/'));
-            fullPath = parentPath;
+            // fullPath is the complete path TO THE FILE -- MediaPlayer is handed this.
+            // It used to be set to the parent directory instead, so every "play" attempt
+            // pointed MediaPlayer at a folder and playback failed with "An error occurred".
+            fullPath = path;
+            int slash = path.lastIndexOf('/');
+            fileName = slash >= 0 && slash < path.length() - 1 ? path.substring(slash + 1) : path;
+            String parentPath = slash > 0 ? path.substring(0, slash) : "";
             if ("/storage/emulated/0".equals(parentPath)) {
                 directoryName = "Internal Storage Root";
+            } else if (parentPath.isEmpty()) {
+                directoryName = "Storage Root";
             } else {
-                directoryName = parentPath.substring(parentPath.lastIndexOf('/') + 1);
+                int parentSlash = parentPath.lastIndexOf('/');
+                directoryName =
+                        parentSlash >= 0 && parentSlash < parentPath.length() - 1
+                                ? parentPath.substring(parentSlash + 1)
+                                : parentPath;
             }
         }
 

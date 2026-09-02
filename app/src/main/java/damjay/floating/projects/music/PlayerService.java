@@ -48,6 +48,14 @@ public class PlayerService extends Service {
         layoutParams = ViewsUtils.getFloatingLayoutParams();
         windowManager.addView(view, layoutParams);
         initializeViews();
+        if (!ViewsUtils.hasAudioReadPermission(this)) {
+            // Started straight from the folder chooser: explain why songs would fail and
+            // bounce to the main screen, which issues the runtime permission request.
+            Toast.makeText(this, R.string.music_needs_permission, Toast.LENGTH_LONG).show();
+            Intent permissionIntent = new Intent(this, MainActivity.class);
+            permissionIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(permissionIntent);
+        }
     }
 
     private void initializeViews() {
@@ -85,16 +93,54 @@ public class PlayerService extends Service {
         }
         MusicListAdapter.MusicFile file = (MusicListAdapter.MusicFile) adapter.getItem(position);
         if (file == null) return;
+        // Stop whatever is playing before setting up the next track.
+        if (mediaPlayer != null) {
+            try {
+                mediaPlayer.release();
+            } catch (RuntimeException ignored) {
+            }
+            mediaPlayer = null;
+        }
+        final MediaPlayer nextPlayer = new MediaPlayer();
         try {
-            if (mediaPlayer != null) mediaPlayer.release();
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setDataSource(file.getFullPath());
-            mediaPlayer.prepare();
-            mediaPlayer.start();
-            mediaPlayer.setOnCompletionListener(mp -> play((currentIndex + 1) % Math.max(adapter.getCount(), 1)));
-            currentIndex = position;
+            nextPlayer.setDataSource(file.getFullPath());
+            nextPlayer.setOnPreparedListener(mp -> {
+                try {
+                    mp.start();
+                } catch (RuntimeException startError) {
+                    showPlaybackError(startError, file);
+                }
+            });
+            nextPlayer.setOnErrorListener(
+                    (mp, what, extra) -> {
+                        showPlaybackError(new IOException("MediaPlayer error " + what + "/" + extra), file);
+                        return true;
+                    });
+            nextPlayer.setOnCompletionListener(
+                    mp -> play((currentIndex + 1) % Math.max(adapter.getCount(), 1)));
+            // prepareAsync() keeps the floating window responsive; a synchronous prepare() on
+            // the main thread used to jank the service and was reported as "An error occurred".
+            nextPlayer.prepareAsync();
         } catch (IOException | RuntimeException e) {
-            Toast.makeText(this, R.string.error_occurred, Toast.LENGTH_LONG).show();
+            nextPlayer.release();
+            showPlaybackError(e, file);
+            return;
+        }
+        mediaPlayer = nextPlayer;
+        currentIndex = position;
+    }
+
+    /** Reports why a song could not be played; the generic toast hid the real cause before. */
+    private void showPlaybackError(Throwable error, MusicListAdapter.MusicFile file) {
+        String reason = error.getMessage();
+        String message =
+                getString(R.string.music_playback_failed,
+                          file.getFileName(),
+                          reason == null ? error.getClass().getSimpleName() : reason);
+        try {
+            Toast.makeText(this, message, Toast.LENGTH_LONG).show();
+        } catch (Throwable ignored) {
+            // The service may be going down; never let a toast take it with it.
         }
     }
 

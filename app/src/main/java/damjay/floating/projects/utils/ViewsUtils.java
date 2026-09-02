@@ -1,9 +1,11 @@
 package damjay.floating.projects.utils;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.DownloadManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.graphics.PixelFormat;
 import android.net.Uri;
@@ -22,6 +24,8 @@ import android.view.WindowManager.LayoutParams;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import java.io.File;
 import java.util.Locale;
@@ -271,5 +275,34 @@ public class ViewsUtils {
         return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     }
 
+    /**
+     * The runtime permission that gates reading audio files on this Android version.
+     *
+     * <p>Android 13 (API 33) replaced the broad READ_EXTERNAL_STORAGE with per-media-type
+     * permissions; an app targeting 33 that only holds the old permission cannot see or play
+     * any music at all.
+     */
+    public static String audioReadPermission() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                ? Manifest.permission.READ_MEDIA_AUDIO
+                : Manifest.permission.READ_EXTERNAL_STORAGE;
+    }
 
+    /** True when the app is currently allowed to read the user's audio files. */
+    public static boolean hasAudioReadPermission(Context context) {
+        return ContextCompat.checkSelfPermission(context, audioReadPermission())
+                == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /**
+     * Asks for the audio read permission unless it was already granted.
+     *
+     * @return true when the permission is already held, false when a request was launched
+     */
+    public static boolean requestAudioReadPermission(Activity activity, int requestCode) {
+        if (hasAudioReadPermission(activity)) return true;
+        ActivityCompat.requestPermissions(
+                activity, new String[] {audioReadPermission()}, requestCode);
+        return false;
+    }
 }

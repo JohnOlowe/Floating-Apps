@@ -22,6 +22,7 @@ import damjay.floating.projects.utils.ViewsUtils;
 
 public class MainActivity extends AppCompatActivity {
     public static final int FLOAT_PERMISSION_REQUEST = 100;
+    public static final int AUDIO_PERMISSION_REQUEST = 101;
 
     private AlertDialog alertDialog;
 
@@ -36,7 +37,13 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.floating_bible).setOnClickListener(getServiceClickListener(BibleService.class));
         findViewById(R.id.floating_timer).setOnClickListener(getServiceClickListener(TimerService.class));
         findViewById(R.id.floating_clicker).setOnClickListener(getActivityClickListener(ModeSelectorActivity.class));
-        findViewById(R.id.floating_music).setOnClickListener(getServiceClickListener(PlayerService.class));
+        findViewById(R.id.floating_music).setOnClickListener(v -> {
+            // Android 13+ requires the audio permission at runtime, otherwise every song
+            // fails with "An error occurred" (READ_MEDIA_AUDIO vs READ_EXTERNAL_STORAGE).
+            if (ViewsUtils.requestAudioReadPermission(this, AUDIO_PERMISSION_REQUEST)) {
+                startService(new Intent(this, PlayerService.class));
+            }
+        });
         findViewById(R.id.floating_copyTextField).setOnClickListener(getServiceClickListener(NoteService.class));
         findViewById(R.id.floating_browser).setOnClickListener(v -> Toast.makeText(this, R.string.floating_browser_coming, Toast.LENGTH_LONG).show());
         findViewById(R.id.floating_captions).setOnClickListener(getActivityClickListener(FloatingCaptionsActivity.class));
@@ -125,6 +132,16 @@ public class MainActivity extends AppCompatActivity {
                 closeAlertDialog();
             }
         //}
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == AUDIO_PERMISSION_REQUEST
+                && grantResults.length > 0
+                && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            startService(new Intent(this, PlayerService.class));
+        }
     }
 
     private void closeAlertDialog() {
