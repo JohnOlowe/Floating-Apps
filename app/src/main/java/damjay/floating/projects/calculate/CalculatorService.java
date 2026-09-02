@@ -111,11 +111,17 @@ public class CalculatorService extends Service implements CalculatorHistoryAdapt
         expanded.getViewTreeObserver().addOnGlobalLayoutListener(
                 () -> expanded.getLayoutParams().width = ViewsUtils.getViewWidth(275.0f));
 
-        // Match history list height to calculator height
+        // Match history list height to calculator height, and keep it bounded: without a
+        // fixed height a wrap_content ListView inside the window grows for every history
+        // entry and the floating calculator keeps getting taller.
+        historyList.getLayoutParams().height = ViewsUtils.dpToPx(260, this);
         ViewTreeObserver.OnGlobalLayoutListener layoutListener = () -> {
             int measuredHeight = mainCalculator.getMeasuredHeight();
             if (measuredHeight < 1) return;
-            historyList.getLayoutParams().height = measuredHeight;
+            if (historyList.getLayoutParams().height != measuredHeight) {
+                historyList.getLayoutParams().height = measuredHeight;
+                historyList.requestLayout();
+            }
         };
         mainCalculator.getViewTreeObserver().addOnGlobalLayoutListener(layoutListener);
         historyList.getViewTreeObserver().addOnGlobalLayoutListener(layoutListener);

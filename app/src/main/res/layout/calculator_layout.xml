@@ -83,14 +83,16 @@
             <EditText
                 android:textSize="30sp"
                 android:textColor="@color/calcFieldColor"
-                android:gravity="end"
+                android:gravity="end|center_vertical"
                 android:id="@+id/calcField"
                 android:background="@color/calcFieldBackground"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="0"
-                android:scrollHorizontally="false"
-                android:inputType="textMultiLine"
+                android:singleLine="true"
+                android:maxLines="1"
+                android:scrollHorizontally="true"
+                android:inputType="text"
                 android:paddingEnd="8dp"/>
             <LinearLayout
                 android:orientation="horizontal"
@@ -404,6 +406,8 @@
                     android:layout_weight="1"/>
             </LinearLayout>
         </RelativeLayout>
+        <!-- Height is fixed in CalculatorService to match the keypad, so a long history
+             scrolls instead of making the floating window taller. -->
         <ListView
             android:id="@+id/calcHistory"
             android:background="@color/calcBackground"
