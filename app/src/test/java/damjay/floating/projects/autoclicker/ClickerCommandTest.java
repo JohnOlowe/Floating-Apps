@@ -86,12 +86,15 @@ public class ClickerCommandTest {
 
     @Test
     public void encodedFrameMatchesTheTextWireLayout() {
-        byte[] frame = ClickerCommand.encodeTextFrame("@MOVE,0,16,16");
-        // TYPE_TEXT tag (0), then the 2-byte unsigned UTF length (12), then the body.
+        String body = "@MOVE,0,16,16";
+        byte[] frame = ClickerCommand.encodeTextFrame(body);
+        byte[] utf = body.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        // TYPE_TEXT tag (0), then the 2-byte unsigned UTF length, then the body.
         assertEquals(0, frame[0] & 0xFF);
         assertEquals(0, frame[1] & 0xFF);
-        assertEquals(12, frame[2] & 0xFF);
-        assertEquals("@MOVE,0,16,16", new String(frame, 3, frame.length - 3,
-                                                  java.nio.charset.StandardCharsets.UTF_8));
+        assertEquals(utf.length, frame[2] & 0xFF);
+        assertEquals(3 + utf.length, frame.length);
+        assertEquals(body, new String(frame, 3, frame.length - 3,
+                                       java.nio.charset.StandardCharsets.UTF_8));
     }
 }
