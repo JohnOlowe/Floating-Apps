@@ -87,6 +87,26 @@ never have to build it locally.
 `adb logcat` is the important half. Every fix in this area prints its
 exceptions rather than swallowing them, so a bad path shows up in the log.
 
+### The other floating apps
+
+These have no JVM test (they are pure UI), so they are verified by eye:
+
+- **Floating Music — "An error occurred" on every song.** The list was handing
+  `MediaPlayer` the song's *parent folder* instead of the file path, so
+  playback always failed. The path is now the full file path. Also: chosen
+  folders are actually saved now (the folder screen wrote a cache file nothing
+  ever read), the player prepares songs off the UI thread and reports the real
+  error if one happens, and Android 13+ gets a runtime `READ_MEDIA_AUDIO`
+  request (the old `READ_EXTERNAL_STORAGE` is silently ignored there, which by
+  itself made every song unreadable). Check: open Floating Music, grant the
+  audio permission, pick a song — it should play; on failure the toast now names
+  the cause.
+- **Floating Calculator growing and wrapping.** The display field was
+  `textMultiLine` with horizontal scrolling off, so a long expression wrapped to
+  a new line and every calculation made the floating window taller. The field is
+  now a single line that scrolls sideways (like a real calculator display), so
+  typing can never change the window's height.
+
 ---
 
 ## 2b. One phone + your laptop as the second device
@@ -118,8 +138,28 @@ python3 tools/clicker_controller.py --selftest              # headless, both dir
 ```
 
 The `--role service --demo` run is the fun one: a scripted fake controller
-presses +, +, +, then buttons 1, 2, 3, then −, and you watch the points appear
-and flash on the simulated screen.
+adds two points, announces a screen size, **drags** both points to new spots,
+draws a **swipe** between them, taps a couple, then removes one — you watch it
+all happen on the simulated screen.
+
+The laptop controller can do more than tap now. On its simulated phone screen:
+
+- **Drag a blue point** anywhere to move that point on the real phone, so it
+  lands exactly where you want it. The move is sent live as a `@MOVE` command
+  and the phone's accessibility overlay moves with it.
+- **Click a point** (or use the numbered keys) to tap it.
+- **Swipe between two...** enters swipe mode: click the point to start at and
+  the point to swipe to; a `@SWIPE` is dispatched from the first centre to the
+  second. Two points placed anywhere can therefore be swiped between.
+- The phone announces its real screen size (`@SIZE`) at connect, so the canvas
+  is scaled to the actual phone and coordinates line up.
+
+New commands are plain `TYPE_TEXT` frames beginning with `@`, so they ride over
+the same Bluetooth link with no new wire plumbing: `@SIZE,w,h`,
+`@MOVE,index,x,y`, `@SWIPE,x1,y1,x2,y2,durationMs`. The phone as controller can
+also swipe — press the new **Swipe** button in `ClickerActivity`, then tap the
+two numbered points in turn — and when points are dragged on the phone itself
+their new positions are sent back with `@MOVE` so the other side stays in sync.
 
 ### Direction A — laptop controls the phone
 
