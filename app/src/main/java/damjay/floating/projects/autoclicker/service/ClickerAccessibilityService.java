@@ -9,9 +9,10 @@ import android.graphics.Path;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
-import android.util.Log;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.WindowManager.LayoutParams;
@@ -23,6 +24,7 @@ import androidx.annotation.RequiresApi;
 
 import damjay.floating.projects.R;
 import damjay.floating.projects.autoclicker.ClickPointLayout;
+import damjay.floating.projects.autoclicker.ClickerCommand;
 import damjay.floating.projects.bluetooth.BluetoothOperations;
 import damjay.floating.projects.bluetooth.BluetoothOperations.BluetoothOperationsCallback;
 import damjay.floating.projects.utils.ViewsUtils;
@@ -42,13 +44,17 @@ public class ClickerAccessibilityService extends AccessibilityService implements
     /** Safety net in case a dispatched gesture never reports back. */
     private static final long TOUCH_RESTORE_MS = 1500;
     /**
-     * How long to wait after making our overlays non-touchable before injecting the tap.
+     * How long to wait after making our overlays non-touchable before injecting the gesture.
      * WindowManager applies the flag change asynchronously; without this pause the touch is
      * still delivered to our own click point instead of the app underneath.
      */
     private static final long GESTURE_SETTLE_MS = 80;
     /** Long enough that apps register a tap, far below the long-press threshold. */
     private static final long TAP_DURATION_MS = 60;
+    /** Default swipe duration when the controller does not specify one. */
+    private static final long DEFAULT_SWIPE_MS = 300;
+    /** Longest swipe we will honour, so a garbage frame cannot schedule an absurd gesture. */
+    private static final long MAX_SWIPE_MS = 60_000;
 
     private static final String TAG = "FloatingClicker";
 
@@ -76,6 +82,14 @@ public class ClickerAccessibilityService extends AccessibilityService implements
     private boolean pendingAddButton = false;
     private boolean pendingRemoveButton = false;
     private int gesturesInFlight = 0;
+    /**
+     * Difference between absolute screen coordinates (what dispatchGesture wants) and the
+     * coordinates in our window LayoutParams (which are relative to the parent frame the
+     * window manager chose, typically below the status bar). Measured from a laid out view.
+     */
+    private int frameOffsetX;
+    private int frameOffsetY;
+    private boolean frameOffsetKnown;
 
     private final Runnable restoreTouch =
             () -> {
@@ -146,6 +160,22 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         btOperation = new BluetoothOperations(socket);
         addClickListeners();
         btOperation.startReading(this);
+        announceScreenSize();
+    }
+
+    /**
+     * Tells the controller the real screen size in pixels, so points it places remotely and
+     * swipes it draws line up with what this device actually shows.
+     */
+    private void announceScreenSize() {
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
+        sendCommand(ClickerCommand.size(metrics.widthPixels, metrics.heightPixels));
+    }
+
+    private void sendCommand(String command) {
+        if (btOperation != null) {
+            btOperation.write(command, this);
+        }
     }
 
     private void toast(int messageRes) {
@@ -190,8 +220,9 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         if (windowManager == null) return;
 
         View clickPoint = LayoutInflater.from(this).inflate(R.layout.clicker_point, null);
+        final int newIndex = clickPoints.size();
         ((TextView) clickPoint.findViewById(R.id.clickId))
-                .setText(Integer.toString(clickPoints.size() + 1));
+                .setText(Integer.toString(newIndex + 1));
 
         int pointSize = pointSizePx();
         int spacing = ViewsUtils.dpToPx(POINT_SPACING_DP, this);
@@ -221,8 +252,20 @@ public class ClickerAccessibilityService extends AccessibilityService implements
                 ViewsUtils.getAccessibilityOverlayParams(
                         position[0], position[1], pointSize, pointSize);
         clickPoint.setTag(pointParams);
+        // Wrap the drag listener: keep the existing drag behaviour, but once the user lets go
+        // of a point they dragged locally, tell the peer exactly where it ended up so a
+        // remotely drawn point can be repositioned from the phone too.
+        View.OnTouchListener dragListener =
+                ViewsUtils.getViewTouchListener(this, clickPoint, windowManager, pointParams);
         clickPoint.setOnTouchListener(
-                ViewsUtils.getViewTouchListener(this, clickPoint, windowManager, pointParams));
+                (view, event) -> {
+                    boolean handled = dragListener.onTouch(view, event);
+                    if (event.getAction() == MotionEvent.ACTION_UP
+                            && damjay.floating.projects.utils.TouchState.getInstance().hasMoved()) {
+                        reportPointPosition(view, clickPoints.indexOf(view));
+                    }
+                    return handled;
+                });
         clickPoints.add(clickPoint);
         try {
             windowManager.addView(clickPoint, pointParams);
@@ -230,7 +273,39 @@ public class ClickerAccessibilityService extends AccessibilityService implements
             // Roll back if we somehow failed to attach the point.
             clickPoints.remove(clickPoint);
             t.printStackTrace();
+            return;
         }
+        // Once it has been laid out, tell the peer its true absolute position. Our predicted
+        // position ignores whatever inset the window manager applied (the status bar), so this
+        // also corrects the peer's copy right after a plain "add".
+        clickPoint.post(
+                () -> {
+                    if (clickPoint.getParent() != null) reportPointPosition(clickPoint, newIndex);
+                });
+    }
+
+    /** Sends the peer a MOVE command with the point's actual absolute top-left on screen. */
+    private void reportPointPosition(View point, int index) {
+        if (index < 0) return;
+        int[] location = new int[2];
+        point.getLocationOnScreen(location);
+        if (location[0] == 0 && location[1] == 0 && point.getWidth() == 0) return;
+        measureFrameOffset(point, (LayoutParams) point.getTag());
+        sendCommand(ClickerCommand.move(index, location[0], location[1]));
+    }
+
+    /**
+     * Records the constant offset between our window LayoutParams (relative to the parent
+     * frame) and absolute screen coordinates, using a view that has actually been laid out.
+     */
+    private void measureFrameOffset(View view, LayoutParams params) {
+        if (view == null || params == null || view.getWidth() == 0) return;
+        int[] location = new int[2];
+        view.getLocationOnScreen(location);
+        frameOffsetX = location[0] - params.x;
+        frameOffsetY = location[1] - params.y;
+        frameOffsetKnown = true;
+        Log.d(TAG, "frame offset measured as " + frameOffsetX + "," + frameOffsetY);
     }
 
     private void removeLastButton() {
@@ -242,6 +317,41 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         } catch (Throwable ignored) {
             // View may already be detached.
         }
+    }
+
+    /**
+     * Moves an existing point to an absolute screen position requested by the peer.
+     *
+     * <p>The peer works in absolute screen coordinates (the same ones dispatchGesture uses);
+     * our windows are positioned relative to the parent frame, so the measured frame offset is
+     * subtracted before updating the window.
+     */
+    private void movePoint(int index, int absX, int absY) {
+        if (windowManager == null || !ClickPointLayout.isValidIndex(index, clickPoints.size())) {
+            Log.w(TAG, "move for point " + index + " ignored (only " + clickPoints.size() + ")");
+            return;
+        }
+        View point = clickPoints.get(index);
+        LayoutParams params = (LayoutParams) point.getTag();
+        if (params == null) return;
+        if (!frameOffsetKnown) measureFrameOffset(point, params);
+
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
+        int size = pointSizePx();
+        int targetX = clamp(absX - frameOffsetX, 0, Math.max(0, metrics.widthPixels - size));
+        int targetY = clamp(absY - frameOffsetY, 0, Math.max(0, metrics.heightPixels - size));
+        params.x = targetX;
+        params.y = targetY;
+        try {
+            windowManager.updateViewLayout(point, params);
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
+        Log.d(TAG, "moved point " + index + " to absolute " + absX + "," + absY);
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     /**
@@ -258,6 +368,7 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         if (width > 0 && height > 0) {
             int[] location = new int[2];
             point.getLocationOnScreen(location);
+            measureFrameOffset(point, (LayoutParams) point.getTag());
             clickPoint(location[0] + width / 2, location[1] + height / 2);
             return;
         }
@@ -272,16 +383,16 @@ public class ClickerAccessibilityService extends AccessibilityService implements
     /**
      * Lets dispatched gestures reach the app underneath.
      *
-     * <p>The points are real windows sitting exactly where we are about to tap, so without this
-     * the injected touch lands on our own overlay instead of the app being controlled.
+     * <p>The points are real windows sitting exactly where we are about to touch, so without
+     * this the injected gesture lands on our own overlay instead of the app being controlled.
      */
     private void setPointsTouchable(boolean touchable) {
         if (windowManager == null) return;
         for (View point : clickPoints) {
             applyTouchable(point, (LayoutParams) point.getTag(), touchable);
         }
-        // The toolbar is a window as well: a point sitting under it would otherwise send the
-        // injected tap to our own + / - buttons.
+        // The toolbar is a window as well: a gesture passing under it would otherwise be sent
+        // to our own + / - buttons.
         applyTouchable(clickerLayout, clickerParams, touchable);
     }
 
@@ -321,14 +432,58 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         handler.postDelayed(() -> dispatchTap(x, y), GESTURE_SETTLE_MS);
     }
 
+    /**
+     * Swipes between two absolute screen points over {@code durationMs} milliseconds.
+     *
+     * <p>This is what powers "put two points anywhere, then swipe between them": the controller
+     * sends the centres of the two chosen points and the service draws a single stroke through
+     * the app underneath.
+     */
+    private void swipe(int fromX, int fromY, int toX, int toY, long durationMs) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return;
+        if (!canPerformGestures()) {
+            Log.w(TAG, "cannot dispatch gestures; is the service still enabled?");
+            toast(R.string.clicker_no_gestures);
+            return;
+        }
+        DisplayMetrics metrics = getResources().getDisplayMetrics();
+        fromX = clamp(fromX, 0, metrics.widthPixels - 1);
+        fromY = clamp(fromY, 0, metrics.heightPixels - 1);
+        toX = clamp(toX, 0, metrics.widthPixels - 1);
+        toY = clamp(toY, 0, metrics.heightPixels - 1);
+        final long duration = clampDuration(durationMs);
+
+        gesturesInFlight++;
+        setPointsTouchable(false);
+        handler.removeCallbacks(restoreTouch);
+        handler.postDelayed(
+                () -> dispatchSwipe(fromX, fromY, toX, toY, duration), GESTURE_SETTLE_MS);
+    }
+
+    private static long clampDuration(long durationMs) {
+        if (durationMs <= 0) return DEFAULT_SWIPE_MS;
+        return Math.min(durationMs, MAX_SWIPE_MS);
+    }
+
     private void dispatchTap(int x, int y) {
+        Path path = new Path();
+        path.moveTo(x, y);
+        dispatchStroke(path, TAP_DURATION_MS, "tap at " + x + "," + y);
+    }
+
+    private void dispatchSwipe(int fromX, int fromY, int toX, int toY, long duration) {
+        Path path = new Path();
+        path.moveTo(fromX, fromY);
+        path.lineTo(toX, toY);
+        dispatchStroke(path, duration,
+                "swipe " + fromX + "," + fromY + " -> " + toX + "," + toY + " over " + duration + "ms");
+    }
+
+    private void dispatchStroke(Path path, long duration, String description) {
         boolean dispatched = false;
         try {
-            Path path = new Path();
-            path.moveTo(x, y);
-
             GestureDescription.Builder builder = new GestureDescription.Builder();
-            builder.addStroke(new GestureDescription.StrokeDescription(path, 0, TAP_DURATION_MS));
+            builder.addStroke(new GestureDescription.StrokeDescription(path, 0, duration));
 
             dispatched =
                     dispatchGesture(
@@ -349,10 +504,10 @@ public class ClickerAccessibilityService extends AccessibilityService implements
                             null);
         } catch (Throwable t) {
             // Coordinates outside the display make StrokeDescription throw.
-            Log.e(TAG, "could not build the tap gesture", t);
+            Log.e(TAG, "could not build the gesture", t);
         }
 
-        Log.d(TAG, "tap at " + x + "," + y + " dispatched=" + dispatched);
+        Log.d(TAG, description + " dispatched=" + dispatched);
         if (!dispatched) {
             finishGesture();
         } else {
@@ -409,11 +564,33 @@ public class ClickerAccessibilityService extends AccessibilityService implements
                 }
                 break;
             }
+            case TYPE_TEXT: {
+                handleCommand((String) value);
+                break;
+            }
             case TYPE_EXIT:
                 endSession();
                 break;
             default:
                 // Ignore unsupported payload types.
+        }
+    }
+
+    /** Handles the extended text commands (MOVE / SWIPE / SIZE). */
+    private void handleCommand(String text) {
+        if (!ClickerCommand.isCommand(text)) return;
+        try {
+            ClickerCommand.Parsed parsed = ClickerCommand.parse(text);
+            long[] a = parsed.args;
+            if (parsed.isMove()) {
+                movePoint((int) a[0], (int) a[1], (int) a[2]);
+            } else if (parsed.isSwipe()) {
+                swipe((int) a[0], (int) a[1], (int) a[2], (int) a[3], a[4]);
+            }
+            // SIZE is only announced BY this side; a SIZE frame arriving here is ignored.
+        } catch (Throwable t) {
+            // A malformed command must never kill the reader thread.
+            Log.w(TAG, "ignoring bad command: " + text, t);
         }
     }
 
@@ -429,10 +606,8 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         endSession();
     }
 
-    /**
-     * Tears the session down but leaves the service bound: an accessibility service stays alive
-     * until the user disables it, so it must be able to host another session afterwards.
-     */
+    /** Tears the session down but leaves the service bound: an accessibility service stays alive
+     * until the user disables it, so it must be able to host another session afterwards. */
     private void endSession() {
         if (btOperation != null) {
             btOperation.close();
@@ -442,6 +617,7 @@ public class ClickerAccessibilityService extends AccessibilityService implements
         removeViews();
         pendingAddButton = false;
         pendingRemoveButton = false;
+        frameOffsetKnown = false;
     }
 
     private void removeViews() {

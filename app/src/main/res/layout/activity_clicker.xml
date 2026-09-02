@@ -36,7 +36,17 @@
             android:background="@drawable/round_button"
             android:id="@+id/removeButton"
             android:text="@string/remove" />
-             
+
+        <Button
+            android:layout_height="wrap_content"
+            android:layout_width="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="5dp"
+            android:layout_marginEnd="5dp"
+            android:background="@drawable/round_button"
+            android:id="@+id/swipeButton"
+            android:text="@string/swipe" />
+
         <Button
             android:layout_height="wrap_content"
             android:layout_width="wrap_content"
@@ -46,7 +56,7 @@
             android:background="@drawable/round_button"
             android:id="@+id/addButton"
             android:text="@string/add" />
-             
+
     </LinearLayout>
 
 </LinearLayout>

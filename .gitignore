@@ -84,3 +84,7 @@ lint/tmp/
 
 # Sunday School build artifacts
 sunday-school/instagram-carousel.zip
+
+# Python
+__pycache__/
+*.pyc

@@ -67,6 +67,16 @@ TYPE_NAMES = {
 CLICKER_ADD_POINT = -1
 CLICKER_DELETE_POINT = -2
 
+# Extended text commands, mirroring ClickerCommand.java.
+#   @SIZE,w,h        service -> controller: the phone's real screen size in pixels
+#   @MOVE,i,x,y      either side: move point i so its top-left is at (x, y)
+#   @SWIPE,x1,y1,x2,y2,duration   controller -> service: swipe between two points
+COMMAND_PREFIX = "@"
+CMD_SIZE = "SIZE"
+CMD_MOVE = "MOVE"
+CMD_SWIPE = "SWIPE"
+DEFAULT_SWIPE_MS = 300
+
 # HostActivity registers its service record with this UUID (res/values/strings.xml).
 CLICKER_UUID = "1cf64473-3259-4cb7-8f91-5ebb341506cd"
 
@@ -106,6 +116,43 @@ def encode_exit() -> bytes:
     return bytes([TYPE_EXIT])
 
 
+# --- extended text commands (see ClickerCommand.java) -----------------------
+
+
+def cmd_size(width: int, height: int) -> str:
+    return f"{COMMAND_PREFIX}{CMD_SIZE},{width},{height}"
+
+
+def cmd_move(index: int, x: int, y: int) -> str:
+    return f"{COMMAND_PREFIX}{CMD_MOVE},{index},{x},{y}"
+
+
+def cmd_swipe(x1: int, y1: int, x2: int, y2: int, duration_ms: int) -> str:
+    return f"{COMMAND_PREFIX}{CMD_SWIPE},{x1},{y1},{x2},{y2},{duration_ms}"
+
+
+def parse_command(text: str) -> tuple[str, tuple[int, ...]]:
+    """Split an extended command into (kind, ints); raises for ordinary text."""
+    if not is_command(text):
+        raise ProtocolError(f"not a clicker command: {text!r}")
+    parts = text[1:].split(",")
+    kind = parts[0]
+    if kind not in (CMD_SIZE, CMD_MOVE, CMD_SWIPE):
+        raise ProtocolError(f"unknown clicker command {kind!r}")
+    try:
+        args = tuple(int(p.strip()) for p in parts[1:])
+    except ValueError as error:
+        raise ProtocolError(f"non-numeric argument in {text!r}") from error
+    expected = {CMD_SIZE: 2, CMD_MOVE: 3, CMD_SWIPE: 5}[kind]
+    if len(args) != expected:
+        raise ProtocolError(f"{kind} needs {expected} numbers, got {text!r}")
+    return kind, args
+
+
+def is_command(text: object) -> bool:
+    return isinstance(text, str) and len(text) > 1 and text[0] == COMMAND_PREFIX
+
+
 class ProtocolError(Exception):
     pass
 
@@ -138,6 +185,21 @@ def describe(tag: int, value: object) -> str:
         if value == CLICKER_DELETE_POINT:
             return "BYTE  -2  remove point"
         return f"BYTE  {value}  tap point {value}"
+    if tag == TYPE_TEXT:
+        try:
+            if is_command(value):
+                kind, args = parse_command(value)
+                if kind == CMD_MOVE:
+                    index, x, y = args
+                    return f"CMD   move point {index + 1} to ({x}, {y})"
+                if kind == CMD_SWIPE:
+                    x1, y1, x2, y2, duration = args
+                    return f"CMD   swipe ({x1},{y1}) -> ({x2},{y2}) over {duration}ms"
+                if kind == CMD_SIZE:
+                    return f"CMD   phone screen is {args[0]}x{args[1]}"
+        except ProtocolError:
+            pass
+        return f"TEXT  {value!r}"
     if tag == TYPE_RAW_CONTENT:
         return f"RAW   {len(value)} bytes"
     return f"{name}  {value!r}"
@@ -149,12 +211,17 @@ def describe(tag: int, value: object) -> str:
 
 
 class PointModel:
-    """The click points, placed by the same rules the Android service uses."""
+    """The click points, placed by the same rules the Android service uses.
+
+    Positions are top-left corners in the PHONE's absolute screen pixels, which
+    is the coordinate space dispatchGesture and the @MOVE/@SWIPE commands use.
+    """
 
     POINT_SIZE = 30
     SPACING = 16
 
     def __init__(self, screen=(1080, 1920)):
+        # The phone announces its real size with @SIZE when a session starts.
         self.screen = screen
         self.points: list[tuple[int, int]] = []
 
@@ -181,9 +248,25 @@ class PointModel:
         self.points.pop()
         return True
 
+    def move(self, index: int, x: int, y: int) -> bool:
+        """Put point `index` (0-based) at the absolute top-left (x, y)."""
+        if not 0 <= index < len(self.points):
+            return False
+        half = self.POINT_SIZE // 2
+        x = max(0, min(int(x), self.screen[0] - self.POINT_SIZE))
+        y = max(0, min(int(y), self.screen[1] - self.POINT_SIZE))
+        self.points[index] = (x, y)
+        return True
+
+    def set_screen(self, width: int, height: int) -> None:
+        self.screen = (max(1, int(width)), max(1, int(height)))
+
     def centre_for_button(self, button: int) -> tuple[int, int] | None:
         """1-based button -> centre of the point it taps, or None."""
-        index = button - 1                       # ClickPointLayout.indexForButton
+        return self.centre_for_index(button - 1)
+
+    def centre_for_index(self, index: int) -> tuple[int, int] | None:
+        """0-based point -> its absolute centre, or None."""
         if not 0 <= index < len(self.points):
             return None
         x, y = self.points[index]
@@ -766,6 +849,35 @@ class Session:
         if self._send(encode_byte(number)):
             self._emit("sent", f"tap point {number}")
 
+    def move_point(self, index: int, x: int, y: int) -> bool:
+        """
+        Move a point on the peer's screen to absolute coordinates and keep our
+        own copy in the same place. Used when the user drags a point here.
+        """
+        if not self.model.move(index, x, y):
+            return False
+        if self._send(encode_text(cmd_move(index, int(x), int(y)))):
+            self._emit("sent", f"move point {index + 1} to ({int(x)}, {int(y)})")
+            self._emit("points")
+        return True
+
+    def swipe(self, from_index: int, to_index: int,
+              duration_ms: int = DEFAULT_SWIPE_MS) -> None:
+        """Swipe from the centre of one point to the centre of another."""
+        start = self.model.centre_for_index(from_index)
+        end = self.model.centre_for_index(to_index)
+        if start is None or end is None:
+            self._emit("error", "swipe needs two existing points")
+            return
+        self.swipe_coords(start[0], start[1], end[0], end[1], duration_ms)
+
+    def swipe_coords(self, x1: int, y1: int, x2: int, y2: int,
+                     duration_ms: int = DEFAULT_SWIPE_MS) -> None:
+        if self._send(encode_text(cmd_swipe(x1, y1, x2, y2, int(duration_ms)))):
+            self._emit("sent",
+                       f"swipe ({x1},{y1}) -> ({x2},{y2}) over {duration_ms}ms")
+            self._emit("swipe", f"{x1},{y1},{x2},{y2}")
+
     def send_exit(self) -> None:
         if self._send(encode_exit()):
             self._emit("sent", "exit")
@@ -776,13 +888,42 @@ class Session:
 
     # -- inbound -----------------------------------------------------------
 
+    def _handle_command(self, text: str) -> None:
+        """Apply an extended command the peer sent, and echo it to the log."""
+        try:
+            kind, args = parse_command(text)
+        except ProtocolError as error:
+            self._emit("error", f"bad command from peer: {error}")
+            return
+        self._emit("recv", describe(TYPE_TEXT, text))
+        if kind == CMD_SIZE:
+            width, height = args
+            self.model.set_screen(width, height)
+            self._emit("screen", f"{width},{height}")
+        elif kind == CMD_MOVE:
+            index, x, y = args
+            # A MOVE can arrive for a point our optimistic bookkeeping has not
+            # grown into yet (or after a late @SIZE); grow to cover it first.
+            if index >= 0:
+                while len(self.model) < index + 1:
+                    self.model.add()
+                if self.model.move(index, x, y):
+                    self._emit("points")
+        elif kind == CMD_SWIPE:
+            x1, y1, x2, y2, _duration = args
+            self._emit("swipe", f"{x1},{y1},{x2},{y2}")
+
     def _read_loop(self) -> None:
         try:
             while self._running:
                 tag, value = read_frame(self._transport.read_exactly)
-                self._emit("recv", describe(tag, value))
+                if not (tag == TYPE_TEXT and is_command(value)):
+                    self._emit("recv", describe(tag, value))
                 if tag == TYPE_EXIT:
                     break
+                if tag == TYPE_TEXT and is_command(value):
+                    self._handle_command(value)
+                    continue
                 if tag != TYPE_BYTE:
                     continue
                 if value == CLICKER_ADD_POINT:
@@ -849,16 +990,32 @@ class FakePeer(threading.Thread):
 
     def _serve(self, transport: SocketTransport) -> None:
         """Play the accessibility service: receive commands, report the taps."""
+        # A real service announces its screen size as soon as a session starts.
+        transport.send(encode_text(cmd_size(*self.model.screen)))
         while True:
             tag, value = read_frame(transport.read_exactly)
             if tag == TYPE_EXIT:
                 self._on_log("fake phone: session closed by the controller")
                 return
+            if tag == TYPE_TEXT and is_command(value):
+                kind, args = parse_command(value)
+                if kind == CMD_MOVE:
+                    index, x, y = args
+                    if self.model.move(index, x, y):
+                        self._on_log(f"fake phone: MOVED point {index + 1} to ({x}, {y})")
+                elif kind == CMD_SWIPE:
+                    x1, y1, x2, y2, duration = args
+                    self._on_log(
+                        f"fake phone: SWIPE ({x1},{y1}) -> ({x2},{y2}) over {duration}ms")
+                continue
             if tag != TYPE_BYTE:
                 self._on_log(f"fake phone: ignoring {describe(tag, value)}")
                 continue
             if value == CLICKER_ADD_POINT:
-                self._on_log(f"fake phone: added point {len(self.model) + 1} at {self.model.add()}")
+                pos = self.model.add()
+                self._on_log(f"fake phone: added point {len(self.model)} at {pos}")
+                # The service reports where the point really landed.
+                transport.send(encode_text(cmd_move(len(self.model) - 1, pos[0], pos[1])))
             elif value == CLICKER_DELETE_POINT:
                 if self.model.remove_last():
                     self._on_log(f"fake phone: removed a point ({len(self.model)} left)")
@@ -873,21 +1030,23 @@ class FakePeer(threading.Thread):
 
     def _drive(self, transport: SocketTransport) -> None:
         """Play the controller: run a little script so there is something to watch."""
+        # Delays are kept short: this also runs inside --selftest.
         script = [
-            (1.0, CLICKER_ADD_POINT, "press +"),
-            (0.8, CLICKER_ADD_POINT, "press +"),
-            (0.8, CLICKER_ADD_POINT, "press +"),
-            (1.0, 1, "press button 1"),
-            (1.0, 2, "press button 2"),
-            (1.0, 3, "press button 3"),
-            (1.0, CLICKER_DELETE_POINT, "press -"),
-            (1.0, 3, "press button 3 (now out of range)"),
-            (1.0, 2, "press button 2"),
+            (0.6, encode_byte(CLICKER_ADD_POINT), "press +"),
+            (0.4, encode_byte(CLICKER_ADD_POINT), "press +"),
+            (0.4, encode_text(cmd_size(1080, 1920)), "announce screen size"),
+            (0.4, encode_text(cmd_move(0, 400, 700)), "reposition point 1"),
+            (0.4, encode_text(cmd_move(1, 100, 1200)), "reposition point 2"),
+            (0.4, encode_text(cmd_swipe(415, 715, 115, 1215, 300)), "swipe 1 -> 2"),
+            (0.4, encode_byte(1), "press button 1"),
+            (0.4, encode_byte(2), "press button 2"),
+            (0.4, encode_byte(CLICKER_DELETE_POINT), "press -"),
+            (0.4, encode_byte(2), "press button 2 (the old point 3)"),
         ]
-        for delay, command, note in script:
+        for delay, payload, note in script:
             time.sleep(delay)
             self._on_log(f"fake phone: {note}")
-            transport.send(encode_byte(command))
+            transport.send(payload)
         self._on_log("fake phone: script finished, still connected")
         while True:                                  # stay up so the GUI can react
             if not transport.recv(1):
@@ -973,49 +1132,68 @@ def run_gui(args) -> int:
         text="Controls" if role == "controller" else "Phone screen (simulated)",
         padding=8,
     )
-    body.pack(fill="both", expand=(role == "service"), padx=10, pady=6)
+    body.pack(fill="both", expand=True, padx=10, pady=6)
 
     points_var = tk.StringVar(value="0 points")
+    hint_var = tk.StringVar(value="")
     widgets: dict = {}
+    canvas_state = {"drag": None, "swipe_from": None, "swipe_line": None}
+
+    CANVAS_W = 300
+    CANVAS_H = 520
+
+    def phone_scale() -> float:
+        session = state["session"]
+        screen = session.model.screen if session else (1080, 1920)
+        return min(CANVAS_W / screen[0], CANVAS_H / screen[1])
+
+    def to_canvas(x: float, y: float) -> tuple[float, float]:
+        scale = phone_scale()
+        return x * scale, y * scale
+
+    def to_phone(cx: float, cy: float) -> tuple[int, int]:
+        scale = phone_scale()
+        return int(cx / scale), int(cy / scale)
+
+    def point_radius() -> float:
+        return max(9, PointModel.POINT_SIZE * phone_scale() / 2)
+
+    buttons_row = ttk.Frame(body)
+    buttons_row.pack(fill="x")
+    widgets["add"] = ttk.Button(buttons_row, text="+  Add point", width=14)
+    widgets["add"].pack(side="left")
+    widgets["remove"] = ttk.Button(buttons_row, text="\u2212  Remove point", width=14)
+    widgets["remove"].pack(side="left", padx=6)
+    if role == "controller":
+        widgets["swipe"] = ttk.Button(buttons_row, text="Swipe between two...", width=18)
+        widgets["swipe"].pack(side="left")
+    widgets["exit"] = ttk.Button(
+        buttons_row, text="Send exit" if role == "controller" else "Close session",
+        width=12)
+    widgets["exit"].pack(side="left", padx=6)
+    ttk.Label(buttons_row, textvariable=points_var).pack(side="right")
+
+    canvas = tk.Canvas(body, width=CANVAS_W, height=CANVAS_H, bg="#101418",
+                       highlightthickness=1, highlightbackground="#333")
+    canvas.pack(pady=(8, 4))
+    widgets["canvas"] = canvas
+
+    ttk.Label(body, textvariable=hint_var, foreground="#666",
+              wraplength=CANVAS_W + 60, justify="left").pack(anchor="w")
 
     if role == "controller":
-        buttons_row = ttk.Frame(body)
-        buttons_row.pack(fill="x")
-        widgets["add"] = ttk.Button(buttons_row, text="+  Add point", width=16)
-        widgets["add"].pack(side="left")
-        widgets["remove"] = ttk.Button(buttons_row, text="\u2212  Remove point", width=16)
-        widgets["remove"].pack(side="left", padx=6)
-        widgets["exit"] = ttk.Button(buttons_row, text="Send exit", width=12)
-        widgets["exit"].pack(side="left")
-        ttk.Label(buttons_row, textvariable=points_var).pack(side="right")
         ttk.Label(body, foreground="#666",
-                  text="Tap a numbered button to click that point on the phone. "
-                       "Keys 1-9 and +/- work too.").pack(anchor="w", pady=(8, 4))
+                  text="Drag the blue points to place them exactly where you want "
+                       "on the phone. Click a point to tap it there. "
+                       "Keys 1-9 and +/- work too.").pack(anchor="w", pady=(4, 0))
         pad = ttk.Frame(body)
-        pad.pack(fill="x")
+        pad.pack(fill="x", pady=(4, 0))
         widgets["pad"] = pad
         widgets["taps"] = []
     else:
-        info = ttk.Frame(body)
-        info.pack(fill="x")
-        ttk.Label(info, foreground="#666",
-                  text="Whatever the phone's controller sends is drawn here. "
-                       "The + and - buttons mirror the floating toolbar.").pack(side="left")
-        ttk.Label(info, textvariable=points_var).pack(side="right")
-
-        toolbar = ttk.Frame(body)
-        toolbar.pack(fill="x", pady=(6, 6))
-        widgets["add"] = ttk.Button(toolbar, text="+  Add point", width=16)
-        widgets["add"].pack(side="left")
-        widgets["remove"] = ttk.Button(toolbar, text="\u2212  Remove point", width=16)
-        widgets["remove"].pack(side="left", padx=6)
-        widgets["exit"] = ttk.Button(toolbar, text="Close session", width=14)
-        widgets["exit"].pack(side="left")
-
-        canvas = tk.Canvas(body, width=300, height=520, bg="#101418",
-                           highlightthickness=1, highlightbackground="#333")
-        canvas.pack(pady=(4, 0))
-        widgets["canvas"] = canvas
+        ttk.Label(body, foreground="#666",
+                  text="Whatever the phone's controller sends is drawn here.").pack(
+                anchor="w", pady=(4, 0))
 
     # -- log ---------------------------------------------------------------
     log_frame = ttk.LabelFrame(root, text="Traffic", padding=8)
@@ -1045,34 +1223,48 @@ def run_gui(args) -> int:
 
     # -- rendering ---------------------------------------------------------
 
-    SCALE = 300 / 1080
-
     def redraw_canvas(flash: int | None = None) -> None:
         canvas = widgets["canvas"]
         canvas.delete("all")
         session = state["session"]
         model = session.model if session else PointModel()
-        size = max(10, int(PointModel.POINT_SIZE * SCALE * 2.2))
+        radius = point_radius()
+        swipe_from = canvas_state["swipe_from"]
+
+        # Phone screen outline, letterboxed inside the canvas.
+        scale = phone_scale()
+        sw, sh = to_canvas(model.screen[0], model.screen[1])
+        canvas.create_rectangle(1, 1, sw + 1, sh + 1, outline="#3a4150")
+
+        if canvas_state["swipe_line"]:
+            x1, y1, x2, y2 = canvas_state["swipe_line"]
+            canvas.create_line(x1, y1, x2, y2, fill="#ffb020", width=3, arrow="last")
+
         for number, (x, y) in enumerate(model.points, start=1):
-            cx = x * SCALE + size / 2
-            cy = y * SCALE + size / 2
+            left, top = to_canvas(x, y)
+            cx = left + radius
+            cy = top + radius
             hot = (flash == number)
+            is_from = (swipe_from == number - 1)
+            fill = "#ff4d4d" if hot else ("#ffb020" if is_from else "#2d6cdf")
+            outline = "#ffffff" if (hot or is_from) else "#8ab4ff"
             canvas.create_oval(
-                cx - size / 2, cy - size / 2, cx + size / 2, cy + size / 2,
-                fill="#ff4d4d" if hot else "#2d6cdf",
-                outline="#ffffff" if hot else "#8ab4ff", width=2 if hot else 1,
+                cx - radius, cy - radius, cx + radius, cy + radius,
+                fill=fill, outline=outline, width=2 if (hot or is_from) else 1,
+                tags=f"point:{number - 1}",
             )
-            canvas.create_text(cx, cy, text=str(number), fill="white")
+            canvas.create_text(cx, cy, text=str(number), fill="white",
+                               tags=f"point:{number - 1}")
         if not model.points:
-            canvas.create_text(150, 260, fill="#666",
-                               text="no points yet\nsend + from the phone")
+            canvas.create_text(CANVAS_W / 2, CANVAS_H / 2, fill="#666",
+                               text="no points yet\npress + or Add point")
 
     def refresh_points() -> None:
         session = state["session"]
         count = len(session.model) if session else 0
         points_var.set(f"{count} point{'' if count == 1 else 's'}")
-        if role == "service":
-            redraw_canvas()
+        redraw_canvas()
+        if role != "controller":
             return
         for widget in widgets["taps"]:
             widget.destroy()
@@ -1086,10 +1278,87 @@ def run_gui(args) -> int:
             widgets["taps"].append(button)
 
     def flash_point(number: int) -> None:
-        if role != "service":
-            return
         redraw_canvas(flash=number)
         root.after(220, lambda: redraw_canvas())
+
+    # -- canvas interaction (controller role) ------------------------------
+
+    def point_at(cx: float, cy: float) -> int | None:
+        """0-based index of the point under a canvas coordinate, or None."""
+        session = state["session"]
+        if not session:
+            return None
+        radius = point_radius()
+        for index, (x, y) in reversed(list(enumerate(session.model.points))):
+            left, top = to_canvas(x, y)
+            centre = (left + radius, top + radius)
+            if (cx - centre[0]) ** 2 + (cy - centre[1]) ** 2 <= (radius + 4) ** 2:
+                return index
+        return None
+
+    def on_canvas_press(event) -> None:
+        if role != "controller" or not state["session"]:
+            return
+        index = point_at(event.x, event.y)
+        if index is None:
+            return
+        if canvas_state.get("swipe_active"):
+            # Picking endpoints for a swipe: first press sets the start, second fires it.
+            if canvas_state["swipe_from"] is None:
+                canvas_state["swipe_from"] = index
+                hint_var.set(f"Now click the point to swipe to (started at point {index + 1}).")
+            else:
+                start = canvas_state["swipe_from"]
+                if start != index:
+                    state["session"].swipe(start, index)
+                canvas_state["swipe_from"] = None
+                canvas_state["swipe_active"] = False
+                hint_var.set("")
+                widgets["swipe"].configure(text="Swipe between two...")
+            redraw_canvas()
+            return
+        canvas_state["drag"] = {"index": index, "moved": False}
+
+    def on_canvas_drag(event) -> None:
+        drag = canvas_state["drag"]
+        if drag is None or role != "controller":
+            return
+        index = drag["index"]
+        px, py = to_phone(event.x, event.y)
+        half = PointModel.POINT_SIZE // 2
+        target = (max(0, px - half), max(0, py - half))
+        # MOVE events fire many times per second; only push when the point would
+        # land on a different phone pixel, to avoid flooding the link.
+        if drag.get("last_sent") != target:
+            drag["last_sent"] = target
+            state["session"].move_point(index, target[0], target[1])
+        drag["moved"] = True
+
+    def on_canvas_release(event) -> None:
+        drag = canvas_state["drag"]
+        if drag is None:
+            return
+        canvas_state["drag"] = None
+        if not drag["moved"]:
+            # A plain click on a point taps it on the phone.
+            state["session"].tap(drag["index"] + 1)
+
+    def toggle_swipe_mode() -> None:
+        if canvas_state.get("swipe_active"):
+            canvas_state["swipe_from"] = None
+            canvas_state["swipe_active"] = False
+            hint_var.set("")
+            widgets["swipe"].configure(text="Swipe between two...")
+        else:
+            canvas_state["swipe_active"] = True
+            canvas_state["swipe_from"] = None
+            hint_var.set("Swipe mode: click the point to start at, then the one to swipe to.")
+            widgets["swipe"].configure(text="Cancel swipe")
+        redraw_canvas()
+
+    canvas.bind("<ButtonPress-1>", on_canvas_press)
+    canvas.bind("<B1-Motion>", on_canvas_drag)
+    canvas.bind("<ButtonRelease-1>", on_canvas_release)
 
     def set_connected(connected: bool) -> None:
         state["searching"] = False
@@ -1100,6 +1369,8 @@ def run_gui(args) -> int:
         next_button.configure(state="normal" if can_advance else "disabled")
         for key in ("add", "remove", "exit"):
             widgets[key].configure(state="normal" if connected else "disabled")
+        if role == "controller":
+            widgets["swipe"].configure(state="normal" if connected else "disabled")
         status_var.set("connected" if connected else "not connected")
 
     def set_searching() -> None:
@@ -1110,6 +1381,19 @@ def run_gui(args) -> int:
         next_button.configure(state="disabled")
         for key in ("add", "remove", "exit"):
             widgets[key].configure(state="disabled")
+        if role == "controller":
+            widgets["swipe"].configure(state="disabled")
+
+    def flash_swipe(line: str) -> None:
+        """Draw a swipe briefly on the simulated screen when one is dispatched."""
+        parts = [int(v) for v in line.split(",")]
+        x1, y1, x2, y2 = parts[:4]
+        c1 = to_canvas(x1, y1)
+        c2 = to_canvas(x2, y2)
+        canvas_state["swipe_line"] = (c1[0], c1[1], c2[0], c2[1])
+        redraw_canvas()
+        root.after(700, lambda: (canvas_state.__setitem__("swipe_line", None),
+                                 redraw_canvas()))
 
     def drain() -> None:
         try:
@@ -1121,6 +1405,13 @@ def run_gui(args) -> int:
                     number = int(message)
                     log("tap", f"TAP point {number}")
                     flash_point(number)
+                elif kind == "swipe":
+                    log("tap", f"SWIPE {message}")
+                    flash_swipe(message)
+                elif kind == "screen":
+                    w, h = message.split(",")
+                    log("info", f"phone screen is {w}x{h} pixels")
+                    redraw_canvas()
                 elif kind == "closed":
                     set_connected(False)
                     log("info", "session closed")
@@ -1265,6 +1556,8 @@ def run_gui(args) -> int:
     widgets["add"].configure(command=lambda: state["session"] and state["session"].add_point())
     widgets["remove"].configure(command=lambda: state["session"] and state["session"].remove_point())
     widgets["exit"].configure(command=lambda: state["session"] and state["session"].send_exit())
+    if role == "controller":
+        widgets["swipe"].configure(command=toggle_swipe_mode)
 
     if role == "controller":
         def on_key(event) -> None:
@@ -1272,11 +1565,31 @@ def run_gui(args) -> int:
             if not session:
                 return
             if event.char.isdigit() and event.char != "0":
-                session.tap(int(event.char))
+                if canvas_state.get("swipe_active"):
+                    # Keys can pick the swipe endpoints too.
+                    number = int(event.char)
+                    index = number - 1
+                    if canvas_state["swipe_from"] is None:
+                        if 0 <= index < len(session.model):
+                            canvas_state["swipe_from"] = index
+                            hint_var.set(f"Now press the point to swipe to (started at {number}).")
+                    else:
+                        start = canvas_state["swipe_from"]
+                        if start != index:
+                            session.swipe(start, index)
+                        canvas_state["swipe_from"] = None
+                        canvas_state["swipe_active"] = False
+                        hint_var.set("")
+                        widgets["swipe"].configure(text="Swipe between two...")
+                    redraw_canvas()
+                else:
+                    session.tap(int(event.char))
             elif event.char in "+=":
                 session.add_point()
             elif event.char == "-":
                 session.remove_point()
+            elif event.char.lower() == "s":
+                toggle_swipe_mode()
 
         root.bind("<Key>", on_key)
 
@@ -1335,6 +1648,9 @@ def _run_direction(role: str) -> tuple[list[str], list[tuple[str, str]]]:
         session.tap(1)
         session.tap(2)
         session.tap(5)           # no such point
+        session.move_point(0, 500, 600)   # reposition point 1 from the laptop
+        session.move_point(1, 200, 900)   # and point 2
+        session.swipe(0, 1)               # swipe between them
         session.remove_point()
         session.tap(2)           # gone now
         session.send_exit()
@@ -1357,6 +1673,8 @@ def run_selftest() -> int:
     taps = [m for m in messages if "TAP" in m]
     added = [m for m in messages if "added point" in m]
     ignored = [m for m in messages if "has no point" in m]
+    moves = [m for m in messages if "MOVED" in m]
+    swipes = [m for m in messages if "SWIPE" in m]
     if len(added) != 2:
         problems.append(f"controller: expected 2 points added, saw {len(added)}")
     if len(taps) != 2:
@@ -1367,6 +1685,15 @@ def run_selftest() -> int:
         problems.append(f"controller: button 1 tapped the wrong place: {taps[0]}")
     if len(ignored) != 2:
         problems.append(f"controller: expected 2 ignored presses, saw {len(ignored)}")
+    if len(moves) != 2:
+        problems.append(f"controller: expected 2 remote moves, saw {len(moves)}: {moves}")
+    elif "point 1 to (500, 600)" not in moves[0]:
+        problems.append(f"controller: point 1 did not move to the requested spot: {moves[0]}")
+    if len(swipes) != 1:
+        problems.append(f"controller: expected 1 swipe, saw {len(swipes)}: {swipes}")
+    elif swipes and "(515,615) -> (215,915)" not in swipes[0]:
+        # Centres = moved top-left + 15 (half of the 30px point).
+        problems.append(f"controller: swipe endpoints were wrong: {swipes[0]}")
 
     print("\n=== laptop as SERVICE, fake phone as controller ===")
     messages, events = _run_direction("service")
@@ -1375,13 +1702,20 @@ def run_selftest() -> int:
     kinds = [k for k, _ in events]
     taps = [msg for kind, msg in events if kind == "tap"]
     misses = [msg for kind, msg in events if kind == "miss"]
-    print("   received taps:", taps, " ignored:", len(misses))
-    if taps != ["1", "2", "3", "2"]:
-        problems.append(f"service: expected taps 1,2,3 then 2, saw {taps}")
+    swipes = [msg for kind, msg in events if kind == "swipe"]
+    screens = [msg for kind, msg in events if kind == "screen"]
+    print("   received taps:", taps, " ignored:", len(misses),
+          " swipes:", len(swipes), " screens:", len(screens))
+    if taps != ["1", "2"]:
+        problems.append(f"service: expected taps 1,2, saw {taps}")
     if len(misses) != 1:
         problems.append(f"service: expected 1 out-of-range press, saw {len(misses)}")
     if kinds.count("points") < 4:
-        problems.append("service: point list did not track the peer's add/remove")
+        problems.append("service: point list did not track the peer's add/remove/move")
+    if len(swipes) != 1:
+        problems.append(f"service: expected 1 swipe from the controller, saw {len(swipes)}")
+    if len(screens) != 1:
+        problems.append(f"service: expected the phone's screen size once, saw {len(screens)}")
 
     print("\n--- result ---")
     if problems:
