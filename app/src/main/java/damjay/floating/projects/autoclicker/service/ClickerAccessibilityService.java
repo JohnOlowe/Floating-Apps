@@ -447,17 +447,17 @@ public class ClickerAccessibilityService extends AccessibilityService implements
             return;
         }
         DisplayMetrics metrics = getResources().getDisplayMetrics();
-        fromX = clamp(fromX, 0, metrics.widthPixels - 1);
-        fromY = clamp(fromY, 0, metrics.heightPixels - 1);
-        toX = clamp(toX, 0, metrics.widthPixels - 1);
-        toY = clamp(toY, 0, metrics.heightPixels - 1);
+        final int fX = clamp(fromX, 0, metrics.widthPixels - 1);
+        final int fY = clamp(fromY, 0, metrics.heightPixels - 1);
+        final int tX = clamp(toX, 0, metrics.widthPixels - 1);
+        final int tY = clamp(toY, 0, metrics.heightPixels - 1);
         final long duration = clampDuration(durationMs);
 
         gesturesInFlight++;
         setPointsTouchable(false);
         handler.removeCallbacks(restoreTouch);
         handler.postDelayed(
-                () -> dispatchSwipe(fromX, fromY, toX, toY, duration), GESTURE_SETTLE_MS);
+                () -> dispatchSwipe(fX, fY, tX, tY, duration), GESTURE_SETTLE_MS);
     }
 
     private static long clampDuration(long durationMs) {
