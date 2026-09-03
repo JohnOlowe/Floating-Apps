@@ -1,11 +1,10 @@
-package damjay.floating.projects.autoclicker;
+package damjay.floating.projects.bluetooth;
 
 import static damjay.floating.projects.bluetooth.BluetoothOperations.BluetoothOperationsConstants.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import damjay.floating.projects.bluetooth.BluetoothOperations;
-import damjay.floating.projects.bluetooth.BluetoothOperations.BluetoothOperationsCallback;
+import damjay.floating.projects.autoclicker.ClickerCommand;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
