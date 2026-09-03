@@ -9,6 +9,7 @@ import damjay.floating.projects.bluetooth.BluetoothOperations.BluetoothOperation
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,7 +39,11 @@ public class ClickerCommandSessionTest {
 
         @Override
         public void onError(Throwable t) {
-            errors.add(t);
+            // Reaching the end of the in-memory stream is reported as an EOFException, which is
+            // the normal end of the conversation rather than a failure.
+            if (!(t instanceof EOFException)) {
+                errors.add(t);
+            }
         }
     }
 
