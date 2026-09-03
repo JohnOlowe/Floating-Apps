@@ -5,6 +5,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import damjay.floating.projects.autoclicker.ClickerCommand;
+import damjay.floating.projects.bluetooth.BluetoothOperations.BluetoothOperationsCallback;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
